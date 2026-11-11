@@ -1,3 +1,13 @@
+// Camada sem Tauri (testável com `cargo test`). Ainda não usada pelos comandos (Fase 3).
+#[allow(dead_code)]
+mod error;
+#[allow(dead_code)]
+mod excel;
+#[allow(dead_code)]
+mod model;
+#[allow(dead_code)]
+mod output;
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {

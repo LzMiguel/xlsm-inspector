@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "xlsm-inspector",
+  "productName": "XLSM Inspector",
   "version": "0.1.0",
   "identifier": "xlsm-inspector_app",
   "build": {
@@ -12,9 +12,9 @@
   "app": {
     "windows": [
       {
-        "title": "xlsm-inspector",
-        "width": 800,
-        "height": 600
+        "title": "XLSM Inspector",
+        "minWidth": 960,
+        "minHeight": 640
       }
     ],
     "security": {

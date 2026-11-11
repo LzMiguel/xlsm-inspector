@@ -42,7 +42,7 @@ Referências: `PRD.md` (o quê), `Architecture.md` (como), `Design-System.md` (v
 5. Dependências do backend (`src-tauri/Cargo.toml`), conferindo a versão do `calamine`:
 
    ```toml
-   calamine = "0.26"          # confira a API de vba_project() na versão fixada
+   calamine = "0.38"          # confira a API de vba_project() na versão fixada
    serde = { version = "1", features = ["derive"] }
    serde_json = { version = "1", features = ["preserve_order"] }
    indexmap = { version = "2", features = ["serde"] }
