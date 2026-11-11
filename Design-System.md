@@ -1,0 +1,233 @@
+# Design System — XLSM Inspector
+
+Aplicativo de utilidade técnica: a interface deve ser **limpa, densa em informação e calma**. O conteúdo (células e código) é o protagonista; a interface fica em segundo plano.
+
+**Princípios**
+
+1. **Clareza antes de decoração:** nada de gradientes ou sombras.
+2. **Dados legíveis:** fonte monoespaçada para coordenadas, fórmulas e código.
+3. **Estado sempre visível:** o usuário sabe o que foi carregado, o que está processando e o que foi exportado.
+4. **Teclado e mouse:** tudo acessível pelos dois.
+
+Implementação sugerida: **Tailwind CSS** com os tokens abaixo como variáveis CSS, e componentes base do **shadcn/ui** (ou Radix) adaptados.
+
+---
+
+## 1. Cores
+
+Todas as cores são tokens. Componentes nunca usam valores hexadecimais diretamente.
+
+### Tema claro
+
+| Token             | Valor     | Uso                                    |
+| ----------------- | --------- | -------------------------------------- |
+| `--bg`            | `#F7F8FA` | Fundo da janela                        |
+| `--surface`       | `#FFFFFF` | Cards, painéis, tabelas                |
+| `--surface-muted` | `#F0F2F5` | Cabeçalho de tabela, áreas secundárias |
+| `--border`        | `#E1E4EA` | Bordas e divisores                     |
+| `--text`          | `#1A1D23` | Texto principal                        |
+| `--text-muted`    | `#5F6672` | Texto secundário, legendas             |
+| `--text-subtle`   | `#8A919C` | Placeholders, desabilitado             |
+| `--primary`       | `#1F7A55` | Ações principais (verde planilha)      |
+| `--primary-hover` | `#186446` | Hover da ação principal                |
+| `--primary-soft`  | `#E3F2EB` | Fundo de seleção, badges               |
+| `--accent`        | `#4B5BD6` | Links, foco, destaque de VBA           |
+| `--success`       | `#1F8A4C` | Exportação concluída                   |
+| `--warning`       | `#B7791F` | Valores em cache ausentes              |
+| `--warning-soft`  | `#FDF4E3` | Fundo de alerta                        |
+| `--danger`        | `#C53030` | Erros                                  |
+| `--danger-soft`   | `#FDECEC` | Fundo de erro                          |
+
+### Tema escuro
+
+| Token             | Valor     |
+| ----------------- | --------- |
+| `--bg`            | `#111318` |
+| `--surface`       | `#181B21` |
+| `--surface-muted` | `#20242B` |
+| `--border`        | `#2C313A` |
+| `--text`          | `#E7E9ED` |
+| `--text-muted`    | `#A0A7B2` |
+| `--text-subtle`   | `#6B727D` |
+| `--primary`       | `#3DB884` |
+| `--primary-hover` | `#52C894` |
+| `--primary-soft`  | `#173326` |
+| `--accent`        | `#8592F0` |
+| `--success`       | `#4CC27F` |
+| `--warning`       | `#E0A84A` |
+| `--warning-soft`  | `#33280F` |
+| `--danger`        | `#F06A6A` |
+| `--danger-soft`   | `#3A1717` |
+
+### Destaque de sintaxe VBA
+
+| Token            | Claro     | Escuro    | Elemento                  |
+| ---------------- | --------- | --------- | ------------------------- |
+| `--code-keyword` | `#4B5BD6` | `#8592F0` | `Sub`, `Dim`, `If`, `End` |
+| `--code-string`  | `#1F7A55` | `#7FD1A8` | `"texto"`                 |
+| `--code-comment` | `#8A919C` | `#6B727D` | `' comentário`            |
+| `--code-number`  | `#B7591F` | `#E8A06A` | `42`, `3.14`              |
+| `--code-bg`      | `#F7F8FA` | `#13161B` | Fundo do bloco            |
+
+O tema segue o sistema operacional por padrão, com opção manual nas configurações.
+
+---
+
+## 2. Tipografia
+
+| Família | Fonte              | Fallback                             | Uso                           |
+| ------- | ------------------ | ------------------------------------ | ----------------------------- |
+| Sans    | **Inter**          | `system-ui, Segoe UI, sans-serif`    | Interface                     |
+| Mono    | **JetBrains Mono** | `Cascadia Code, Consolas, monospace` | Coordenadas, fórmulas, código |
+
+Incluir as fontes no bundle (sem carregar da internet, por causa do RNF01).
+
+### Escala
+
+| Token       | Tamanho / Altura | Peso | Uso                           |
+| ----------- | ---------------- | ---- | ----------------------------- |
+| `text-xs`   | 11px / 16px      | 500  | Badges, metadados             |
+| `text-sm`   | 13px / 20px      | 400  | Tabelas, código, texto padrão |
+| `text-base` | 14px / 22px      | 400  | Texto de corpo                |
+| `text-lg`   | 16px / 24px      | 600  | Títulos de seção              |
+| `text-xl`   | 20px / 28px      | 600  | Título de página              |
+| `text-2xl`  | 24px / 32px      | 700  | Estado vazio / boas-vindas    |
+
+Tabelas e código usam `text-sm` para caber mais conteúdo. Números em tabelas usam `font-variant-numeric: tabular-nums`.
+
+---
+
+## 3. Espaçamento
+
+Escala base de **4px**.
+
+| Token      | Valor | Uso típico                               |
+| ---------- | ----- | ---------------------------------------- |
+| `space-1`  | 4px   | Ícone ↔ texto                            |
+| `space-2`  | 8px   | Padding interno de badges, gaps pequenos |
+| `space-3`  | 12px  | Padding de células de tabela, inputs     |
+| `space-4`  | 16px  | Padding de cards, gap entre controles    |
+| `space-6`  | 24px  | Separação entre seções                   |
+| `space-8`  | 32px  | Margem de página                         |
+| `space-12` | 48px  | Estados vazios                           |
+
+### Bordas e elevação
+
+| Token       | Valor                                               |
+| ----------- | --------------------------------------------------- |
+| `radius-sm` | 4px (badges, inputs)                                |
+| `radius-md` | 6px (botões, cards)                                 |
+| `radius-lg` | 10px (modais, drop zone)                            |
+| `shadow-sm` | `0 1px 2px rgb(0 0 0 / 0.06)`                       |
+| `shadow-md` | `0 4px 12px rgb(0 0 0 / 0.08)` (só modais e toasts) |
+
+### Layout
+
+- Janela mínima: **960 × 640**.
+- Barra superior fixa: 48px (nome do arquivo, ações principais).
+- Barra lateral (lista de abas / componentes VBA): 240px, redimensionável.
+- Área de conteúdo: preenche o restante, com scroll próprio.
+
+---
+
+## 4. Ícones
+
+**Lucide** (`lucide-react`), tamanho 16px na interface e 20px em botões grandes, `stroke-width` 1.75.
+
+| Ícone             | Uso                  |
+| ----------------- | -------------------- |
+| `FileSpreadsheet` | Arquivo carregado    |
+| `Table2`          | Aba / células        |
+| `Code2`           | VBA                  |
+| `FunctionSquare`  | Célula com fórmula   |
+| `Download`        | Exportar             |
+| `FolderOpen`      | Abrir pasta de saída |
+| `AlertTriangle`   | Aviso                |
+
+---
+
+## 5. Componentes
+
+### Button
+
+- **Variantes:** `primary`, `secondary` (borda), `ghost` (sem borda), `danger`.
+- **Tamanhos:** `sm` (28px), `md` (32px), `lg` (40px).
+- **Estados:** hover, foco (anel `--accent` de 2px), desabilitado (opacidade 50%), carregando (spinner substitui o ícone).
+- Só um botão `primary` visível por tela.
+
+### DropZone
+
+- Área tracejada (`--border`, 2px, `radius-lg`) com ícone, texto "Arraste um .xlsx ou .xlsm" e botão "Selecionar arquivo".
+- Ao arrastar por cima: borda `--primary`, fundo `--primary-soft`.
+- Arquivo inválido: borda `--danger` e mensagem curta.
+
+### FileCard
+
+- Mostra ícone, nome, tamanho, nº de abas e badge "VBA" (se houver).
+- Ação para trocar de arquivo.
+
+### SheetList
+
+- Lista com checkbox por aba, contador de células e ícone de fórmula se houver.
+- Ações "Marcar todas" / "Desmarcar todas".
+
+### Tabs
+
+- Alterna entre **Células** e **VBA**.
+- Sublinhado de 2px em `--primary` na aba ativa.
+
+### DataTable (células)
+
+- Colunas: Célula (mono, 80px), Fórmula (mono), Valor.
+- Cabeçalho fixo com `--surface-muted`.
+- Linhas com 32px de altura; zebra opcional.
+- **Virtualizada** (ex.: `@tanstack/react-virtual`) para aguentar centenas de milhares de linhas.
+- Campo de busca acima, filtrando por coordenada, fórmula ou valor.
+
+### CodeViewer (VBA)
+
+- Fonte mono `text-sm`, números de linha em `--text-subtle`.
+- Destaque de sintaxe com os tokens da seção 1 (Shiki ou Prism com gramática VBA).
+- Botão "Copiar" no canto superior direito.
+
+### ComponentList (VBA)
+
+- Itens agrupados por tipo: Módulos, Classes, Planilhas, UserForms.
+- Badge com o número de linhas.
+
+### ProgressBar
+
+- Barra de 4px em `--primary`, com texto "Processando aba X de Y".
+- Indeterminada quando não houver total conhecido.
+
+### Alert
+
+- Variantes `warning`, `danger`, `info`.
+- Ícone + título + descrição + ação opcional.
+- Exemplo: "12 fórmulas sem valor em cache. Abra o arquivo no Excel, salve e feche, e tente de novo."
+
+### Toast
+
+- Canto inferior direito, some em 4 s.
+- Usado para "Exportação concluída" com ação "Abrir pasta".
+
+### EmptyState
+
+- Ícone grande (48px, `--text-subtle`), título `text-xl` e descrição curta.
+- Usado antes de carregar arquivo e quando o arquivo não tem VBA.
+
+---
+
+## 6. Movimento
+
+- Transições de 120–180 ms, `ease-out`.
+- Animar apenas cor, opacidade e transform.
+- Respeitar `prefers-reduced-motion`.
+
+## 7. Acessibilidade
+
+- Contraste mínimo AA (4.5:1 para texto).
+- Foco sempre visível.
+- Navegação completa por teclado na tabela e na lista de componentes.
+- Atalhos: `Ctrl+O` abrir, `Ctrl+E` exportar, `Ctrl+F` buscar.
+- Ícones sem texto têm `aria-label`.

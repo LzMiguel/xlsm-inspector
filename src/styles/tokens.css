@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+/* Tokens do Design-System.md. Os temas completos entram na Fase 4. */
+:root {
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --text: #1a1d23;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
