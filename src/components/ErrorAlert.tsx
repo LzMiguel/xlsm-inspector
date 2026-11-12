@@ -1,0 +1,20 @@
+import type { AppError, AppErrorCode } from "../types/models";
+import { Alert } from "./ui/Alert";
+
+const TITLES: Record<AppErrorCode, string> = {
+  FileNotFound: "Arquivo não encontrado",
+  FileLocked: "Arquivo bloqueado",
+  UnsupportedFormat: "Formato não suportado",
+  CorruptedFile: "Arquivo corrompido ou inválido",
+  NoVbaProject: "Arquivo sem VBA",
+  WriteFailed: "Falha ao gravar os arquivos",
+  Internal: "Erro inesperado",
+};
+
+export function ErrorAlert({ error }: { error: AppError }) {
+  return (
+    <Alert variant="danger" title={TITLES[error.code]}>
+      {error.message}
+    </Alert>
+  );
+}

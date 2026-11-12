@@ -89,6 +89,21 @@
   --code-bg: #13161b;
 }
 
+/* Tema "css-variables" do Shiki → tokens de código (trocam com o tema). */
+:root {
+  --shiki-foreground: var(--text);
+  --shiki-background: var(--code-bg);
+  --shiki-token-keyword: var(--code-keyword);
+  --shiki-token-string: var(--code-string);
+  --shiki-token-string-expression: var(--code-string);
+  --shiki-token-comment: var(--code-comment);
+  --shiki-token-constant: var(--code-number);
+  --shiki-token-function: var(--text);
+  --shiki-token-parameter: var(--text);
+  --shiki-token-punctuation: var(--text-muted);
+  --shiki-token-link: var(--accent);
+}
+
 /* Cores: referenciam as variáveis (trocam com o tema). `initial` remove a
    paleta padrão do Tailwind, para só existirem cores do design system. */
 @theme inline {
