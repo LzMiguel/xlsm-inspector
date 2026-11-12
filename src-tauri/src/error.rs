@@ -15,6 +15,8 @@ pub enum AppError {
     NoVbaProject,
     #[error("Falha ao gravar o arquivo: {0}")]
     WriteFailed(String),
+    #[error("Erro interno: {0}")]
+    Internal(String),
 }
 
 impl AppError {
@@ -26,6 +28,7 @@ impl AppError {
             Self::CorruptedFile(_) => "CorruptedFile",
             Self::NoVbaProject => "NoVbaProject",
             Self::WriteFailed(_) => "WriteFailed",
+            Self::Internal(_) => "Internal",
         }
     }
 }

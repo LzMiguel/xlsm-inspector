@@ -1,12 +1,13 @@
 use std::collections::BTreeMap;
+use std::path::Path;
 
 use calamine::{Data, Range, Reader};
 use indexmap::IndexMap;
 
 use super::coords::to_a1;
-use super::workbook::{xlsx_err, Book};
+use super::workbook::{open, sheet_names, xlsx_err, Book};
 use crate::error::AppError;
-use crate::model::{CellContent, CellValue, SheetCells, Warning, WarningKind};
+use crate::model::{CellContent, CellValue, Progress, SheetCells, Warning, WarningKind};
 
 pub fn read_sheet(
     book: &mut Book,
@@ -15,6 +16,30 @@ pub fn read_sheet(
     let values = book.worksheet_range(name).map_err(xlsx_err)?;
     let formulas = book.worksheet_formula(name).map_err(xlsx_err)?;
     Ok(extract_sheet(name, &values, &formulas))
+}
+
+/// Abre o arquivo e extrai as abas pedidas (`None` = todas), na ordem da pasta de trabalho.
+pub fn extract_cells(
+    path: &Path,
+    sheets: Option<&[String]>,
+    on_progress: &mut dyn FnMut(Progress),
+) -> Result<(Vec<SheetCells>, Vec<Warning>), AppError> {
+    let mut book = open(path)?;
+    let names: Vec<String> = sheet_names(&book)
+        .into_iter()
+        .filter(|n| sheets.is_none_or(|s| s.contains(n)))
+        .collect();
+
+    let total = names.len();
+    let (mut out, mut warnings) = (Vec::with_capacity(total), Vec::new());
+    for (i, name) in names.iter().enumerate() {
+        on_progress(Progress::new("cells", i, total, name));
+        let (sheet, warning) = read_sheet(&mut book, name)?;
+        out.push(sheet);
+        warnings.extend(warning);
+    }
+    on_progress(Progress::new("cells", total, total, ""));
+    Ok((out, warnings))
 }
 
 pub fn to_value(d: &Data) -> CellValue {
@@ -28,7 +53,11 @@ pub fn to_value(d: &Data) -> CellValue {
         Data::String(s) => CellValue::String(s.clone()),
         Data::DateTime(dt) => CellValue::DateTime(
             dt.as_datetime()
-                .map(|d| d.to_string()) // "2024-01-31 00:00:00", como o str() do Python
+                .map(|d| {
+                    // Meia-noite → só a data ("2024-01-15"); senão "2024-01-15 10:30:00".
+                    let s = d.to_string();
+                    s.strip_suffix(" 00:00:00").map(str::to_string).unwrap_or(s)
+                })
                 .unwrap_or_else(|| dt.to_string()),
         ),
         Data::DateTimeIso(s) => CellValue::DateTime(s.clone()),
@@ -44,7 +73,8 @@ pub fn extract_sheet(
     values: &Range<Data>,
     formulas: &Range<String>,
 ) -> (SheetCells, Option<Warning>) {
-    let mut merged: BTreeMap<(u32, u32), (Option<&Data>, Option<&str>)> = BTreeMap::new();
+    type Slot<'a> = (Option<&'a Data>, Option<&'a str>); // (valor, fórmula)
+    let mut merged: BTreeMap<(u32, u32), Slot> = BTreeMap::new();
 
     if let Some((r0, c0)) = values.start() {
         for (r, c, v) in values.used_cells() {

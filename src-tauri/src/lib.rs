@@ -1,24 +1,20 @@
-// Camada sem Tauri (testável com `cargo test`). Ainda não usada pelos comandos (Fase 3).
-#[allow(dead_code)]
-mod error;
-#[allow(dead_code)]
-mod excel;
-#[allow(dead_code)]
-mod model;
-#[allow(dead_code)]
-mod output;
-
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+mod commands;
+pub mod error;
+pub mod excel;
+pub mod model;
+pub mod output;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![
+            commands::inspect_workbook,
+            commands::extract_cells,
+            commands::extract_vba,
+            commands::export_outputs,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

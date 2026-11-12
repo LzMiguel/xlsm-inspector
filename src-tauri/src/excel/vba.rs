@@ -1,7 +1,9 @@
+use std::path::Path;
+
 use calamine::Reader;
 use serde::Deserialize;
 
-use super::workbook::{xlsx_err, Book};
+use super::workbook::{open, xlsx_err, Book};
 use crate::error::AppError;
 use crate::model::{VbaComponent, VbaComponentKind};
 
@@ -20,6 +22,10 @@ impl Default for VbaOptions {
             hide_attributes: false,
         }
     }
+}
+
+pub fn extract_file(path: &Path, opts: &VbaOptions) -> Result<Vec<VbaComponent>, AppError> {
+    extract(&mut open(path)?, opts)
 }
 
 pub fn extract(book: &mut Book, opts: &VbaOptions) -> Result<Vec<VbaComponent>, AppError> {
@@ -62,7 +68,9 @@ pub fn classify(name: &str, raw: &str) -> VbaComponentKind {
         .find(|l| l.trim_start().starts_with("Attribute VB_Base"))
     {
         let base = base.to_uppercase();
-        if base.contains("C62A69F0-16DC-11CE-9E98-00AA00574A4F") {
+        // UserForm: "0{<GUID da classe>}{<GUID do designer>}" (o 1º varia por form).
+        // Classe/Documento têm um GUID só.
+        if base.contains("}{") || base.contains("C62A69F0-16DC-11CE-9E98-00AA00574A4F") {
             return UserForm;
         }
         if base.contains("00020819-0000-0000-C000-000000000046") {
@@ -76,7 +84,10 @@ pub fn classify(name: &str, raw: &str) -> VbaComponentKind {
     }
 
     let lower = name.to_lowercase();
-    if lower == "thisworkbook" {
+    if matches!(
+        lower.as_str(),
+        "thisworkbook" | "estapasta_de_trabalho" | "estapastadetrabalho"
+    ) {
         return Workbook;
     }
     if lower.starts_with("userform") {
@@ -154,8 +165,24 @@ mod tests {
             ),
             Document
         );
+        // atributos reais de um UserForm (dois GUIDs) vs. classe (um GUID)
+        assert_eq!(
+            classify(
+                "frmCadastro",
+                "Attribute VB_Base = \"0{7253C676-8E53-474A-880C-94DEE222CD80}{D2204611-FAFA-4EAC-9CFC-C1AD0E881794}\"\nAttribute VB_Creatable = False"
+            ),
+            UserForm
+        );
+        assert_eq!(
+            classify(
+                "Cls",
+                "Attribute VB_Base = \"0{FCFB3D2A-A0FA-1068-A738-08002B3371B5}\"\nAttribute VB_Creatable = False"
+            ),
+            Class
+        );
         // sem atributos: cai no nome
         assert_eq!(classify("ThisWorkbook", ""), Workbook);
+        assert_eq!(classify("EstaPastaDeTrabalho", ""), Workbook);
         assert_eq!(classify("Sheet12", ""), Document);
         assert_eq!(classify("Planilha1", ""), Document);
         assert_eq!(classify("UserForm1", ""), UserForm);

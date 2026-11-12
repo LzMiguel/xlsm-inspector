@@ -77,6 +77,28 @@ pub struct Warning {
     pub message: String,
 }
 
+/// Payload do evento `extraction://progress`.
+#[derive(Debug, Clone, Serialize)]
+pub struct Progress {
+    pub stage: &'static str, // "cells" | "vba"
+    pub current: usize,
+    pub total: usize,
+    pub label: String,
+}
+
+impl Progress {
+    pub fn new(stage: &'static str, current: usize, total: usize, label: &str) -> Self {
+        Self { stage, current, total, label: label.to_string() }
+    }
+}
+
+/// Saída do comando `extract_cells` (células + avisos).
+#[derive(Debug, Clone, Serialize)]
+pub struct CellsExtraction {
+    pub sheets: Vec<SheetCells>,
+    pub warnings: Vec<Warning>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct ExtractionResult {
     pub sheets: Vec<SheetCells>,

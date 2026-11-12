@@ -9,6 +9,7 @@ Sugestão: salve este arquivo como `src-tauri/tests/fixtures/README.md`, para do
 O Excel em português **mostra** `=SOMA(A1;A2)`, mas **grava no arquivo** `SUM(A1,A2)`: nomes de função em inglês e separador `,`. O `calamine` lê o que está gravado e devolve a fórmula **sem o `=`**.
 
 Por isso, nas tabelas abaixo:
+
 - **Digitar no Excel** = o que você escreve na célula (Excel pt-BR).
 - **Fórmula esperada** = o que o app deve exportar (já com o `=` que o app adiciona).
 
@@ -22,12 +23,12 @@ Datas também são gravadas como número de série (ex.: `45306` = 15/01/2024). 
 
 ### Aba `Clientes`
 
-| | A | B | C | D | E |
-|---|---|---|---|---|---|
-| **1** | ID | Nome | Cidade | Data Cadastro | Ativo |
-| **2** | 1 | Ana Souza | Campinas | 15/01/2024 | VERDADEIRO |
-| **3** | 2 | Bruno Lima | Santos | 03/02/2024 | FALSO |
-| **4** | 3 | Carla Dias | Sorocaba | 28/02/2024 | VERDADEIRO |
+|       | A   | B          | C        | D             | E          |
+| ----- | --- | ---------- | -------- | ------------- | ---------- |
+| **1** | ID  | Nome       | Cidade   | Data Cadastro | Ativo      |
+| **2** | 1   | Ana Souza  | Campinas | 15/01/2024    | VERDADEIRO |
+| **3** | 2   | Bruno Lima | Santos   | 03/02/2024    | FALSO      |
+| **4** | 3   | Carla Dias | Sorocaba | 28/02/2024    | VERDADEIRO |
 
 - Coluna A: número inteiro.
 - Coluna D: formatar como **Data** (digitar a data, não texto).
@@ -35,21 +36,23 @@ Datas também são gravadas como número de série (ex.: `45306` = 15/01/2024). 
 
 ### Aba `Produtos`
 
-| | A | B | C | D |
-|---|---|---|---|---|
-| **1** | Codigo | Produto | Preco | Estoque |
-| **2** | P001 | Caneta | 2,5 | 100 |
-| **3** | P002 | Caderno | 15,9 | 0 |
-| **4** | P003 | Mochila | 129,99 | -3 |
+|       | A      | B       | C      | D       |
+| ----- | ------ | ------- | ------ | ------- |
+| **1** | Codigo | Produto | Preco  | Estoque |
+| **2** | P001   | Caneta  | 2,5    | 100     |
+| **3** | P002   | Caderno | 15,9   | 0       |
+| **4** | P003   | Mochila | 129,99 | -3      |
 
 - Coluna C: decimais (testa `Float`).
 - Coluna D: inclui `0` (não pode ser tratado como vazio) e negativo.
 
 ### Esperado
+
 - Abas na ordem `Clientes`, `Produtos`.
-- 15 células em `Clientes`, 16 em `Produtos`.
+- 20 células em `Clientes`, 16 em `Produtos`.
 - Nenhuma fórmula, nenhum aviso.
 - Trechos do JSON:
+
 ```json
 {
   "Clientes": {
@@ -74,41 +77,42 @@ Monte no Excel, **salve e feche** (para gravar o cache).
 
 ### Aba `Parâmetros`
 
-| | A | B |
-|---|---|---|
-| **1** | Desconto | 0,1 |
-| **2** | Região | São Paulo |
+|       | A        | B         |
+| ----- | -------- | --------- |
+| **1** | Desconto | 0,1       |
+| **2** | Região   | São Paulo |
 
 ### Aba `Orçamento`
 
-| | A | B | C | D |
-|---|---|---|---|---|
-| **1** | Item | Quantidade | Preço Unitário | Total |
-| **2** | Lápis | 10 | 1,5 | *fórmula* |
-| **3** | Borracha | 5 | 2 | *fórmula* |
-| **4** | Régua | 2 | 4,75 | *fórmula* |
+|       | A        | B          | C              | D         |
+| ----- | -------- | ---------- | -------------- | --------- |
+| **1** | Item     | Quantidade | Preço Unitário | Total     |
+| **2** | Lápis    | 10         | 1,5            | _fórmula_ |
+| **3** | Borracha | 5          | 2              | _fórmula_ |
+| **4** | Régua    | 2          | 4,75           | _fórmula_ |
 
 Fórmulas:
 
-| Célula | Digitar no Excel | Fórmula esperada | Valor esperado |
-|---|---|---|---|
-| D2 | `=B2*C2` | `=B2*C2` | 15 |
-| D3 | `=B3*C3` | `=B3*C3` | 10 |
-| D4 | `=B4*C4` | `=B4*C4` | 9,5 |
-| A6 | `Subtotal` (texto) | — | `Subtotal` |
-| D6 | `=SOMA(D2:D4)` | `=SUM(D2:D4)` | 34,5 |
-| A7 | `Com desconto` (texto) | — | `Com desconto` |
-| D7 | `=D6*(1-Parâmetros!B1)` | `=D6*(1-Parâmetros!B1)` | 31,05 |
-| A8 | `Situação` (texto) | — | `Situação` |
-| D8 | `=SE(D7>30;"Atenção: acima do limite";"OK")` | `=IF(D7>30,"Atenção: acima do limite","OK")` | `Atenção: acima do limite` |
-| D9 | `="Entrega em "&Parâmetros!B2` | `="Entrega em "&Parâmetros!B2` | `Entrega em São Paulo` |
-| D10 | `=D6>20` | `=D6>20` | `true` |
-| D11 | `=1/0` | `=1/0` | erro `#DIV/0!` |
-| D12 | `=MÉDIA(B2:B4)` | `=AVERAGE(B2:B4)` | 5,666… |
+| Célula | Digitar no Excel                             | Fórmula esperada                             | Valor esperado             |
+| ------ | -------------------------------------------- | -------------------------------------------- | -------------------------- |
+| D2     | `=B2*C2`                                     | `=B2*C2`                                     | 15                         |
+| D3     | `=B3*C3`                                     | `=B3*C3`                                     | 10                         |
+| D4     | `=B4*C4`                                     | `=B4*C4`                                     | 9,5                        |
+| A6     | `Subtotal` (texto)                           | —                                            | `Subtotal`                 |
+| D6     | `=SOMA(D2:D4)`                               | `=SUM(D2:D4)`                                | 34,5                       |
+| A7     | `Com desconto` (texto)                       | —                                            | `Com desconto`             |
+| D7     | `=D6*(1-Parâmetros!B1)`                      | `=D6*(1-Parâmetros!B1)`                      | 31,05                      |
+| A8     | `Situação` (texto)                           | —                                            | `Situação`                 |
+| D8     | `=SE(D7>30;"Atenção: acima do limite";"OK")` | `=IF(D7>30,"Atenção: acima do limite","OK")` | `Atenção: acima do limite` |
+| D9     | `="Entrega em "&Parâmetros!B2`               | `="Entrega em "&Parâmetros!B2`               | `Entrega em São Paulo`     |
+| D10    | `=D6>20`                                     | `=D6>20`                                     | `true`                     |
+| D11    | `=1/0`                                       | `=1/0`                                       | erro `#DIV/0!`             |
+| D12    | `=MÉDIA(B2:B4)`                              | `=AVERAGE(B2:B4)`                            | 5,666…                     |
 
 > O Excel pode gravar a referência a outra aba com aspas (`'Parâmetros'!B1`). Confira o que o calamine devolve e ajuste o esperado.
 
 ### Esperado
+
 - Abas na ordem `Parâmetros`, `Orçamento` (com acento intacto no JSON e no Markdown).
 - 10 células com fórmula em `Orçamento`, todas com `valor` preenchido.
 - D11 exportada como erro (ex.: `"#DIV/0!"`), sem derrubar a extração.
@@ -144,6 +148,7 @@ wb.save("sem_cache.xlsx")
 ```
 
 ### Esperado
+
 - B3, B4 e B5 com `formula` preenchida e `valor` vazio/nulo.
 - Um aviso indicando **3** fórmulas sem valor em cache.
 - Células de valor fixo (A1:A5, B1, B2) normais.
@@ -156,37 +161,38 @@ wb.save("sem_cache.xlsx")
 
 ### Aba `Especiais`
 
-| Célula | Conteúdo | Como digitar |
-|---|---|---|
-| A1 | `valor\|com\|pipe` | Normal |
-| A2 | `Linha 1` ↵ `Linha 2` ↵ `Linha 3` | `Alt+Enter` entre as linhas |
-| A3 | `Coluna\|A` ↵ `Coluna\|B` | Pipe + `Alt+Enter` |
-| A4 | `   espaços nas pontas   ` | Com espaços antes e depois |
-| A5 | `00123` | Digitar `'00123` (apóstrofo força texto) |
-| A6 | `Ação, coração & "aspas"` | Acentos, vírgula, `&`, aspas |
-| A7 | `` `crase` e **asterisco** `` | Caracteres de Markdown |
-| A8 | Texto com ~300 caracteres | Qualquer parágrafo longo |
-| C10 | `célula isolada` | Única célula fora do bloco |
+| Célula | Conteúdo                          | Como digitar                             |
+| ------ | --------------------------------- | ---------------------------------------- |
+| A1     | `valor\|com\|pipe`                | Normal                                   |
+| A2     | `Linha 1` ↵ `Linha 2` ↵ `Linha 3` | `Alt+Enter` entre as linhas              |
+| A3     | `Coluna\|A` ↵ `Coluna\|B`         | Pipe + `Alt+Enter`                       |
+| A4     | `espaços nas pontas`              | Com espaços antes e depois               |
+| A5     | `00123`                           | Digitar `'00123` (apóstrofo força texto) |
+| A6     | `Ação, coração & "aspas"`         | Acentos, vírgula, `&`, aspas             |
+| A7     | `` `crase` e **asterisco** ``     | Caracteres de Markdown                   |
+| A8     | Texto com ~300 caracteres         | Qualquer parágrafo longo                 |
+| C10    | `célula isolada`                  | Única célula fora do bloco               |
 
 ### Aba `Deslocada`
 
 Dados começando em **D5** (não em A1), para testar o `range.start()`:
 
-| | D | E |
-|---|---|---|
+|       | D     | E     |
+| ----- | ----- | ----- |
 | **5** | Chave | Valor |
-| **6** | x | 1 |
-| **7** | y | 2 |
+| **6** | x     | 1     |
+| **7** | y     | 2     |
 
 ### Aba `Vazia`
 
 Nenhum valor. Opcional: pinte o fundo de algumas células sem digitar nada (formatação sem conteúdo não deve virar célula).
 
 ### Esperado
+
 - **JSON:** textos exatamente como digitados (`\n` preservado em A2/A3, espaços em A4, `"00123"` como string).
 - **Markdown:**
   - `|` escapado (`\|`) em A1 e A3, para a tabela não quebrar.
-  - Quebras de linha substituídas por ` | ` (comportamento do script original; com o escape, o ideal é usar `<br>`; decida e fixe no teste).
+  - Quebras de linha substituídas por `|` (comportamento do script original; com o escape, o ideal é usar `<br>`; decida e fixe no teste).
   - Tabela renderiza com 2 colunas em todas as linhas.
 - `Deslocada`: coordenadas `D5`, `E5`, `D6`… e **não** `A1`, `B1`.
 - `C10` aparece com a coordenada correta.
@@ -203,7 +209,8 @@ Crie um arquivo novo, salve como **Pasta de Trabalho Habilitada para Macro (`.xl
 > No Excel em português, os componentes de documento se chamam **`EstaPasta_de_trabalho`** e **`Planilha1`** (não `ThisWorkbook`/`Sheet1`). A inferência de tipo do app precisa reconhecer os dois idiomas, ou ler os atributos.
 
 ### Módulo padrão: `modUtilitarios`
-*(Inserir → Módulo; renomear na janela Propriedades)*
+
+_(Inserir → Módulo; renomear na janela Propriedades)_
 
 ```vba
 Option Explicit
@@ -225,7 +232,8 @@ End Sub
 (As duas linhas em branco após o comentário são propositais.)
 
 ### Módulo de classe: `clsFuncionario`
-*(Inserir → Módulo de Classe)*
+
+_(Inserir → Módulo de Classe)_
 
 ```vba
 Option Explicit
@@ -273,7 +281,8 @@ End Sub
 ```
 
 ### UserForm: `frmCadastro`
-*(Inserir → UserForm. Adicione uma caixa de texto `txtNome` e um botão `btnSalvar`, depois clique duas vezes no botão.)*
+
+_(Inserir → UserForm. Adicione uma caixa de texto `txtNome` e um botão `btnSalvar`, depois clique duas vezes no botão.)_
 
 ```vba
 Option Explicit
@@ -292,16 +301,17 @@ End Sub
 Coloque também algum dado em `Planilha1!A1` (ex.: `Teste`), para o arquivo ter células e VBA ao mesmo tempo.
 
 ### Esperado
+
 - `has_vba = true`.
 - 5 componentes, com os tipos:
 
-| Componente | Tipo esperado |
-|---|---|
-| `modUtilitarios` | Module |
-| `clsFuncionario` | Class |
-| `EstaPasta_de_trabalho` | Workbook |
-| `Planilha1` | Document |
-| `frmCadastro` | UserForm |
+| Componente              | Tipo esperado |
+| ----------------------- | ------------- |
+| `modUtilitarios`        | Module        |
+| `clsFuncionario`        | Class         |
+| `EstaPasta_de_trabalho` | Workbook      |
+| `Planilha1`             | Document      |
+| `frmCadastro`           | UserForm      |
 
 - Acentos corretos (`Operação`, `êxito`, `salário`, `às`, `funcionário`). Se vierem como `Opera��o`, o problema é de codepage.
 - Com "remover linhas em branco" ativo: as duas linhas vazias de `modUtilitarios` somem.
@@ -309,6 +319,7 @@ Coloque também algum dado em `Planilha1!A1` (ex.: `Teste`), para o arquivo ter 
 - O código do UserForm vem; o layout (`txtNome`, `btnSalvar` como controles) não.
 
 ### Variante opcional: `sem_vba.xlsm`
+
 Um `.xlsm` salvo sem nenhum código (só `Planilha1` e `EstaPasta_de_trabalho` vazios), para checar se `has_vba` e a lista de componentes se comportam bem quando o projeto existe mas está vazio.
 
 ---
@@ -318,17 +329,20 @@ Um `.xlsm` salvo sem nenhum código (só `Planilha1` e `EstaPasta_de_trabalho` v
 **Objetivo:** erro tratado, sem panic.
 
 PowerShell:
+
 ```powershell
 Set-Content -Path corrompido.xlsx -Value "isto nao e uma planilha"
 ```
 
 Variante opcional `truncado.xlsx` (ZIP válido no começo, cortado no meio):
+
 ```powershell
 $bytes = [System.IO.File]::ReadAllBytes("simples.xlsx")
 [System.IO.File]::WriteAllBytes("truncado.xlsx", $bytes[0..($bytes.Length / 2)])
 ```
 
 ### Esperado
+
 - `inspect_workbook` retorna `AppError` com código `CorruptedFile` (ou `UnsupportedFormat`), nunca panic.
 - A interface mostra um `Alert` de erro e continua utilizável.
 
@@ -336,20 +350,20 @@ $bytes = [System.IO.File]::ReadAllBytes("simples.xlsx")
 
 ## Resumo de cobertura
 
-| Caso | Fixture |
-|---|---|
-| Inteiro, decimal, zero, negativo | `simples` |
-| Data, booleano | `simples` |
-| Várias abas e ordem | `simples`, `formulas` |
-| Fórmula com cache | `formulas` |
-| Fórmula sem cache (aviso) | `sem_cache` |
-| Nome de aba com acento | `formulas` |
-| Referência a outra aba | `formulas` |
-| Resultado de fórmula texto/bool/erro | `formulas` |
-| Pipe e quebra de linha no Markdown | `especiais` |
-| Texto com zero à esquerda | `especiais` |
-| Dados fora de A1 / célula isolada | `especiais` |
-| Aba vazia | `especiais` |
-| Todos os tipos de componente VBA | `com_vba` |
-| Acentos no VBA (codepage) | `com_vba` |
-| Arquivo inválido | `corrompido` |
+| Caso                                 | Fixture               |
+| ------------------------------------ | --------------------- |
+| Inteiro, decimal, zero, negativo     | `simples`             |
+| Data, booleano                       | `simples`             |
+| Várias abas e ordem                  | `simples`, `formulas` |
+| Fórmula com cache                    | `formulas`            |
+| Fórmula sem cache (aviso)            | `sem_cache`           |
+| Nome de aba com acento               | `formulas`            |
+| Referência a outra aba               | `formulas`            |
+| Resultado de fórmula texto/bool/erro | `formulas`            |
+| Pipe e quebra de linha no Markdown   | `especiais`           |
+| Texto com zero à esquerda            | `especiais`           |
+| Dados fora de A1 / célula isolada    | `especiais`           |
+| Aba vazia                            | `especiais`           |
+| Todos os tipos de componente VBA     | `com_vba`             |
+| Acentos no VBA (codepage)            | `com_vba`             |
+| Arquivo inválido                     | `corrompido`          |

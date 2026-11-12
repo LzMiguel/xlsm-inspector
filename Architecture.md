@@ -154,9 +154,11 @@ Os campos `formula` e `valor` mantêm os nomes do script Python para que o JSON 
 | Comando            | Entrada                      | Saída                         | Observação                                                           |
 | ------------------ | ---------------------------- | ----------------------------- | -------------------------------------------------------------------- |
 | `inspect_workbook` | `path`                       | `WorkbookSummary`             | Rápido; só metadados.                                                |
-| `extract_cells`    | `path`, `sheets: string[]`   | `SheetCells[]`                | Emite eventos de progresso.                                          |
-| `extract_vba`      | `path`, `options`            | `VbaComponent[]`              | `options`: remover linhas vazias, ocultar `Attribute`.               |
-| `export_outputs`   | `path`, `out_dir`, `targets` | `string[]` (arquivos gerados) | Re-extrai no Rust e escreve; não depende do frontend reenviar dados. |
+| `extract_cells`    | `path`, `sheets?: string[]`  | `{ sheets: SheetCells[], warnings: Warning[] }` | Emite eventos de progresso. Sem `sheets` = todas as abas.          |
+| `extract_vba`      | `path`, `options?`           | `VbaComponent[]`              | `options`: `remove_blank_lines`, `hide_attributes`. Sem VBA → erro `NoVbaProject`. |
+| `export_outputs`   | `path`, `out_dir`, `targets?`, `sheets?`, `vba_options?` | `string[]` (arquivos gerados) | Re-extrai no Rust e escreve. `targets`: `{json, cells_md, vba_md}` (padrão: todos). Sem VBA, omite `vba_code.md`. |
+
+> Argumentos do `invoke` em camelCase no JS (`outDir`, `vbaOptions`); campos dos structs em snake_case.
 
 ### Eventos
 
