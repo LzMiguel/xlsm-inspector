@@ -1,50 +1,40 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { FileSpreadsheet } from "lucide-react";
+
+import { EmptyState } from "./components/ui/EmptyState";
+import { useWorkbookStore } from "./store/workbookStore";
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
-
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  const summary = useWorkbookStore((s) => s.summary);
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <div className="flex h-full flex-col">
+      {/* Barra superior: 48px */}
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border bg-surface px-4">
+        <FileSpreadsheet size={16} strokeWidth={1.75} className="text-primary" aria-hidden />
+        <h1 className="truncate text-lg font-semibold">
+          {summary?.file_name ?? "XLSM Inspector"}
+        </h1>
+      </header>
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+      <div className="flex min-h-0 flex-1">
+        {/* Barra lateral: 240px */}
+        <aside
+          aria-label="Abas e componentes"
+          className="w-60 shrink-0 overflow-y-auto border-r border-border bg-surface p-4"
+        >
+          <p className="text-sm text-subtle">Nenhum arquivo aberto.</p>
+        </aside>
+
+        {/* Conteúdo: scroll próprio */}
+        <main className="min-w-0 flex-1 overflow-auto">
+          <EmptyState
+            icon={FileSpreadsheet}
+            title="Nenhum arquivo aberto"
+            description="Abra um arquivo .xlsx ou .xlsm para ver as células e o código VBA."
+          />
+        </main>
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+    </div>
   );
 }
 

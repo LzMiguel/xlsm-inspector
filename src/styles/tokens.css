@@ -1,15 +1,183 @@
 @import "tailwindcss";
 
-/* Tokens do Design-System.md. Os temas completos entram na Fase 4. */
+/* ==========================================================================
+   Tokens do Design-System.md. Único lugar com valores de cor (hex).
+   Componentes usam só as utilities mapeadas em @theme (bg-surface, text-muted…).
+   Tema: segue o SO; `data-theme="light|dark"` no <html> força manualmente.
+   ========================================================================== */
+
 :root {
+  color-scheme: light;
+
   --bg: #f7f8fa;
   --surface: #ffffff;
+  --surface-muted: #f0f2f5;
+  --border: #e1e4ea;
   --text: #1a1d23;
+  --text-muted: #5f6672;
+  --text-subtle: #8a919c;
+  --primary: #1f7a55;
+  --primary-hover: #186446;
+  --primary-soft: #e3f2eb;
+  --accent: #4b5bd6;
+  --success: #1f8a4c;
+  --warning: #b7791f;
+  --warning-soft: #fdf4e3;
+  --danger: #c53030;
+  --danger-soft: #fdecec;
+
+  --code-keyword: #4b5bd6;
+  --code-string: #1f7a55;
+  --code-comment: #8a919c;
+  --code-number: #b7591f;
+  --code-bg: #f7f8fa;
 }
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --bg: #111318;
+    --surface: #181b21;
+    --surface-muted: #20242b;
+    --border: #2c313a;
+    --text: #e7e9ed;
+    --text-muted: #a0a7b2;
+    --text-subtle: #6b727d;
+    --primary: #3db884;
+    --primary-hover: #52c894;
+    --primary-soft: #173326;
+    --accent: #8592f0;
+    --success: #4cc27f;
+    --warning: #e0a84a;
+    --warning-soft: #33280f;
+    --danger: #f06a6a;
+    --danger-soft: #3a1717;
+
+    --code-keyword: #8592f0;
+    --code-string: #7fd1a8;
+    --code-comment: #6b727d;
+    --code-number: #e8a06a;
+    --code-bg: #13161b;
+  }
 }
 
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #111318;
+  --surface: #181b21;
+  --surface-muted: #20242b;
+  --border: #2c313a;
+  --text: #e7e9ed;
+  --text-muted: #a0a7b2;
+  --text-subtle: #6b727d;
+  --primary: #3db884;
+  --primary-hover: #52c894;
+  --primary-soft: #173326;
+  --accent: #8592f0;
+  --success: #4cc27f;
+  --warning: #e0a84a;
+  --warning-soft: #33280f;
+  --danger: #f06a6a;
+  --danger-soft: #3a1717;
+
+  --code-keyword: #8592f0;
+  --code-string: #7fd1a8;
+  --code-comment: #6b727d;
+  --code-number: #e8a06a;
+  --code-bg: #13161b;
+}
+
+/* Cores: referenciam as variáveis (trocam com o tema). `initial` remove a
+   paleta padrão do Tailwind, para só existirem cores do design system. */
+@theme inline {
+  --color-*: initial;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--text-subtle);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-code-keyword: var(--code-keyword);
+  --color-code-string: var(--code-string);
+  --color-code-comment: var(--code-comment);
+  --color-code-number: var(--code-number);
+  --color-code-bg: var(--code-bg);
+}
+
+/* Tipografia, raios e sombras (valores fixos). Espaçamento: a escala padrão
+   do Tailwind já é de 4px (p-1 = 4px … p-12 = 48px). */
+@theme {
+  --font-sans: "Inter Variable", system-ui, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono Variable", "Cascadia Code", Consolas, monospace;
+
+  --text-xs: 11px;
+  --text-xs--line-height: 16px;
+  --text-sm: 13px;
+  --text-sm--line-height: 20px;
+  --text-base: 14px;
+  --text-base--line-height: 22px;
+  --text-lg: 16px;
+  --text-lg--line-height: 24px;
+  --text-xl: 20px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 24px;
+  --text-2xl--line-height: 32px;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-md: 0 4px 12px rgb(0 0 0 / 0.08);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 22px;
+  }
+  /* Número de tabelas alinhados. */
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
