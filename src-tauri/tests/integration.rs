@@ -10,6 +10,7 @@ use xlsm_inspector_lib::model::{
 };
 use xlsm_inspector_lib::output::export::{ExportTargets, export_outputs};
 use xlsm_inspector_lib::output::json::cells_to_json;
+use xlsm_inspector_lib::output::markdown::cells_to_markdown;
 
 fn fx(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -258,4 +259,55 @@ fn exporta_tres_arquivos() {
     assert_eq!(written.len(), 2);
 
     fs::remove_dir_all(&out).ok();
+}
+
+/// RNF07: abrir, extrair e exportar nunca alteram o arquivo de entrada.
+#[test]
+fn entrada_nunca_modificada() {
+    let out = std::env::temp_dir().join(format!("xlsm_inspector_rnf07_{}", std::process::id()));
+    fs::create_dir_all(&out).unwrap();
+
+    for name in ["simples.xlsx", "com_vba.xlsm"] {
+        let path = fx(name);
+        let bytes = fs::read(&path).unwrap();
+        let mtime = fs::metadata(&path).unwrap().modified().unwrap();
+
+        inspect(&path).unwrap();
+        extract_cells(&path, None, &mut |_| {}).unwrap();
+        let _ = extract_file(&path, &VbaOptions::default());
+        export_outputs(
+            &path,
+            &out,
+            ExportTargets::default(),
+            None,
+            &VbaOptions::default(),
+            &mut |_| {},
+        )
+        .unwrap();
+
+        assert_eq!(fs::read(&path).unwrap(), bytes, "{name} foi alterado");
+        assert_eq!(fs::metadata(&path).unwrap().modified().unwrap(), mtime);
+    }
+    fs::remove_dir_all(&out).ok();
+}
+
+/// RNF02: ~100 mil células (extração + JSON + Markdown) em menos de 5 s.
+/// Gere o arquivo com `python src-tauri/tests/gerar_fixture_grande.py` e rode:
+/// `cargo test --release desempenho -- --ignored --nocapture`
+#[test]
+#[ignore = "desempenho: precisa de fixtures/grande.xlsx e de --release"]
+fn desempenho_100k_celulas() {
+    let path = fx("grande.xlsx");
+    assert!(path.exists(), "gere grande.xlsx com tests/gerar_fixture_grande.py");
+
+    let t = std::time::Instant::now();
+    let (sheets, _) = extract_cells(&path, None, &mut |_| {}).unwrap();
+    let json = cells_to_json(&sheets).unwrap();
+    let md = cells_to_markdown("grande.xlsx", &sheets);
+    let elapsed = t.elapsed();
+
+    let total: usize = sheets.iter().map(|s| s.cells.len()).sum();
+    println!("{total} células, JSON {} KB, MD {} KB, em {elapsed:?}", json.len() / 1024, md.len() / 1024);
+    assert!(total >= 100_000);
+    assert!(elapsed.as_secs_f64() < 5.0, "RNF02 estourou: {elapsed:?}");
 }

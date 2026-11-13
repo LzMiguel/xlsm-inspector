@@ -69,7 +69,7 @@ Todas as cores são tokens. Componentes nunca usam valores hexadecimais diretame
 | `--code-number`  | `#B7591F` | `#E8A06A` | `42`, `3.14`              |
 | `--code-bg`      | `#F7F8FA` | `#13161B` | Fundo do bloco            |
 
-O tema segue o sistema operacional por padrão, com opção manual nas configurações.
+O tema segue o sistema operacional por padrão. O botão na barra superior alterna automático → claro → escuro (a escolha fica em `localStorage`; `data-theme` no `<html>` força o tema).
 
 ---
 
@@ -125,7 +125,7 @@ Escala base de **4px**.
 
 - Janela mínima: **960 × 640**.
 - Barra superior fixa: 48px (nome do arquivo, ações principais).
-- Barra lateral (lista de abas / componentes VBA): 240px, redimensionável.
+- Barra lateral (abas ou componentes VBA, com a exportação no rodapé): 240px, fixa.
 - Área de conteúdo: preenche o restante, com scroll próprio.
 
 ---

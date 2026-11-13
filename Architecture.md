@@ -30,15 +30,16 @@ App desktop com **Tauri v2**: o frontend roda em uma WebView (React) e o backend
 | Shell desktop       | Tauri v2                                                         |
 | Frontend            | React 18+, TypeScript, Vite                                      |
 | Estilo              | Tailwind CSS + tokens do `Design-System.md`                      |
-| Componentes base    | shadcn/ui (Radix)                                                |
+| Componentes base    | Próprios, em `components/ui/` (Tailwind + tokens; sem shadcn)    |
+| Fontes              | `@fontsource-variable/inter` e `jetbrains-mono` (no bundle)      |
 | Estado              | Zustand (estado global leve)                                     |
 | Tabelas grandes     | `@tanstack/react-virtual`                                        |
-| Destaque de código  | Shiki (gramática VBA)                                            |
+| Destaque de código  | Shiki (motor JS, gramática `vb`, tema por variáveis CSS)         |
 | Leitura Excel + VBA | `calamine`                                                       |
 | Serialização        | `serde`, `serde_json` (com `preserve_order`)                     |
 | Ordem estável       | `indexmap`                                                       |
 | Erros               | `thiserror`                                                      |
-| Plugins Tauri       | `dialog` (abrir/salvar), `fs` (escrever), `opener` (abrir pasta) |
+| Plugins Tauri       | `dialog` (abrir pasta/arquivo), `opener` (revelar no Explorer)   |
 
 ## 3. Estrutura de pastas
 
@@ -236,10 +237,20 @@ Botão "Exportar" ─► diálogo de pasta ─► invoke("export_outputs")
 - A tabela do frontend é virtualizada.
 - Para arquivos muito grandes, considerar enviar ao frontend apenas uma prévia (ex.: primeiras 50 mil células por aba) e exportar o conteúdo completo direto do Rust.
 
+### Decisões que divergem do plano original
+
+- **Sem plugin `fs`:** a escrita dos arquivos exportados é feita pelo Rust (`output/export.rs`), então o frontend não precisa de permissão de escrita.
+- **Datas:** meia-noite vira `"2024-01-15"`; com hora, `"2024-01-15 10:30:00"`. Números inteiros guardados como `Float` saem como inteiros (como no openpyxl).
+- **Aviso de cache ausente:** um `Warning` por aba, com a contagem (não um por célula).
+- **VBA:** módulos em ordem alfabética (o `calamine` não preserva a ordem do projeto). Tipo inferido por `Attribute VB_Base` (UserForm = dois GUIDs), depois pelo nome.
+- **Markdown:** `|` vira `\|` e quebra de linha vira `|` (comportamento do script original).
+- **Pré-visualização:** sem limite de células; a tabela e o código são virtualizados.
+
 ## 8. Segurança
 
 - Sem acesso à rede: não habilitar plugins HTTP; CSP restritiva em `tauri.conf.json`.
-- **Capabilities** mínimas: `dialog:allow-open`, `dialog:allow-save`, escrita restrita à pasta escolhida pelo usuário, `opener` apenas para pastas.
+- **Capabilities** mínimas: `dialog:allow-open`, `dialog:allow-save`, `opener:allow-reveal-item-in-dir`. Sem `fs`, shell ou HTTP.
+- **CSP:** `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'`. O Vite não inlina assets (`assetsInlineLimit: 0`) para as fontes saírem como arquivos.
 - O arquivo de entrada é aberto só para leitura. Macros nunca são executadas.
 - Fontes e assets embutidos no bundle.
 

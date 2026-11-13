@@ -112,7 +112,7 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta �
 }
 ```
 
-A ordem das abas e das células segue a ordem da planilha.
+A ordem das abas e das células segue a ordem da planilha. Datas à meia-noite saem como `"2024-01-15"`; erros de fórmula como texto (`"#DIV/0!"`); fórmula sem valor em cache tem `valor: null`.
 
 ### Markdown (células)
 
