@@ -45,6 +45,7 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta �
 - Abrir arquivo via botão (diálogo nativo) ou arrastando para a janela.
 - Aceitar `.xlsx` e `.xlsm`.
 - Exibir nome, tamanho, número de abas e se contém VBA.
+- Tela inicial com histórico dos 10 últimos arquivos abertos (guardado localmente; clicar reabre, `X` remove, "Limpar histórico" apaga). Botão **Início** volta à tela inicial a partir de um arquivo aberto.
 
 ### RF02 — Seleção de abas
 
@@ -161,7 +162,7 @@ End Sub
 | ---------- | --------------------------------------------------------------------------------------------------------------------------- |
 | **MVP**    | RF01, RF03, RF04, RF06 (sem pré-visualização, todas as abas).                                                               |
 | **v1.0**   | RF02, RF05, RF07, tema escuro.                                                                                              |
-| **v1.1**   | Configurações persistentes (pasta padrão, opções de limpeza), histórico de arquivos recentes.                               |
+| **v1.1**   | Configurações persistentes (pasta padrão, opções de limpeza).                               |
 | **Futuro** | Processamento em lote (pasta inteira), mapa de dependências entre fórmulas, exportação de um único `.md` combinado para IA. |
 
 ## 12. Riscos e questões em aberto

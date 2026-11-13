@@ -9,10 +9,14 @@ const store = () => useWorkbookStore.getState();
 export async function openWorkbook(path: string) {
   store().startLoading(path);
   try {
-    store().setSummary(await inspectWorkbook(path));
+    const summary = await inspectWorkbook(path);
+    store().setSummary(summary);
+    store().addRecent(path, summary.file_name);
   } catch (e) {
     // mantém a tela inicial; o erro aparece em um Alert
-    store().setError(toAppError(e));
+    const err = toAppError(e);
+    if (err.code === "FileNotFound") store().removeRecent(path);
+    store().setError(err);
   }
 }
 

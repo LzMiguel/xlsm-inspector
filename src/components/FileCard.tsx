@@ -1,6 +1,7 @@
-import { FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet, House } from "lucide-react";
 
 import { chooseAndOpenWorkbook } from "../store/workbookActions";
+import { useWorkbookStore } from "../store/workbookStore";
 import type { WorkbookSummary } from "../types/models";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
@@ -13,6 +14,7 @@ function formatBytes(n: number): string {
 
 export function FileCard({ summary, disabled }: { summary: WorkbookSummary; disabled: boolean }) {
   const n = summary.sheets.length;
+  const reset = useWorkbookStore((s) => s.reset);
   return (
     <section className="flex items-center gap-4 rounded-md border border-border bg-surface p-4">
       <FileSpreadsheet size={20} strokeWidth={1.75} className="shrink-0 text-primary" aria-hidden />
@@ -25,6 +27,9 @@ export function FileCard({ summary, disabled }: { summary: WorkbookSummary; disa
         </p>
       </div>
       {summary.has_vba && <Badge variant="primary">VBA</Badge>}
+      <Button variant="secondary" size="sm" disabled={disabled} onClick={reset}>
+        <House size={16} strokeWidth={1.75} aria-hidden /> Início
+      </Button>
       <Button size="sm" disabled={disabled} onClick={chooseAndOpenWorkbook}>
         Trocar arquivo
       </Button>

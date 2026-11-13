@@ -7,6 +7,7 @@ import { ExportPanel } from "./components/ExportPanel";
 import { ExtractPanel } from "./components/ExtractPanel";
 import { FileCard } from "./components/FileCard";
 import { Preview } from "./components/Preview";
+import { RecentFiles } from "./components/RecentFiles";
 import { SheetList } from "./components/SheetList";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { useFileDrop } from "./hooks/useFileDrop";
@@ -69,12 +70,13 @@ function App() {
                 {result && <Preview />}
               </>
             ) : (
-              <div className="mx-auto w-full max-w-2xl pt-8">
+              <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 pt-8">
                 <DropZone
                   dragging={dragging}
                   loading={status === "loading"}
                   invalid={error?.code === "UnsupportedFormat"}
                 />
+                <RecentFiles disabled={busy} />
               </div>
             )}
           </div>

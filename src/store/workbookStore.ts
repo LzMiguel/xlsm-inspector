@@ -10,6 +10,8 @@ import type {
   WorkbookSummary,
 } from "../types/models";
 
+import { loadRecent, saveRecent, withRecent, type RecentFile } from "./recentFiles";
+
 export type Status = "idle" | "loading" | "extracting" | "ready" | "error";
 export type PreviewTab = "cells" | "vba";
 
@@ -27,7 +29,12 @@ interface WorkbookState {
   tab: PreviewTab;
   selectedComponent: string | null;
   vbaOptions: VbaOptions;
+  /** Histórico de arquivos abertos (persistido; não é zerado por `reset`). */
+  recent: RecentFile[];
 
+  addRecent: (path: string, name: string) => void;
+  removeRecent: (path: string) => void;
+  clearRecent: () => void;
   startLoading: (path: string) => void;
   setSummary: (summary: WorkbookSummary) => void;
   toggleSheet: (name: string) => void;
@@ -63,6 +70,24 @@ const pickComponent = (vba: VbaComponent[], current: string | null) =>
 export const useWorkbookStore = create<WorkbookState>((set, get) => ({
   ...initial,
   vbaOptions: { remove_blank_lines: true, hide_attributes: false },
+  recent: loadRecent(),
+
+  addRecent: (path, name) => {
+    const recent = withRecent(get().recent, { path, name, openedAt: Date.now() });
+    saveRecent(recent);
+    set({ recent });
+  },
+
+  removeRecent: (path) => {
+    const recent = get().recent.filter((r) => r.path !== path);
+    saveRecent(recent);
+    set({ recent });
+  },
+
+  clearRecent: () => {
+    saveRecent([]);
+    set({ recent: [] });
+  },
 
   // Novo arquivo: descarta qualquer resultado anterior.
   startLoading: (path) => set({ ...initial, filePath: path, status: "loading" }),
