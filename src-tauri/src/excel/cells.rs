@@ -5,6 +5,7 @@ use calamine::{Data, Range, Reader};
 use indexmap::IndexMap;
 
 use super::coords::to_a1;
+use super::tables;
 use super::workbook::{open, sheet_names, xlsx_err, Book};
 use crate::error::AppError;
 use crate::model::{CellContent, CellValue, Progress, SheetCells, Warning, WarningKind};
@@ -25,6 +26,7 @@ pub fn extract_cells(
     on_progress: &mut dyn FnMut(Progress),
 ) -> Result<(Vec<SheetCells>, Vec<Warning>), AppError> {
     let mut book = open(path)?;
+    book.load_tables().map_err(xlsx_err)?;
     let names: Vec<String> = sheet_names(&book)
         .into_iter()
         .filter(|n| sheets.is_none_or(|s| s.contains(n)))
@@ -34,7 +36,8 @@ pub fn extract_cells(
     let (mut out, mut warnings) = (Vec::with_capacity(total), Vec::new());
     for (i, name) in names.iter().enumerate() {
         on_progress(Progress::new("cells", i, total, name));
-        let (sheet, warning) = read_sheet(&mut book, name)?;
+        let (mut sheet, warning) = read_sheet(&mut book, name)?;
+        sheet.tables = tables::read_tables(&mut book, &sheet)?;
         out.push(sheet);
         warnings.extend(warning);
     }
@@ -122,6 +125,7 @@ pub fn extract_sheet(
         SheetCells {
             name: name.to_string(),
             cells,
+            tables: Vec::new(),
         },
         warning,
     )

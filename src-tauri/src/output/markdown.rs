@@ -64,8 +64,8 @@ mod tests {
             CellContent::Formula { formula: "=SOMA(B1:B2)".into(), valor: CellValue::Int(84) },
         );
         let sheets = vec![
-            SheetCells { name: "Aba1".into(), cells },
-            SheetCells { name: "Vazia".into(), cells: IndexMap::new() },
+            SheetCells { name: "Aba1".into(), cells, tables: vec![] },
+            SheetCells { name: "Vazia".into(), cells: IndexMap::new(), tables: vec![] },
         ];
         let md = cells_to_markdown("arq.xlsm", &sheets);
 

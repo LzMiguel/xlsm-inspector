@@ -38,10 +38,25 @@ pub enum CellContent {
     Formula { formula: String, valor: CellValue },
 }
 
+/// Tabela do Excel (ListObject): só metadado; o conteúdo continua em `SheetCells::cells`.
+#[derive(Debug, Clone, Serialize)]
+pub struct TableInfo {
+    pub name: String,
+    /// Intervalo com cabeçalho, ex.: "A1:Z300".
+    pub range: String,
+    /// Nomes das colunas (cabeçalho).
+    pub columns: Vec<String>,
+    /// Corpo da tabela, linha a linha (sem o cabeçalho).
+    pub rows: Vec<Vec<CellContent>>,
+    /// Coordenadas (chaves de `cells`) que pertencem à tabela.
+    pub cells: Vec<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct SheetCells {
     pub name: String,
     pub cells: IndexMap<String, CellContent>,
+    pub tables: Vec<TableInfo>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

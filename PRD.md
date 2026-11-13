@@ -68,7 +68,7 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta �
 
 ### RF05 — Pré-visualização
 
-- Aba **Células:** tabela com coordenada, fórmula e valor, filtrável por aba e por texto.
+- Aba **Células:** tabela com coordenada, fórmula e valor, filtrável por aba e por texto. Cada tabela do Excel (ListObject) vira uma linha com o intervalo na coluna Célula e o nome clicável em Valor (`A1:Z300 | tblProdutos`); ao clicar, abre a tabela com colunas nomeadas e botão Voltar. Os arquivos exportados não mudam.
 - Aba **VBA:** lista de componentes à esquerda e código com destaque de sintaxe à direita.
 
 ### RF06 — Exportação

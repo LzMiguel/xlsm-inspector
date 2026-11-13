@@ -3,23 +3,20 @@ import { Search, Table2 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { useHotkey } from "../hooks/useHotkey";
-import type { CellContent, CellValue, SheetCells } from "../types/models";
+import type { CellContent, SheetCells, TableInfo } from "../types/models";
+import { fmt } from "./cellFormat";
+import { TableView } from "./TableView";
 import { EmptyState } from "./ui/EmptyState";
 
 interface Row {
   coord: string;
   formula: string;
   value: string;
+  table?: TableInfo;
 }
 
-const COLUMNS = "grid grid-cols-[80px_minmax(0,1fr)_minmax(0,1fr)] gap-3 px-3";
+const COLUMNS = "grid grid-cols-[110px_minmax(0,1fr)_minmax(0,1fr)] gap-3 px-3";
 const ROW_HEIGHT = 32;
-
-function fmt(v: CellValue): string {
-  if (v === null) return "";
-  if (typeof v === "boolean") return v ? "VERDADEIRO" : "FALSO";
-  return String(v).replace(/\r?\n/g, " ↵ ");
-}
 
 function toRow(coord: string, c: CellContent): Row {
   if (typeof c === "object" && c !== null) {
@@ -37,12 +34,28 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
 
   useHotkey("f", () => searchRef.current?.focus());
 
-  const sheet = sheets.find((s) => s.name === sheetName) ?? sheets[0];
+  const [tableName, setTableName] = useState<string | null>(null);
 
-  const rows = useMemo<Row[]>(
-    () => (sheet ? Object.entries(sheet.cells).map(([k, c]) => toRow(k, c)) : []),
-    [sheet],
-  );
+  const sheet = sheets.find((s) => s.name === sheetName) ?? sheets[0];
+  const table = sheet?.tables.find((t) => t.name === tableName) ?? null;
+
+  // Cada tabela vira uma linha (intervalo | nome) na posição da sua primeira célula.
+  const rows = useMemo<Row[]>(() => {
+    if (!sheet) return [];
+    const owner = new Map<string, TableInfo>();
+    for (const t of sheet.tables) for (const k of t.cells) owner.set(k, t);
+    const seen = new Set<TableInfo>();
+    const out: Row[] = [];
+    for (const [k, c] of Object.entries(sheet.cells)) {
+      const t = owner.get(k);
+      if (!t) out.push(toRow(k, c));
+      else if (!seen.has(t)) {
+        seen.add(t);
+        out.push({ coord: t.range, formula: "", value: t.name, table: t });
+      }
+    }
+    return out;
+  }, [sheet]);
 
   const filtered = useMemo(() => {
     const q = deferred.trim().toLowerCase();
@@ -62,6 +75,8 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
     overscan: 12,
   });
 
+  if (table) return <TableView table={table} onBack={() => setTableName(null)} />;
+
   if (sheets.length === 0) {
     return (
       <EmptyState
@@ -78,7 +93,10 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
         <select
           aria-label="Aba"
           value={sheet.name}
-          onChange={(e) => setSheetName(e.target.value)}
+          onChange={(e) => {
+            setSheetName(e.target.value);
+            setTableName(null);
+          }}
           className="h-8 max-w-56 rounded-sm border border-border bg-surface px-2 text-sm focus-visible:outline-2 focus-visible:outline-accent"
         >
           {sheets.map((s) => (
@@ -129,7 +147,7 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
         <div ref={scrollRef} tabIndex={0} className="min-h-0 flex-1 overflow-auto">
           {filtered.length === 0 ? (
             <p className="p-6 text-center text-sm text-muted">
-              {rows.length === 0 ? "Esta aba não tem células com conteúdo." : "Nada encontrado."}
+              {rows.length === 0 ? "Nenhuma célula com conteúdo aqui." : "Nada encontrado."}
             </p>
           ) : (
             <div style={{ height: virtualizer.getTotalSize() }} className="relative w-full">
@@ -153,9 +171,21 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
                     >
                       {r.formula}
                     </span>
-                    <span role="cell" title={r.value} className="truncate tabular-nums">
-                      {r.value}
-                    </span>
+                    {r.table ? (
+                      <button
+                        type="button"
+                        role="cell"
+                        title={`Abrir tabela ${r.value}`}
+                        onClick={() => setTableName(r.value)}
+                        className="truncate text-left font-medium text-accent underline focus-visible:outline-2 focus-visible:outline-accent"
+                      >
+                        {r.value}
+                      </button>
+                    ) : (
+                      <span role="cell" title={r.value} className="truncate tabular-nums">
+                        {r.value}
+                      </span>
+                    )}
                   </div>
                 );
               })}

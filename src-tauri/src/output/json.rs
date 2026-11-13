@@ -27,8 +27,8 @@ mod tests {
             },
         );
         let sheets = vec![
-            SheetCells { name: "Zeta".into(), cells },
-            SheetCells { name: "Alfa".into(), cells: IndexMap::new() },
+            SheetCells { name: "Zeta".into(), cells, tables: vec![] },
+            SheetCells { name: "Alfa".into(), cells: IndexMap::new(), tables: vec![] },
         ];
         let json = cells_to_json(&sheets).unwrap();
 

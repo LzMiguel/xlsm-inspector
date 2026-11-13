@@ -25,10 +25,23 @@ export interface FormulaContent {
 
 export type CellContent = CellValue | FormulaContent;
 
+/** Tabela do Excel (ListObject): só metadado; o conteúdo está em `SheetCells.cells`. */
+export interface TableInfo {
+  name: string;
+  /** Intervalo com cabeçalho, ex.: "A1:Z300". */
+  range: string;
+  columns: string[];
+  /** Corpo da tabela, linha a linha (sem o cabeçalho). */
+  rows: CellContent[][];
+  /** Coordenadas (chaves de `cells`) que pertencem à tabela. */
+  cells: string[];
+}
+
 export interface SheetCells {
   name: string;
   /** "A1" -> conteúdo, na ordem da planilha. */
   cells: Record<string, CellContent>;
+  tables: TableInfo[];
 }
 
 export type VbaComponentKind =
