@@ -162,7 +162,7 @@ End Sub
 | ---------- | --------------------------------------------------------------------------------------------------------------------------- |
 | **MVP**    | RF01, RF03, RF04, RF06 (sem pré-visualização, todas as abas).                                                               |
 | **v1.0**   | RF02, RF05, RF07, tema escuro.                                                                                              |
-| **v1.1**   | Configurações persistentes (pasta padrão, opções de limpeza).                               |
+| **v1.1**   | Configurações persistentes (pasta padrão, opções de limpeza).                                                               |
 | **Futuro** | Processamento em lote (pasta inteira), mapa de dependências entre fórmulas, exportação de um único `.md` combinado para IA. |
 
 ## 12. Riscos e questões em aberto

@@ -1,210 +1,179 @@
-# GUIDE — Passo a passo para desenvolver o XLSM Inspector
+# GUIDE — Roadmap v1.1+ do XLSM Inspector
 
-Guia para você desenvolver o app com o mínimo de intervenção de agentes. Estratégia: **backend Rust testável primeiro (via `cargo test`), UI depois**. Cada etapa termina com um critério de pronto verificável. Só avance quando ele passar.
+Guia das próximas funcionalidades, em fases. A v1.0 está concluída (o guia anterior, Fases 0-8, ficou no histórico do git). Estratégia mantida: **backend Rust testável primeiro (via `cargo test`), UI depois**. Cada fase termina com um critério de pronto verificável. Só avance quando ele passar.
 
 Referências: `PRD.md` (o quê), `Architecture.md` (como), `Design-System.md` (visual), `AGENTS.md` (regras).
 
----
+## Decisões de arquitetura (valem para todas as fases)
 
-## Fase 0 — Pré-requisitos
-
-- [ ] Node.js 20+ (`node -v`)
-- [ ] Rust stable via rustup (`rustc -V`), toolchain `x86_64-pc-windows-msvc`
-- [ ] Visual Studio Build Tools com "Desktop development with C++"
-- [ ] WebView2 (já vem no Windows 10/11)
-- [ ] Git (`git init`, `.gitignore` com `node_modules`, `target`, `dist`)
-- [ ] 2–3 planilhas de teste **sintéticas** (sem dados reais)
-
-> Dica: o repositório está no OneDrive. Isso pode travar `node_modules` e `target` (milhares de arquivos). Exclua essas pastas da sincronização ou mova o projeto para fora do OneDrive (ex.: `C:\dev\xlsm-inspector`).
+1. **Configurações vivem no Rust** (`settings.json` em `app_config_dir`, via `get_settings`/`save_settings`), porque `export_outputs` roda no Rust e precisa delas. Esquema com `#[serde(default)]` e campo `version`. Sem plugin `fs` novo: só `std::fs`.
+2. **Módulo `store/` novo, sem Tauri** (recebe o diretório por parâmetro). Só `commands.rs` resolve caminhos com `app.path()`. Mantém a regra "`excel/` e `output/` não importam Tauri".
+3. **Template padrão = formato do PRD §8, byte a byte.** Os testes de integração de paridade continuam valendo com o template padrão. O JSON **nunca** é personalizável (`formula`/`valor` e a estrutura `{Aba:{A1:...}}` são fixos).
+4. **O cache guarda o `ExtractionResult`**, não a saída: templates e nomes de arquivo mudam sem invalidar o cache. Chave = caminho + (tamanho, mtime) + opções (abas, escopo, VBA). `export_outputs` passa a reutilizar o cache válido.
+5. **Amostra reduz saída, IPC e renderização, não o parsing**: o calamine ainda lê o arquivo todo. É um teto conhecido.
+6. **O histórico de recentes migra do `localStorage` para o estado do Rust**, para a lista da tela inicial e os "5 recentes com cache" não divergirem.
+7. Toda mudança de comportamento atualiza `PRD.md`, `Architecture.md` e `Design-System.md`. Se algo conflitar com eles, pare e pergunte.
 
 ---
 
-## Fase 1 — Scaffold do projeto
+## Fase 1 — Configurações persistentes (RF08)
 
-1. Na pasta do projeto (mantendo os `.md` existentes), crie o app Tauri:
+1. `src-tauri/src/store/settings.rs`: `Settings { version, default_out_dir, file_names, vba_options, use_cache, template, ... }` com defaults; ler/gravar JSON. Arquivo ausente ou corrompido → defaults (nunca erro fatal).
+   Testes: round-trip, campo desconhecido, JSON inválido.
+2. `commands.rs`: `get_settings`, `save_settings`.
+3. Frontend: `types/models.ts` e `api/commands.ts`; `store/settingsStore.ts`; mover `vbaOptions` e a pasta de saída padrão para as configurações.
+4. UI: engrenagem na barra superior e `Ctrl+,` abrem o `SettingsDialog`. Novos componentes em `ui/`: `Dialog`, `Input`, `Textarea`, `Select`, `Switch`.
 
-   ```bash
-   npm create tauri-app@latest
-   ```
-
-   Escolha: TypeScript, npm, template **React**. Se ele não aceitar pasta não vazia, gere em pasta temporária e copie os arquivos para a raiz.
-
-2. Confirme que `npm run tauri dev` abre a janela padrão.
-3. Defina em `tauri.conf.json`: `productName` "XLSM Inspector", janela mínima 960×640, título, e CSP restritiva (sem origens externas).
-4. Dependências do frontend:
-
-   ```bash
-   npm i zustand @tanstack/react-virtual lucide-react shiki
-   npm i @tauri-apps/plugin-dialog @tauri-apps/plugin-opener
-   npm i -D tailwindcss @tailwindcss/vite vitest @testing-library/react @testing-library/jest-dom jsdom
-   ```
-
-5. Dependências do backend (`src-tauri/Cargo.toml`), conferindo a versão do `calamine`:
-
-   ```toml
-   calamine = "0.38"          # confira a API de vba_project() na versão fixada
-   serde = { version = "1", features = ["derive"] }
-   serde_json = { version = "1", features = ["preserve_order"] }
-   indexmap = { version = "2", features = ["serde"] }
-   thiserror = "1"
-   tauri-plugin-dialog = "2"
-   tauri-plugin-opener = "2"
-   ```
-
-6. Crie as pastas vazias conforme `Architecture.md` §3:
-
-```text
-src/
-  api/  components/ui/  hooks/  store/  types/  styles/
-src-tauri/
-  src/excel/  src/output/
-  tests/fixtures/
-  capabilities/
-```
-
-**Pronto quando:** `npm run tauri dev` abre a janela e `cargo build` (em `src-tauri/`) compila.
+**Pronto quando:** fechar e reabrir o app mantém a pasta padrão e as opções de VBA.
 
 ---
 
-## Fase 2 — Backend: fundamentos (sem Tauri)
+## Fase 2 — Nome dos arquivos e modelos de saída (RF09, RF10)
 
-Ordem de arquivos em `src-tauri/src/`. Cada um com testes unitários no próprio arquivo (`#[cfg(test)]`).
+1. `output/naming.rs` (puro): padrão com `{arquivo}`, `{data}`, `{aba}`; valida caracteres inválidos, nomes reservados do Windows e tamanho; extensão fixa.
+   Testes: `CON`, `a/b`, vazio, `..`, nome muito longo.
+2. Política de colisão: perguntar (sobrescrever / adicionar sufixo `_2`).
+3. `output/template.rs`: `OutputTemplate { title, intro, sheet_heading, cell_header, formula_label, value_label, vba_heading, footer }` com placeholders `{arquivo} {aba} {data} {componente} {tabela}`. `markdown.rs` passa a receber o template.
+4. Predefinições: "Padrão" (= PRD §8), "Contexto para IA" (com prompt inicial) e as do usuário (criar, duplicar, excluir, restaurar o padrão).
+5. UI: aba "Saída" no `SettingsDialog`, com campos de nome e editor de template com **pré-visualização ao vivo** (o Rust renderiza com dados fictícios).
+6. `ExportPanel`: campo de nome editável por arquivo.
 
-1. **`error.rs`**: `AppError` com `thiserror` e `Serialize` (`code` + `message`): `FileNotFound`, `FileLocked`, `UnsupportedFormat`, `CorruptedFile`, `NoVbaProject`, `WriteFailed`.
-2. **`model.rs`**: structs de `Architecture.md` §4 (`WorkbookSummary`, `SheetInfo`, `CellValue`, `CellContent`, `SheetCells`, `VbaComponentKind`, `VbaComponent`, `Warning`, `ExtractionResult`). `CellValue`/`CellContent` com `#[serde(untagged)]`; `formula` e `valor` literais.
-3. **`excel/coords.rs`**: `(linha, coluna) → "A1"`. Testes: 0→A, 25→Z, 26→AA, 701→ZZ, 702→AAA.
-4. **`excel/workbook.rs`**: abrir arquivo (somente leitura), validar extensão, mapear erros, retornar `WorkbookSummary` (nome, tamanho, abas, `has_vba`).
-5. **`excel/cells.rs`**: extração valor + fórmula.
-   - Unir `range` e `formula` por posição **absoluta**.
-   - Adicionar `=` às fórmulas.
-   - Ignorar células vazias.
-   - Gerar `Warning` para fórmula sem cache.
-6. **`excel/vba.rs`**: `vba_project()`, listar módulos, limpar (remover linhas em branco / ocultar `Attribute`, configurável), classificar o tipo.
-7. **`output/json.rs`**: gerar `mapeamento_planilha.json` (ordem preservada).
-8. **`output/markdown.rs`**: gerar `mapeamento_planilha.md` e `vba_code.md` (escapar `|`, `\n` → `|`, abas separadas por `---`), conforme `PRD.md` §8.
-
-### Fixtures (`src-tauri/tests/fixtures/`)
-
-Crie no Excel, à mão, arquivos sintéticos:
-
-| Arquivo           | Conteúdo                                                                   |
-| ----------------- | -------------------------------------------------------------------------- |
-| `simples.xlsx`    | 2 abas, textos, números, datas                                             |
-| `formulas.xlsx`   | fórmulas salvas no Excel (com cache) e acentuação                          |
-| `sem_cache.xlsx`  | fórmulas geradas por script e nunca salvas (ex.: openpyxl)                 |
-| `especiais.xlsx`  | células com `\|` e quebra de linha; aba vazia                              |
-| `com_vba.xlsm`    | módulo, classe, `ThisWorkbook`, planilha, UserForm; comentários com acento |
-| `corrompido.xlsx` | arquivo de texto renomeado                                                 |
-
-**Pronto quando:** `cargo test` passa e `cargo clippy -- -D warnings` está limpo.
+**Pronto quando:** `cargo test` prova que o template padrão gera saída idêntica à da v1.0 e que um template customizado altera só o Markdown (JSON idêntico).
 
 ---
 
-## Fase 3 — Backend: integração com Tauri
+## Fase 3 — Amostra e head (RF11)
 
-1. **Testes de integração** em `src-tauri/tests/` usando as fixtures (abrir, extrair, gerar saídas). Compare com a saída dos scripts Python atuais (paridade, métrica do PRD §10).
-2. **`commands.rs`**: `inspect_workbook`, `extract_cells`, `extract_vba`, `export_outputs` (ver `Architecture.md` §5). Fina: valida e delega.
-   - Trabalho pesado em `spawn_blocking`.
-   - Emitir `extraction://progress` com `{ stage, current, total, label }`.
-   - `export_outputs` re-extrai no Rust (não recebe dados do frontend).
-3. **`lib.rs`**: registrar plugins `dialog` e `opener` e os comandos.
-4. **`capabilities/default.json`**: só `dialog:allow-open`, `dialog:allow-save`, `opener` para pastas. Sem shell/HTTP/FS amplo.
+1. `model.rs`: `ExtractScope { Full, Head { rows }, Sample { rows } }`; `SheetCells` ganha `sampled: Option<SampleInfo { total_rows, kept_rows }>`; novo `WarningKind::Sampled`.
+2. `excel/cells.rs` aplica o escopo por linha:
+   - **Head:** primeiras N linhas de cada aba.
+   - **Amostra:** N linhas espaçadas uniformemente (determinística), sempre incluindo a primeira.
+   - **Tabelas (ListObjects):** cabeçalho mantido, amostra só do corpo.
+   - O VBA não é amostrado.
+3. `commands.rs`: `extract_cells` e `export_outputs` recebem `scope`. Extração e exportação são independentes; o padrão da exportação é o escopo da extração.
+4. Saída: o Markdown ganha o aviso "Amostra: 100 de 52.000 linhas". O JSON não muda (formato fixo), então o aviso fica na UI e no nome sugerido (`_amostra`).
+5. UI: `ScopeSelector` (Tudo / Primeiras N / Amostra de N) no `ExtractPanel` e no `ExportPanel`; selo "amostra" no `CellTable`.
 
-**Pronto quando:** `cargo test` passa e `npm run tauri dev` abre sem erro de permissão.
+**Pronto quando:** testes provam determinismo, inclusão da primeira linha, N maior que o total e aba vazia; a exportação em amostra gera o aviso no `.md`.
 
----
-
-## Fase 4 — Frontend: base
-
-Ordem:
-
-1. **`styles/tokens.css`**: variáveis CSS dos temas claro/escuro (`Design-System.md` §1), tipografia e espaçamento. Mapear no Tailwind (`@theme`).
-2. **Fontes**: coloque Inter e JetBrains Mono em `src/assets/fonts/` e declare com `@font-face` (sem CDN).
-3. **`types/models.ts`**: espelho exato de `model.rs`.
-4. **`api/commands.ts`** e **`api/events.ts`**: wrappers tipados de `invoke` e `listen`. Único ponto de contato com o backend.
-5. **`store/workbookStore.ts`** (Zustand): arquivo, resumo, abas selecionadas, resultado, progresso, avisos, status (`idle | loading | extracting | ready | error`).
-6. **`components/ui/`**: `Button`, `Tabs`, `Alert`, `ProgressBar`, `Toast`, `EmptyState`, `Checkbox`, `Badge`. Siga `Design-System.md` §5.
-7. Layout em `App.tsx`: barra superior 48px, barra lateral 240px, conteúdo.
-
-**Pronto quando:** a tela renderiza nos dois temas com um `EmptyState`, sem hex em componentes.
+> Teto conhecido: o parsing continua lendo o arquivo inteiro.
 
 ---
 
-## Fase 5 — MVP (RF01, RF03, RF04, RF06)
+## Fase 4 — Cache dos 5 recentes e verificação em segundo plano (RF12, RNF08)
 
-Ordem de funcionalidades. Depois de cada uma, teste no `npm run tauri dev`.
+1. `store/cache.rs`: um arquivo por planilha em `app_data_dir/cache/`.
+   - Impressão digital = tamanho + mtime.
+   - A chave inclui as opções e `cache_version`.
+   - LRU de 5 itens.
+   - Arquivos acima de um limite (ex.: 50 MB) não entram no cache, com aviso.
+   - `use_cache` desligável e `clear_cache`.
+2. Migrar os recentes para `store/recent.rs` (estado do Rust); o `localStorage` deixa de ser a fonte.
+3. `commands.rs`: `check_recent(paths) -> [{ path, status: Unchanged | Modified | Missing | Locked }]` em `spawn_blocking`, **só com `metadata`** (não abre a planilha). Disparado ao montar a tela inicial, sem bloquear a UI.
+4. `open_workbook`: se `Unchanged` e o cache for válido, devolve o resultado do cache; senão re-extrai e atualiza o cache. `export_outputs` reutiliza o cache válido.
+5. UI: `RecentFiles` com selo "em cache" / "modificado" / "não encontrado"; botão "Recarregar" (ignora o cache); "Limpar cache" nas configurações.
+6. Documentar em `Architecture.md` e `PRD.md`: dados em disco, só local, entrada nunca modificada (RNF07), nenhuma rede (RNF01).
 
-1. **RF01 Seleção de arquivo**: `DropZone` (diálogo nativo + arrastar) → `inspect_workbook` → `FileCard` (nome, tamanho, nº de abas, badge VBA). Valide extensão e mostre `Alert` nos erros.
-2. **Extração** (botão "Extrair", todas as abas): `extract_cells` + `extract_vba` com `ProgressBar` ligada ao evento.
-3. **RF06 Exportação**: `ExportPanel` com escolha de pasta, checkboxes dos 3 arquivos, `export_outputs`, `Toast` "Concluído" com "Abrir pasta".
-4. **Validação de paridade**: rode o app e os scripts Python nas mesmas planilhas e compare as saídas (diff). Corrija diferenças no Rust.
+**Pronto quando:** abrir um recente sem alteração não relê o arquivo; alterar o arquivo no Excel e reabrir força a releitura. Testes cobrem hit, miss por mtime, miss por opções, LRU e cache corrompido (ignorado).
 
-**Pronto quando:** fluxo abrir → extrair → exportar gera os 3 arquivos equivalentes aos scripts Python. **Marco: MVP.**
-
----
-
-## Fase 6 — v1.0 (RF02, RF05, RF07, tema escuro)
-
-1. **RF02 `SheetList`**: checkbox por aba, "Marcar/Desmarcar todas", contador de células, ícone de fórmula. Envie só as abas marcadas.
-2. **RF07 Avisos**: `Alert` para fórmulas sem cache (texto sugerindo abrir/salvar/fechar no Excel), arquivo bloqueado, corrompido, sem VBA (`EmptyState`).
-3. **RF05 Pré-visualização**:
-   - `Tabs` Células / VBA.
-   - `CellTable` virtualizada (`@tanstack/react-virtual`), busca por coordenada/fórmula/valor, cabeçalho fixo. Se o volume for grande, prévia limitada (ex.: 50 mil células por aba), com exportação completa pelo Rust.
-   - `VbaViewer`: `ComponentList` agrupada por tipo + código com Shiki (gramática VBA), números de linha, botão "Copiar".
-4. **Opções de VBA** na UI: remover linhas em branco, ocultar `Attribute`.
-5. **Tema escuro**: segue o SO; alternância manual.
-6. **Acessibilidade e atalhos**: `Ctrl+O`, `Ctrl+E`, `Ctrl+F`; foco visível; `aria-label` em ícones.
-
-**Pronto quando:** todos os RFs do PRD até v1.0 passam no checklist abaixo. **Marco: v1.0.**
+> Limite: tamanho + mtime pode falhar em pastas sincronizadas (OneDrive). O botão "Recarregar" é a válvula.
 
 ---
 
-## Fase 7 — Qualidade e distribuição
+## Fase 5 — Diagnóstico da planilha (RF13)
 
-1. `npm run lint`, `npm run typecheck`, `npm run test` (Vitest: store e componentes principais).
-2. `cargo fmt`, `cargo clippy -- -D warnings`, `cargo test`.
-3. Teste de desempenho: ~100 mil células em < 5 s (RNF02); UI responsiva durante o processamento (RNF03).
-4. Teste manual com arquivos de OneDrive (bloqueado/placeholder) e `.xlsm` com acentos no VBA (risco de codepage, PRD §12).
-5. Alinhar versão em `tauri.conf.json` e `Cargo.toml`.
-6. `npm run tauri build`: gera `.msi`/NSIS. Teste a instalação numa máquina limpa, sem admin se possível.
-7. Atualize `PRD.md`, `Architecture.md` e `Design-System.md` se algo mudou.
+1. `excel/diagnostics.rs`: erros de fórmula por aba (`#REF!`, `#DIV/0!`...), nomes definidos, abas ocultas, tabelas, tabelas dinâmicas e referências a arquivos externos (fórmulas com `[n]`).
+   **Antes de prometer cada item, conferir na API do calamine 0.38 o que é exposto** (`defined_names`, `sheets_metadata`, tabelas dinâmicas).
+2. `model.rs` e `models.ts`: `Diagnostics`; comando `diagnose_workbook`.
+3. UI: aba "Diagnóstico" (cartões de contagem + lista; clicar num erro leva à célula).
+
+**Pronto quando:** uma fixture sintética com `#DIV/0!`, nome definido e aba oculta aparece corretamente no diagnóstico.
 
 ---
 
-## Fase 8 — v1.1 e futuro (depois)
+## Fase 6 — Saída otimizada para IA (RF14)
 
-- v1.1: configurações persistentes (pasta padrão, opções de limpeza) e arquivos recentes.
-- Futuro: lote de pastas, mapa de dependências de fórmulas, `.md` único para IA.
+1. `output/bundle.rs`: `.md` único combinado (resumo + células + VBA), usando o template "Contexto para IA".
+2. `output/tokens.rs`: estimativa **aproximada** (≈ caracteres / 4, rotulada como estimativa). Divisão em partes de N tokens cortando só em limites de seção (aba, tabela, componente VBA), nunca no meio de bloco de código ou de linha de tabela.
+3. UI: estimativa de tokens no `ExportPanel`; opções "Arquivo único" e "Dividir em partes de N tokens".
+
+**Pronto quando:** testes provam que nenhuma parte quebra bloco de código ou tabela e que a junção das partes reproduz o arquivo único.
+
+---
+
+## Fase 7 — VBA avançado (RF15)
+
+1. `excel/vba_index.rs`: índice de procedimentos (`Sub`, `Function`, `Property Get/Let/Set`; `Private/Public/Static/Friend`) com linha inicial e final.
+   Testes de borda: `End Sub` em comentário, `Declare`, procedimento de uma linha.
+2. Busca global (células + VBA) na UI, sobre o resultado já em memória (filtro de exibição, como a busca atual).
+3. Exportar componentes como `.bas`/`.cls`/`.frm`.
+   - **Decisão a confirmar na hora:** o VBE importa em ANSI (Windows-1252); UTF-8 com acentos vira texto quebrado ao reimportar.
+   - O `.frm` sai sem o `.frx` (layout de UserForm está fora de escopo, PRD §5).
+4. UI: índice de procedimentos na `ComponentList`; botão "Exportar como arquivos".
+
+**Pronto quando:** o índice está correto na fixture `com_vba.xlsm` e os arquivos exportados reimportam no VBE sem perder acentos.
+
+---
+
+## Fase 8 — Comparar versões (RF16)
+
+1. O cache guarda **uma geração anterior** (`previous`) ao detectar `Modified`.
+2. `output/diff.rs` (puro): abas adicionadas/removidas, células alteradas (coordenada, antes, depois) e componentes VBA alterados (diff por linha simples; sem dependência nova).
+3. Comando `diff_with_previous`; UI: aba "Mudanças"; exportação opcional em `.md`.
+
+**Pronto quando:** testes com dois resultados sintéticos cobrem célula alterada/adicionada/removida, aba nova e VBA alterado.
+
+---
+
+## Fase 9 — Qualidade e release (v1.1)
+
+1. `npm run lint`, `npm run typecheck`, `npm run test`.
+2. `cargo fmt`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
+3. Desempenho: RNF02 mantido com cache e com amostra; UI responsiva (RNF03).
+4. Testes manuais: cache depois de editar no Excel, arquivo no OneDrive, caracteres inválidos em nomes, reimportar `.bas` no VBE.
+5. Alinhar a versão em `package.json`, `tauri.conf.json` e `Cargo.toml`.
+6. `npm run tauri build`; testar a instalação por cima da v1.0 (mesmo `identifier`).
+7. Atualizar `PRD.md`, `Architecture.md` e `Design-System.md`.
+
+---
+
+## Fase 10 — Depois
+
+- Processamento em lote (pasta inteira).
+- Mapa de dependências entre fórmulas.
+- Atualização automática (opt-in). Contraria o RNF01 e exige decisão explícita e atualização do PRD.
+- Assinatura do instalador.
 
 ---
 
 ## Checklist de requisitos
 
-| Req   | Descrição                        | Fase | OK  |
-| ----- | -------------------------------- | ---- | --- |
-| RF01  | Seleção de arquivo               | 5    | [ ] |
-| RF02  | Seleção de abas                  | 6    | [ ] |
-| RF03  | Extração de células              | 2, 5 | [ ] |
-| RF04  | Extração de VBA                  | 2, 5 | [ ] |
-| RF05  | Pré-visualização                 | 6    | [ ] |
-| RF06  | Exportação                       | 5    | [ ] |
-| RF07  | Avisos                           | 6    | [ ] |
-| RNF01 | Sem rede (CSP, sem plugins HTTP) | 3, 7 | [ ] |
-| RNF02 | 100 mil células < 5 s            | 7    | [ ] |
-| RNF03 | UI não trava                     | 3, 7 | [ ] |
-| RNF04 | UTF-8 e acentos                  | 2, 7 | [ ] |
-| RNF07 | Entrada nunca modificada         | 2    | [ ] |
+| Req   | Descrição                          | Fase | OK  |
+| ----- | ---------------------------------- | ---- | --- |
+| RF08  | Configurações persistentes         | 1    | [ ] |
+| RF09  | Nome dos arquivos de saída         | 2    | [ ] |
+| RF10  | Modelos de saída (Markdown)        | 2    | [ ] |
+| RF11  | Amostra / head (leitura e exportação) | 3 | [ ] |
+| RF12  | Cache e verificação dos recentes   | 4    | [ ] |
+| RF13  | Diagnóstico da planilha            | 5    | [ ] |
+| RF14  | Saída otimizada para IA            | 6    | [ ] |
+| RF15  | VBA avançado                       | 7    | [ ] |
+| RF16  | Comparar versões                   | 8    | [ ] |
+| RNF08 | Cache local e desligável           | 4    | [ ] |
 
 ---
 
 ## Armadilhas conhecidas
 
-- **`calamine`**: `range` e `formula` podem começar em células diferentes; use posição absoluta. `vba_project()` muda de assinatura entre versões. Se falhar, plano B em `excel/vba.rs`: `zip` + `cfb` + descompressão MS-OVBA.
-- **Fórmulas**: vêm sem `=`; adicione.
-- **Sem cache**: fórmula com valor vazio gera aviso, não erro.
+- **`calamine`**: `range` e `formula` podem começar em células diferentes; use posição absoluta. Confira a API da versão fixada antes de usar `defined_names`, tabelas dinâmicas e `sheets_metadata`.
 - **Tipos**: mudou `model.rs`? Mude `models.ts` no mesmo commit.
+- **mtime em pastas sincronizadas**: pode não refletir a edição; ofereça "Recarregar".
+- **Versão do cache**: cache de uma versão antiga do app deve ser descartado (`cache_version`), nunca lido às cegas.
+- **Nomes de arquivo no Windows**: nomes reservados (`CON`, `NUL`...), `/ \ : * ? " < > |` e ponto final.
+- **UTF-8 x ANSI no VBE**: ao exportar `.bas`/`.cls`/`.frm`, acentos exigem Windows-1252.
+- **Amostra não acelera o parsing**: só reduz saída, IPC e renderização.
+- **Template padrão**: qualquer mudança no formato padrão quebra a paridade com a v1.0; teste byte a byte.
 - **OneDrive**: pode bloquear build e arquivos de entrada.
-- **Windows/Tauri**: se `tauri dev` falhar na primeira compilação, é só demora do Rust (vários minutos).
 
 ---
 
@@ -212,22 +181,24 @@ Ordem de funcionalidades. Depois de cada uma, teste no `npm run tauri dev`.
 
 Use agente apenas para:
 
-- gerar a gramática VBA do Shiki ou resolver o plano B de VBA (MS-OVBA);
-- depurar diferença de paridade que você não achou;
-- revisar capabilities/CSP antes do release.
+- investigar a API do `calamine` quando um item do diagnóstico não for exposto;
+- depurar diferença de paridade do template padrão;
+- revisar o escopo de `capabilities` e a CSP antes do release.
 
-Ao pedir, cite a fase e a etapa deste guia (ex.: "Fase 2, passo 6"). O agente seguirá `CLAUDE.md`/`AGENTS.md` e não rodará comandos sem você pedir.
+Ao pedir, cite a fase e a etapa deste guia (ex.: "Fase 4, passo 3"). O agente seguirá `CLAUDE.md`/`AGENTS.md` e não rodará comandos sem você pedir.
 
 ---
 
 ## Commits sugeridos (Conventional Commits)
 
-| Marco                | Mensagem                                 |
-| -------------------- | ---------------------------------------- |
-| Fase 1               | `chore: scaffold tauri + react`          |
-| Fase 2 (por arquivo) | `feat(excel): extração de células`       |
-| Fase 3               | `feat: comandos IPC e capabilities`      |
-| Fase 4               | `feat(ui): design system base`           |
-| Fase 5               | `feat: fluxo MVP abrir-extrair-exportar` |
-| Fase 6               | `feat: pré-visualização, avisos e tema`  |
-| Fase 7               | `chore: release v1.0.0`                  |
+| Marco  | Mensagem                                      |
+| ------ | --------------------------------------------- |
+| Fase 1 | `feat: configurações persistentes`            |
+| Fase 2 | `feat: nomes de arquivo e modelos de saída`   |
+| Fase 3 | `feat: amostra e head na extração e exportação` |
+| Fase 4 | `feat: cache dos recentes`                    |
+| Fase 5 | `feat: diagnóstico da planilha`               |
+| Fase 6 | `feat: saída otimizada para IA`               |
+| Fase 7 | `feat(vba): índice e exportação de componentes` |
+| Fase 8 | `feat: comparar versões`                      |
+| Fase 9 | `chore: release v1.1.0`                       |
