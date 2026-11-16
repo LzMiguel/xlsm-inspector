@@ -7,6 +7,19 @@ export const DEFAULT_SETTINGS: Settings = {
   version: 1,
   default_out_dir: null,
   vba_options: { remove_blank_lines: true, hide_attributes: false },
+  file_names: { json: "mapeamento_planilha", cells_md: "mapeamento_planilha", vba_md: "vba_code" },
+  template: {
+    title: "# Mapeamento de Estrutura: {arquivo}",
+    intro: "",
+    sheet_heading: "## Aba: {aba}",
+    cell_header: "Célula",
+    content_header: "Conteúdo Extraído",
+    formula_label: "Fórmula",
+    value_label: "Valor",
+    vba_heading: "## COMPONENTE: {componente}",
+    footer: "",
+  },
+  presets: [],
 };
 
 interface SettingsState {

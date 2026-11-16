@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use xlsm_inspector_lib::error::AppError;
 use xlsm_inspector_lib::excel::cells::extract_cells;
@@ -8,9 +8,11 @@ use xlsm_inspector_lib::excel::workbook::inspect;
 use xlsm_inspector_lib::model::{
     CellContent, CellValue, SheetCells, VbaComponentKind, Warning, WarningKind,
 };
-use xlsm_inspector_lib::output::export::{ExportTargets, export_outputs};
+use xlsm_inspector_lib::output::export::{ExportTargets, OutputConfig, export_outputs};
 use xlsm_inspector_lib::output::json::cells_to_json;
 use xlsm_inspector_lib::output::markdown::cells_to_markdown;
+use xlsm_inspector_lib::output::naming::{FileNames, OnExists};
+use xlsm_inspector_lib::output::template::OutputTemplate;
 
 fn fx(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -226,6 +228,7 @@ fn exporta_tres_arquivos() {
         ExportTargets::default(),
         None,
         &VbaOptions::default(),
+        &OutputConfig::default(),
         &mut |_| {},
     )
     .unwrap();
@@ -246,19 +249,92 @@ fn exporta_tres_arquivos() {
             .contains("## COMPONENTE: modUtilitarios")
     );
 
-    // sem VBA: vba_code.md é omitido, sem erro
+    // sem VBA: vba_code.md é omitido, sem erro (sobrescreve os da rodada anterior)
+    let cfg = OutputConfig { on_exists: OnExists::Overwrite, ..OutputConfig::default() };
     let written = export_outputs(
         &fx("simples.xlsx"),
         &out,
         ExportTargets::default(),
         None,
         &VbaOptions::default(),
+        &cfg,
         &mut |_| {},
     )
     .unwrap();
     assert_eq!(written.len(), 2);
 
     fs::remove_dir_all(&out).ok();
+}
+
+fn export_to(dir: &Path, cfg: &OutputConfig) -> Result<Vec<String>, AppError> {
+    fs::create_dir_all(dir).unwrap();
+    export_outputs(
+        &fx("simples.xlsx"),
+        dir,
+        ExportTargets::default(),
+        None,
+        &VbaOptions::default(),
+        cfg,
+        &mut |_| {},
+    )
+}
+
+/// Modelo personalizado muda só o Markdown; o JSON continua idêntico.
+#[test]
+fn modelo_personalizado_nao_altera_json() {
+    let base = std::env::temp_dir().join(format!("xlsm_inspector_tpl_{}", std::process::id()));
+    let (a, b) = (base.join("padrao"), base.join("custom"));
+
+    export_to(&a, &OutputConfig::default()).unwrap();
+    let custom = OutputConfig {
+        template: OutputTemplate {
+            title: "# Outro título: {arquivo}".into(),
+            intro: "Contexto.".into(),
+            ..OutputTemplate::default()
+        },
+        ..OutputConfig::default()
+    };
+    export_to(&b, &custom).unwrap();
+
+    let read = |d: &Path, n: &str| fs::read(d.join(n)).unwrap();
+    assert_eq!(read(&a, "mapeamento_planilha.json"), read(&b, "mapeamento_planilha.json"));
+    assert_ne!(read(&a, "mapeamento_planilha.md"), read(&b, "mapeamento_planilha.md"));
+    assert!(
+        fs::read_to_string(b.join("mapeamento_planilha.md"))
+            .unwrap()
+            .starts_with("# Outro título: simples.xlsx\n\nContexto.\n")
+    );
+    fs::remove_dir_all(&base).ok();
+}
+
+#[test]
+fn nomes_e_colisoes() {
+    let dir = std::env::temp_dir().join(format!("xlsm_inspector_names_{}", std::process::id()));
+    let names = FileNames { json: "{arquivo}_dados".into(), ..FileNames::default() };
+    let cfg = OutputConfig { names, ..OutputConfig::default() };
+
+    let written = export_to(&dir, &cfg).unwrap();
+    assert!(dir.join("simples_dados.json").exists() && written.len() == 2);
+
+    // já existem: por padrão não grava nada e avisa
+    assert!(matches!(export_to(&dir, &cfg), Err(AppError::FileExists(_))));
+    // sufixo: cria _2 sem tocar nos originais
+    let sufixo = OutputConfig { on_exists: OnExists::Suffix, ..cfg.clone() };
+    export_to(&dir, &sufixo).unwrap();
+    assert!(dir.join("simples_dados_2.json").exists() && dir.join("mapeamento_planilha_2.md").exists());
+
+    // nome inválido e nomes repetidos falham antes de gravar
+    let ruim = OutputConfig {
+        names: FileNames { json: "a/b".into(), ..FileNames::default() },
+        ..OutputConfig::default()
+    };
+    assert!(matches!(export_to(&dir, &ruim), Err(AppError::InvalidName(_))));
+    let igual = OutputConfig {
+        names: FileNames { vba_md: "mapeamento_planilha".into(), ..FileNames::default() },
+        ..OutputConfig::default()
+    };
+    assert!(matches!(export_to(&dir, &igual), Err(AppError::InvalidName(_))));
+    fs::remove_dir_all(&dir).ok();
 }
 
 /// RNF07: abrir, extrair e exportar nunca alteram o arquivo de entrada.
@@ -281,6 +357,7 @@ fn entrada_nunca_modificada() {
             ExportTargets::default(),
             None,
             &VbaOptions::default(),
+            &OutputConfig { on_exists: OnExists::Overwrite, ..OutputConfig::default() },
             &mut |_| {},
         )
         .unwrap();
@@ -303,7 +380,7 @@ fn desempenho_100k_celulas() {
     let t = std::time::Instant::now();
     let (sheets, _) = extract_cells(&path, None, &mut |_| {}).unwrap();
     let json = cells_to_json(&sheets).unwrap();
-    let md = cells_to_markdown("grande.xlsx", &sheets);
+    let md = cells_to_markdown("grande.xlsx", &sheets, &OutputTemplate::default(), "2026-01-01");
     let elapsed = t.elapsed();
 
     let total: usize = sheets.iter().map(|s| s.cells.len()).sum();

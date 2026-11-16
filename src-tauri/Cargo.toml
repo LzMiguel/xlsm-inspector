@@ -25,6 +25,7 @@ calamine = { version = "0.38", features = ["chrono"] } # chrono: datas como text
 serde_json = { version = "1", features = ["preserve_order"] }
 indexmap = { version = "2", features = ["serde"] }
 thiserror = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] } # {data} nos nomes e modelos (já vem com o calamine)
 tauri-plugin-dialog = "2"
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

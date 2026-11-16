@@ -176,6 +176,13 @@ Escala base de **4px**.
 - `<dialog>` nativo modal (foco preso, `Esc` fecha), `radius-lg`, `shadow-md`, fundo `--text` a 40%, largura máx. 512px.
 - Cabeçalho com título `text-lg` e botão fechar. Corpo em seções com título `text-sm` semibold.
 - Abre pela engrenagem da barra superior ou `Ctrl+,`.
+- `wide`: largura máx. 768px (usada nas configurações). Abas "Geral" e "Saída" (`Tabs`).
+- Aba "Saída" (`OutputSettings`): campos de nome de arquivo, seletor de predefinição, formulário do modelo e `<pre>` de pré-visualização em duas colunas (uma só em telas estreitas).
+
+### Fields (`ui/Fields.tsx`)
+
+- `Input`, `Textarea` (monoespaçada), `Select`: borda `--border`, fundo `--surface`, `radius-sm`, foco com contorno `--accent`.
+- `Field`: rótulo `text-sm` medium + controle + dica `text-xs` `--muted`; envolve tudo em `<label>`.
 
 ### Tabs
 

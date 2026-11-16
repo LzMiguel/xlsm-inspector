@@ -5,52 +5,77 @@ import { exportOutputs, pickFolder, revealInFolder, toAppError } from "../api/co
 import { useHotkey } from "../hooks/useHotkey";
 import { useSettingsStore } from "../store/settingsStore";
 import { useWorkbookStore } from "../store/workbookStore";
-import type { AppError, ExportTargets } from "../types/models";
+import type { AppError, ExportTargets, FileNames, OnExists } from "../types/models";
 import { ErrorAlert } from "./ErrorAlert";
+import { Alert } from "./ui/Alert";
 import { Button } from "./ui/Button";
 import { Checkbox } from "./ui/Checkbox";
+import { Input } from "./ui/Fields";
 import { Toast } from "./ui/Toast";
+
+const ROWS: { key: keyof ExportTargets; name: keyof FileNames; ext: string; label: string }[] = [
+  { key: "json", name: "json", ext: ".json", label: "Células (JSON)" },
+  { key: "cells_md", name: "cells_md", ext: ".md", label: "Células (Markdown)" },
+  { key: "vba_md", name: "vba_md", ext: ".md", label: "Código VBA (Markdown)" },
+];
 
 /** Rodapé da barra lateral. Atalho: Ctrl+E. */
 export function ExportPanel() {
   const filePath = useWorkbookStore((s) => s.filePath);
   const hasVba = useWorkbookStore((s) => s.summary?.has_vba ?? false);
   const selectedSheets = useWorkbookStore((s) => s.selectedSheets);
-  const vbaOptions = useSettingsStore((s) => s.settings.vba_options);
-  const defaultOutDir = useSettingsStore((s) => s.settings.default_out_dir);
+  const settings = useSettingsStore((s) => s.settings);
   const result = useWorkbookStore((s) => s.result);
   const busyElsewhere = useWorkbookStore((s) => s.status === "loading" || s.status === "extracting");
 
   const [targets, setTargets] = useState<ExportTargets>({ json: true, cells_md: true, vba_md: true });
+  // ajustes só desta exportação; o padrão vem das configurações
+  const [nameEdits, setNameEdits] = useState<Partial<FileNames>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<AppError | null>(null);
+  const [conflict, setConflict] = useState<{ outDir: string; message: string } | null>(null);
   const [done, setDone] = useState<string[] | null>(null);
 
+  const names: FileNames = { ...settings.file_names, ...nameEdits };
   const vbaOn = targets.vba_md && hasVba;
   const needsCells = targets.json || targets.cells_md;
   const canExport =
     !busy && !busyElsewhere && (needsCells || vbaOn) && !(needsCells && selectedSheets.length === 0);
   const set = (k: keyof ExportTargets) => (v: boolean) => setTargets((t) => ({ ...t, [k]: v }));
 
-  async function exportNow() {
-    if (!filePath || !canExport) return;
+  async function run(outDir: string, onExists: OnExists) {
+    if (!filePath) return;
+    setBusy(true);
     setError(null);
+    setConflict(null);
     try {
-      const outDir = await pickFolder(defaultOutDir ?? undefined);
-      if (!outDir) return;
-      setBusy(true);
       const files = await exportOutputs({
         path: filePath,
         outDir,
         targets: { ...targets, vba_md: vbaOn },
         sheets: selectedSheets,
-        vbaOptions,
+        vbaOptions: settings.vba_options,
+        names,
+        template: settings.template,
+        onExists,
       });
       setDone(files);
     } catch (e) {
-      setError(toAppError(e));
+      const err = toAppError(e);
+      if (err.code === "FileExists") setConflict({ outDir, message: err.message });
+      else setError(err);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function exportNow() {
+    if (!filePath || !canExport) return;
+    try {
+      const outDir = await pickFolder(settings.default_out_dir ?? undefined);
+      if (outDir) await run(outDir, "fail");
+    } catch (e) {
+      setError(toAppError(e));
     }
   }
 
@@ -61,17 +86,54 @@ export function ExportPanel() {
       <h2 className="text-sm font-semibold">Exportar</h2>
 
       <div className="flex flex-col gap-2">
-        <Checkbox label="mapeamento_planilha.json" checked={targets.json} onChange={set("json")} />
-        <Checkbox label="mapeamento_planilha.md" checked={targets.cells_md} onChange={set("cells_md")} />
-        <Checkbox
-          label={hasVba ? "vba_code.md" : "vba_code.md (sem VBA)"}
-          checked={vbaOn}
-          disabled={!hasVba}
-          onChange={set("vba_md")}
-        />
+        {ROWS.map(({ key, name, ext, label }) => {
+          const disabled = key === "vba_md" && !hasVba;
+          const checked = key === "vba_md" ? vbaOn : targets[key];
+          return (
+            <div key={key} className="flex flex-col gap-1">
+              <Checkbox
+                label={disabled ? `${label} (sem VBA)` : label}
+                checked={checked}
+                disabled={disabled}
+                onChange={set(key)}
+              />
+              {checked && (
+                <div className="flex items-center gap-1 pl-6">
+                  <Input
+                    aria-label={`Nome do arquivo ${ext}`}
+                    className="py-1 font-mono text-xs"
+                    value={names[name]}
+                    onChange={(e) => {
+                      const v = e.currentTarget.value;
+                      setNameEdits((n) => ({ ...n, [name]: v }));
+                    }}
+                  />
+                  <span className="font-mono text-xs text-muted">{ext}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {error && <ErrorAlert error={error} />}
+
+      {conflict && (
+        <Alert variant="warning" title="Já existem arquivos com esse nome">
+          <p>{conflict.message}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => run(conflict.outDir, "overwrite")}>
+              Sobrescrever
+            </Button>
+            <Button size="sm" onClick={() => run(conflict.outDir, "suffix")}>
+              Adicionar sufixo _2
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setConflict(null)}>
+              Cancelar
+            </Button>
+          </div>
+        </Alert>
+      )}
 
       <Button
         className="w-full"

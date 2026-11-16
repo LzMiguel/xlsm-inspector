@@ -13,15 +13,18 @@ export async function loadSettings() {
   }
 }
 
+// Gravações em fila: digitar num campo dispara várias seguidas e o Rust usa um
+// único arquivo temporário. A última a entrar é a que fica no disco.
+let saving: Promise<void> = Promise.resolve();
+
 /** Aplica na hora e grava em seguida. */
-export async function updateSettings(patch: Partial<Settings>) {
+export function updateSettings(patch: Partial<Settings>) {
   const next = { ...store().settings, ...patch };
   store().setSettings(next);
-  try {
-    await saveSettings(next);
-  } catch (e) {
-    store().setError(toAppError(e));
-  }
+  saving = saving
+    .then(() => saveSettings(next))
+    .catch((e) => store().setError(toAppError(e)));
+  return saving;
 }
 
 export const updateVbaOptions = (o: Partial<VbaOptions>) =>

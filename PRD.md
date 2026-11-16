@@ -93,6 +93,19 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta �
 - Persistem entre sessões, em `settings.json` na pasta de configuração do app: pasta de exportação padrão (o diálogo de exportação abre nela) e opções de limpeza do VBA.
 - Arquivo ausente ou corrompido volta aos padrões, sem erro.
 
+### RF09 — Nome dos arquivos
+
+- Padrão de nome por arquivo gerado (`json`, `md` das células, `md` do VBA), com `{arquivo}` (planilha, sem extensão) e `{data}` (AAAA-MM-DD). Extensão fixa. Configurável em Configurações → Saída e ajustável a cada exportação no painel Exportar.
+- Validação (Windows): vazio, `< > : " / \ | ? *`, controle, terminar em ponto, nomes reservados (`CON`, `NUL`, `COM1`…), mais de 100 caracteres, dois arquivos com o mesmo nome. Falha antes de extrair.
+- Se o arquivo já existir na pasta, o app pergunta: sobrescrever, adicionar sufixo (`_2`, `_3`…) ou cancelar.
+
+### RF10 — Modelos de saída
+
+- Os textos do Markdown de células e VBA são personalizáveis: título, texto de abertura, título de aba, cabeçalhos da tabela, rótulos de fórmula/valor, título de componente VBA e rodapé. Placeholders: `{arquivo}` (com extensão), `{data}`, `{aba}`, `{componente}`.
+- O modelo **Padrão** reproduz byte a byte o formato da seção 8. O JSON nunca é personalizável.
+- Predefinições: "Padrão", "Contexto para IA" (com texto de abertura) e as do usuário (salvar, substituir, excluir; duplicar = salvar com outro nome).
+- Pré-visualização ao vivo, renderizada pelo Rust com dados fictícios.
+
 ## 7. Requisitos não-funcionais
 
 | ID    | Requisito                                                                                 |

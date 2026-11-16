@@ -99,7 +99,40 @@ export interface Settings {
   /** Pasta onde o diálogo de exportação abre. */
   default_out_dir: string | null;
   vba_options: VbaOptions;
+  file_names: FileNames;
+  /** Modelo ativo do Markdown. */
+  template: OutputTemplate;
+  /** Predefinições do usuário (as embutidas vêm de `builtin_templates`). */
+  presets: TemplatePreset[];
 }
+
+/** Espelho de output/naming.rs: padrões sem extensão. `{arquivo}` e `{data}`. */
+export interface FileNames {
+  json: string;
+  cells_md: string;
+  vba_md: string;
+}
+
+/** Espelho de output/template.rs. `{arquivo}` (com extensão), `{data}`, `{aba}`, `{componente}`. */
+export interface OutputTemplate {
+  title: string;
+  intro: string;
+  sheet_heading: string;
+  cell_header: string;
+  content_header: string;
+  formula_label: string;
+  value_label: string;
+  vba_heading: string;
+  footer: string;
+}
+
+export interface TemplatePreset {
+  name: string;
+  template: OutputTemplate;
+}
+
+/** Arquivo de destino já existe: `fail` devolve o erro `FileExists`. */
+export type OnExists = "fail" | "overwrite" | "suffix";
 
 export interface ExportTargets {
   json: boolean;
@@ -114,6 +147,8 @@ export type AppErrorCode =
   | "CorruptedFile"
   | "NoVbaProject"
   | "WriteFailed"
+  | "InvalidName"
+  | "FileExists"
   | "Internal";
 
 export interface AppError {

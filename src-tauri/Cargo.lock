@@ -4946,6 +4946,7 @@ name = "xlsm-inspector"
 version = "1.0.0"
 dependencies = [
  "calamine",
+ "chrono",
  "indexmap 2.14.2",
  "serde",
  "serde_json",

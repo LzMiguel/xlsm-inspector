@@ -8,6 +8,8 @@ const TITLES: Record<AppErrorCode, string> = {
   CorruptedFile: "Arquivo corrompido ou inválido",
   NoVbaProject: "Arquivo sem VBA",
   WriteFailed: "Falha ao gravar os arquivos",
+  InvalidName: "Nome de arquivo inválido",
+  FileExists: "Arquivo já existe",
   Internal: "Erro inesperado",
 };
 

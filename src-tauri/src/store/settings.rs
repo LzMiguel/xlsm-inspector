@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
 use crate::excel::vba::VbaOptions;
+use crate::output::naming::FileNames;
+use crate::output::template::{OutputTemplate, TemplatePreset};
 
 const FILE: &str = "settings.json";
 const TMP_FILE: &str = "settings.json.tmp";
@@ -18,6 +20,11 @@ pub struct Settings {
     /// Pasta onde o diálogo de exportação abre.
     pub default_out_dir: Option<String>,
     pub vba_options: VbaOptions,
+    pub file_names: FileNames,
+    /// Modelo ativo do Markdown.
+    pub template: OutputTemplate,
+    /// Predefinições do usuário (as embutidas vêm de `template::builtin_presets`).
+    pub presets: Vec<TemplatePreset>,
 }
 
 impl Default for Settings {
@@ -26,6 +33,9 @@ impl Default for Settings {
             version: VERSION,
             default_out_dir: None,
             vba_options: VbaOptions::default(),
+            file_names: FileNames::default(),
+            template: OutputTemplate::default(),
+            presets: Vec::new(),
         }
     }
 }
@@ -74,6 +84,12 @@ mod tests {
         let s = Settings {
             default_out_dir: Some("C:\\saida".into()),
             vba_options: VbaOptions { remove_blank_lines: false, hide_attributes: true },
+            file_names: FileNames { json: "{arquivo}_{data}".into(), ..FileNames::default() },
+            template: OutputTemplate { intro: "Olá".into(), ..OutputTemplate::default() },
+            presets: vec![TemplatePreset {
+                name: "Meu".into(),
+                template: OutputTemplate { footer: "fim".into(), ..OutputTemplate::default() },
+            }],
             ..Settings::default()
         };
         save(&dir, &s).unwrap();

@@ -9,7 +9,11 @@ import type {
   AppErrorCode,
   CellsExtraction,
   ExportTargets,
+  FileNames,
+  OnExists,
+  OutputTemplate,
   Settings,
+  TemplatePreset,
   VbaComponent,
   VbaOptions,
   WorkbookSummary,
@@ -22,6 +26,8 @@ const CODES: readonly AppErrorCode[] = [
   "CorruptedFile",
   "NoVbaProject",
   "WriteFailed",
+  "InvalidName",
+  "FileExists",
   "Internal",
 ];
 
@@ -60,6 +66,9 @@ export interface ExportParams {
   targets?: ExportTargets;
   sheets?: string[];
   vbaOptions?: VbaOptions;
+  names?: FileNames;
+  template?: OutputTemplate;
+  onExists?: OnExists;
 }
 
 /** Devolve os caminhos dos arquivos gerados. */
@@ -79,6 +88,12 @@ export async function pickWorkbook(): Promise<string | null> {
 export const getSettings = () => call<Settings>("get_settings");
 
 export const saveSettings = (settings: Settings) => call<void>("save_settings", { settings });
+
+export const getBuiltinTemplates = () => call<TemplatePreset[]>("builtin_templates");
+
+/** Markdown de exemplo, renderizado no Rust com dados fictícios. */
+export const previewTemplate = (template: OutputTemplate) =>
+  call<string>("preview_template", { template });
 
 /** `defaultPath`: pasta onde o diálogo abre. */
 export async function pickFolder(defaultPath?: string): Promise<string | null> {

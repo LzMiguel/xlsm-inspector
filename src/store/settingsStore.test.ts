@@ -31,6 +31,16 @@ describe("configurações", () => {
     expect(api.saveSettings).toHaveBeenCalledWith(s().settings);
   });
 
+  it("gravações seguidas entram em fila e a última vence", async () => {
+    const order: (string | null)[] = [];
+    vi.mocked(api.saveSettings).mockImplementation(async (s) => {
+      await Promise.resolve();
+      order.push(s.default_out_dir);
+    });
+    await Promise.all([updateSettings({ default_out_dir: "a" }), updateSettings({ default_out_dir: "b" })]);
+    expect(order).toEqual(["a", "b"]);
+  });
+
   it("falha ao gravar mantém o valor e expõe o erro", async () => {
     vi.mocked(api.saveSettings).mockRejectedValue({ code: "WriteFailed", message: "x" });
     await updateSettings({ default_out_dir: "D:\\y" });

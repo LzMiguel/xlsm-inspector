@@ -2,16 +2,19 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
 
 import { Button } from "./Button";
+import { cn } from "./cn";
 
 interface DialogProps {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  /** Largura maior, para formulários com pré-visualização. */
+  wide?: boolean;
 }
 
 /** `<dialog>` nativo: foco preso, Esc fecha e o fundo fica inerte. */
-export function Dialog({ open, onClose, title, children }: DialogProps) {
+export function Dialog({ open, onClose, title, children, wide = false }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -28,7 +31,10 @@ export function Dialog({ open, onClose, title, children }: DialogProps) {
       aria-labelledby={titleId}
       onClose={onClose}
       onClick={(e) => e.target === e.currentTarget && onClose()}
-      className="m-auto w-full max-w-lg rounded-lg border border-border bg-surface p-0 text-text shadow-md backdrop:bg-text/40"
+      className={cn(
+        "m-auto max-h-[90vh] w-full overflow-y-auto rounded-lg border border-border bg-surface p-0 text-text shadow-md backdrop:bg-text/40",
+        wide ? "max-w-3xl" : "max-w-lg",
+      )}
     >
       <div className="flex items-center gap-2 border-b border-border px-4 py-3">
         <h2 id={titleId} className="text-lg font-semibold">

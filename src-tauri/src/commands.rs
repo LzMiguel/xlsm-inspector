@@ -8,7 +8,10 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::error::AppError;
 use crate::excel::{cells, vba, vba::VbaOptions, workbook};
 use crate::model::{CellsExtraction, Progress, VbaComponent, WorkbookSummary};
-use crate::output::export::{self, ExportTargets};
+use crate::output::export::{self, ExportTargets, OutputConfig};
+use crate::output::markdown;
+use crate::output::naming::{FileNames, OnExists};
+use crate::output::template::{self, OutputTemplate, TemplatePreset};
 use crate::store::settings::{self, Settings};
 
 const PROGRESS_EVENT: &str = "extraction://progress";
@@ -66,19 +69,39 @@ pub async fn export_outputs(
     targets: Option<ExportTargets>,
     sheets: Option<Vec<String>>,
     vba_options: Option<VbaOptions>,
+    names: Option<FileNames>,
+    template: Option<OutputTemplate>,
+    on_exists: Option<OnExists>,
 ) -> Result<Vec<String>, AppError> {
     blocking(move || {
         let mut emit = emitter(app);
+        let cfg = OutputConfig {
+            names: names.unwrap_or_default(),
+            template: template.unwrap_or_default(),
+            on_exists: on_exists.unwrap_or_default(),
+        };
         export::export_outputs(
             Path::new(&path),
             &PathBuf::from(out_dir),
             targets.unwrap_or_default(),
             sheets.as_deref(),
             &vba_options.unwrap_or_default(),
+            &cfg,
             &mut emit,
         )
     })
     .await
+}
+
+#[tauri::command]
+pub fn builtin_templates() -> Vec<TemplatePreset> {
+    template::builtin_presets()
+}
+
+/// Markdown de exemplo com o modelo informado (dados fictícios).
+#[tauri::command]
+pub fn preview_template(template: OutputTemplate) -> String {
+    markdown::preview(&template, &template::today())
 }
 
 fn config_dir(app: &AppHandle) -> Result<PathBuf, AppError> {

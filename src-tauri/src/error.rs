@@ -15,6 +15,10 @@ pub enum AppError {
     NoVbaProject,
     #[error("Falha ao gravar o arquivo: {0}")]
     WriteFailed(String),
+    #[error("Nome de arquivo inválido: {0}")]
+    InvalidName(String),
+    #[error("Já existe na pasta: {0}")]
+    FileExists(String),
     #[error("Erro interno: {0}")]
     Internal(String),
 }
@@ -28,6 +32,8 @@ impl AppError {
             Self::CorruptedFile(_) => "CorruptedFile",
             Self::NoVbaProject => "NoVbaProject",
             Self::WriteFailed(_) => "WriteFailed",
+            Self::InvalidName(_) => "InvalidName",
+            Self::FileExists(_) => "FileExists",
             Self::Internal(_) => "Internal",
         }
     }
