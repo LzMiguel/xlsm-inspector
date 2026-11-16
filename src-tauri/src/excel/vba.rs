@@ -3,7 +3,7 @@ use std::path::Path;
 use calamine::Reader;
 use serde::{Deserialize, Serialize};
 
-use super::workbook::{open, xlsx_err, Book};
+use super::workbook::{Book, open, xlsx_err};
 use crate::error::AppError;
 use crate::model::{VbaComponent, VbaComponentKind};
 
@@ -139,9 +139,15 @@ mod tests {
 
     #[test]
     fn classificacao() {
-        assert_eq!(classify("Module1", "Attribute VB_Name = \"Module1\""), Module);
         assert_eq!(
-            classify("Cls", "Attribute VB_Name = \"Cls\"\nAttribute VB_Creatable = False"),
+            classify("Module1", "Attribute VB_Name = \"Module1\""),
+            Module
+        );
+        assert_eq!(
+            classify(
+                "Cls",
+                "Attribute VB_Name = \"Cls\"\nAttribute VB_Creatable = False"
+            ),
             Class
         );
         assert_eq!(

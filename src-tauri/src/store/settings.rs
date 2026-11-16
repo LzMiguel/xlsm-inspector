@@ -83,12 +83,24 @@ mod tests {
         let dir = temp("roundtrip");
         let s = Settings {
             default_out_dir: Some("C:\\saida".into()),
-            vba_options: VbaOptions { remove_blank_lines: false, hide_attributes: true },
-            file_names: FileNames { json: "{arquivo}_{data}".into(), ..FileNames::default() },
-            template: OutputTemplate { intro: "Olá".into(), ..OutputTemplate::default() },
+            vba_options: VbaOptions {
+                remove_blank_lines: false,
+                hide_attributes: true,
+            },
+            file_names: FileNames {
+                json: "{arquivo}_{data}".into(),
+                ..FileNames::default()
+            },
+            template: OutputTemplate {
+                intro: "Olá".into(),
+                ..OutputTemplate::default()
+            },
             presets: vec![TemplatePreset {
                 name: "Meu".into(),
-                template: OutputTemplate { footer: "fim".into(), ..OutputTemplate::default() },
+                template: OutputTemplate {
+                    footer: "fim".into(),
+                    ..OutputTemplate::default()
+                },
             }],
             ..Settings::default()
         };

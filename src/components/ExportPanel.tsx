@@ -5,8 +5,9 @@ import { exportOutputs, pickFolder, revealInFolder, toAppError } from "../api/co
 import { useHotkey } from "../hooks/useHotkey";
 import { useSettingsStore } from "../store/settingsStore";
 import { useWorkbookStore } from "../store/workbookStore";
-import type { AppError, ExportTargets, FileNames, OnExists } from "../types/models";
+import type { AppError, ExportTargets, ExtractScope, FileNames, OnExists } from "../types/models";
 import { ErrorAlert } from "./ErrorAlert";
+import { ScopeSelector } from "./ScopeSelector";
 import { Alert } from "./ui/Alert";
 import { Button } from "./ui/Button";
 import { Checkbox } from "./ui/Checkbox";
@@ -30,13 +31,25 @@ export function ExportPanel() {
 
   const [targets, setTargets] = useState<ExportTargets>({ json: true, cells_md: true, vba_md: true });
   // ajustes só desta exportação; o padrão vem das configurações
+  const extractScope = useWorkbookStore((s) => s.scope);
+  const [exportScope, setExportScope] = useState<ExtractScope | null>(null);
   const [nameEdits, setNameEdits] = useState<Partial<FileNames>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<AppError | null>(null);
   const [conflict, setConflict] = useState<{ outDir: string; message: string } | null>(null);
   const [done, setDone] = useState<string[] | null>(null);
 
-  const names: FileNames = { ...settings.file_names, ...nameEdits };
+  // Exportação independente da extração; começa igual a ela.
+  const scope = exportScope ?? extractScope;
+  // Sugestão de nome para saída parcial (o VBA não é cortado).
+  const suffix = scope.kind === "full" ? "" : "_amostra";
+  const { json, cells_md, vba_md } = settings.file_names;
+  const names: FileNames = {
+    json: json + suffix,
+    cells_md: cells_md + suffix,
+    vba_md,
+    ...nameEdits,
+  };
   const vbaOn = targets.vba_md && hasVba;
   const needsCells = targets.json || targets.cells_md;
   const canExport =
@@ -58,6 +71,7 @@ export function ExportPanel() {
         names,
         template: settings.template,
         onExists,
+        scope,
       });
       setDone(files);
     } catch (e) {
@@ -84,6 +98,8 @@ export function ExportPanel() {
   return (
     <section aria-label="Exportação" className="flex flex-col gap-3 border-t border-border p-4">
       <h2 className="text-sm font-semibold">Exportar</h2>
+
+      <ScopeSelector value={scope} onChange={setExportScope} disabled={busy} />
 
       <div className="flex flex-col gap-2">
         {ROWS.map(({ key, name, ext, label }) => {

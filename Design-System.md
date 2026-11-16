@@ -179,6 +179,11 @@ Escala base de **4px**.
 - `wide`: largura máx. 768px (usada nas configurações). Abas "Geral" e "Saída" (`Tabs`).
 - Aba "Saída" (`OutputSettings`): campos de nome de arquivo, seletor de predefinição, formulário do modelo e `<pre>` de pré-visualização em duas colunas (uma só em telas estreitas).
 
+### ScopeSelector
+
+- `Select` (Todas / Primeiras N / Amostra de N) + `Input` numérico (mín. 1, padrão 100) quando não é "Todas". Aparece no `ExtractPanel` e no `ExportPanel`.
+- Selo "amostra: X de Y linhas" no `CellTable`: `radius-sm`, fundo `--warning-soft`, `text-xs`. Aviso `Sampled` usa `Alert` variante `info`.
+
 ### Fields (`ui/Fields.tsx`)
 
 - `Input`, `Textarea` (monoespaçada), `Select`: borda `--border`, fundo `--surface`, `radius-sm`, foco com contorno `--accent`.

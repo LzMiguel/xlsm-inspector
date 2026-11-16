@@ -124,6 +124,16 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
           />
         </label>
 
+        {sheet.sampled && (
+          <span
+            title="A extração usou só parte das linhas desta aba"
+            className="shrink-0 rounded-sm bg-warning-soft px-2 py-0.5 text-xs font-medium"
+          >
+            amostra: {sheet.sampled.kept_rows.toLocaleString("pt-BR")} de{" "}
+            {sheet.sampled.total_rows.toLocaleString("pt-BR")} linhas
+          </span>
+        )}
+
         <span className="shrink-0 text-sm text-muted tabular-nums">
           {filtered.length.toLocaleString("pt-BR")} de {rows.length.toLocaleString("pt-BR")}
         </span>

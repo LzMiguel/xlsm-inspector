@@ -8,6 +8,7 @@ import type { Progress, VbaOptions } from "../types/models";
 import { Alert } from "./ui/Alert";
 import { Button } from "./ui/Button";
 import { Checkbox } from "./ui/Checkbox";
+import { ScopeSelector } from "./ScopeSelector";
 import { ProgressBar } from "./ui/ProgressBar";
 
 function progressLabel(p: Progress | null): string {
@@ -25,6 +26,8 @@ export function ExtractPanel() {
   const hasVba = useWorkbookStore((s) => s.summary?.has_vba ?? false);
   const noSheets = useWorkbookStore((s) => s.selectedSheets.length === 0);
   const vbaOptions = useSettingsStore((s) => s.settings.vba_options);
+  const scope = useWorkbookStore((s) => s.scope);
+  const setScope = useWorkbookStore((s) => s.setScope);
   const extracting = status === "extracting";
 
   // Mudou uma opção de limpeza: atualiza o VBA já extraído, sem reler as células.
@@ -37,7 +40,7 @@ export function ExtractPanel() {
 
   return (
     <section className="flex flex-col gap-4 rounded-md border border-border bg-surface p-4">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         <Button
           variant={result ? "secondary" : "primary"}
           icon={Table2}
@@ -47,6 +50,7 @@ export function ExtractPanel() {
         >
           {result ? "Extrair novamente" : "Extrair"}
         </Button>
+        <ScopeSelector value={scope} onChange={setScope} disabled={extracting} />
         {result && !extracting && (
           <p className="text-sm text-muted">
             {cellCount.toLocaleString("pt-BR")} células em {result.sheets.length}{" "}
@@ -83,7 +87,11 @@ export function ExtractPanel() {
 
       {!extracting &&
         warnings.map((w) => (
-          <Alert key={`${w.kind}:${w.sheet}`} variant="warning" title={`Aba "${w.sheet}"`}>
+          <Alert
+            key={`${w.kind}:${w.sheet}`}
+            variant={w.kind === "Sampled" ? "info" : "warning"}
+            title={`Aba "${w.sheet}"`}
+          >
             {w.message}
           </Alert>
         ))}

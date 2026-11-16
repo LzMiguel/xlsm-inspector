@@ -7,7 +7,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::error::AppError;
 use crate::excel::{cells, vba, vba::VbaOptions, workbook};
-use crate::model::{CellsExtraction, Progress, VbaComponent, WorkbookSummary};
+use crate::model::{CellsExtraction, ExtractScope, Progress, VbaComponent, WorkbookSummary};
 use crate::output::export::{self, ExportTargets, OutputConfig};
 use crate::output::markdown;
 use crate::output::naming::{FileNames, OnExists};
@@ -43,10 +43,16 @@ pub async fn extract_cells(
     app: AppHandle,
     path: String,
     sheets: Option<Vec<String>>,
+    scope: Option<ExtractScope>,
 ) -> Result<CellsExtraction, AppError> {
     blocking(move || {
         let mut emit = emitter(app);
-        let (sheets, warnings) = cells::extract_cells(Path::new(&path), sheets.as_deref(), &mut emit)?;
+        let (sheets, warnings) = cells::extract_with_scope(
+            Path::new(&path),
+            sheets.as_deref(),
+            scope.unwrap_or_default(),
+            &mut emit,
+        )?;
         Ok(CellsExtraction { sheets, warnings })
     })
     .await
@@ -61,6 +67,8 @@ pub async fn extract_vba(
 }
 
 /// Re-extrai no Rust e grava os arquivos; devolve os caminhos gerados.
+// Cada parâmetro é uma chave do `invoke`; agrupar quebraria o contrato com o frontend.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn export_outputs(
     app: AppHandle,
@@ -72,6 +80,7 @@ pub async fn export_outputs(
     names: Option<FileNames>,
     template: Option<OutputTemplate>,
     on_exists: Option<OnExists>,
+    scope: Option<ExtractScope>,
 ) -> Result<Vec<String>, AppError> {
     blocking(move || {
         let mut emit = emitter(app);
@@ -79,6 +88,7 @@ pub async fn export_outputs(
             names: names.unwrap_or_default(),
             template: template.unwrap_or_default(),
             on_exists: on_exists.unwrap_or_default(),
+            scope: scope.unwrap_or_default(),
         };
         export::export_outputs(
             Path::new(&path),

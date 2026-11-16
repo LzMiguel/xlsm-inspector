@@ -134,7 +134,12 @@ pub enum CellContent {         // serializado "untagged"
 pub struct SheetCells {
     pub name: String,
     pub cells: IndexMap<String, CellContent>, // "A1" -> conteúdo
+    pub tables: Vec<TableInfo>,
+    pub sampled: Option<SampleInfo>,          // Some só se o escopo cortou linhas
 }
+
+pub struct SampleInfo { pub total_rows: usize, pub kept_rows: usize }
+pub enum ExtractScope { Full, Head { rows: usize }, Sample { rows: usize } } // JSON: {"kind":"head","rows":100}
 
 pub enum VbaComponentKind { Module, Class, Document, Workbook, UserForm, Unknown }
 
@@ -161,9 +166,9 @@ Os campos `formula` e `valor` mantêm os nomes do script Python para que o JSON 
 | Comando            | Entrada                                                  | Saída                                           | Observação                                                                                                        |
 | ------------------ | -------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | `inspect_workbook` | `path`                                                   | `WorkbookSummary`                               | Rápido; só metadados.                                                                                             |
-| `extract_cells`    | `path`, `sheets?: string[]`                              | `{ sheets: SheetCells[], warnings: Warning[] }` | Emite eventos de progresso. Sem `sheets` = todas as abas.                                                         |
+| `extract_cells`    | `path`, `sheets?: string[]`, `scope?`                    | `{ sheets: SheetCells[], warnings: Warning[] }` | Emite eventos de progresso. Sem `sheets` = todas as abas. `scope`: `full` (padrão), `head` ou `sample` com `rows`; corta por linha com conteúdo, mantém cabeçalhos de tabela e gera aviso `Sampled`. O arquivo ainda é lido inteiro. |
 | `extract_vba`      | `path`, `options?`                                       | `VbaComponent[]`                                | `options`: `remove_blank_lines`, `hide_attributes`. Sem VBA → erro `NoVbaProject`.                                |
-| `export_outputs`   | `path`, `out_dir`, `targets?`, `sheets?`, `vba_options?`, `names?`, `template?`, `on_exists?` | `string[]` (arquivos gerados)                   | Re-extrai no Rust e escreve. `targets`: `{json, cells_md, vba_md}` (padrão: todos). Sem VBA, omite `vba_code.md`. `names`: padrões de nome (`{arquivo}`, `{data}`); `template`: textos do Markdown; `on_exists`: `fail` (padrão, erro `FileExists`), `overwrite` ou `suffix` (`_2`). Nomes e colisões são checados antes de extrair. O JSON nunca muda. |
+| `export_outputs`   | `path`, `out_dir`, `targets?`, `sheets?`, `vba_options?`, `names?`, `template?`, `on_exists?` | `string[]` (arquivos gerados)                   | Re-extrai no Rust e escreve. `targets`: `{json, cells_md, vba_md}` (padrão: todos). Sem VBA, omite `vba_code.md`. `names`: padrões de nome (`{arquivo}`, `{data}`); `template`: textos do Markdown; `scope`: igual ao de `extract_cells` (a exportação é independente da extração); `on_exists`: `fail` (padrão, erro `FileExists`), `overwrite` ou `suffix` (`_2`). Nomes e colisões são checados antes de extrair. O JSON nunca muda. |
 | `builtin_templates` | — | `TemplatePreset[]` | Predefinições embutidas ("Padrão" = formato da v1.0, "Contexto para IA"). |
 | `preview_template` | `template` | `string` | Markdown de exemplo com dados fictícios. |
 

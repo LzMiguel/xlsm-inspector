@@ -58,7 +58,10 @@ pub fn resolve(pattern: &str, ext: &str, vars: &[(&str, &str)]) -> Result<String
     if stem.chars().count() > MAX_STEM {
         return Err(bad(&format!("passa de {MAX_STEM} caracteres")));
     }
-    if let Some(c) = stem.chars().find(|c| c.is_control() || INVALID_CHARS.contains(*c)) {
+    if let Some(c) = stem
+        .chars()
+        .find(|c| c.is_control() || INVALID_CHARS.contains(*c))
+    {
         return Err(bad(&format!("caractere não permitido ({c:?})")));
     }
     if stem.ends_with('.') {
@@ -95,14 +98,25 @@ mod tests {
 
     #[test]
     fn nome_valido_com_placeholders() {
-        assert_eq!(resolve("mapeamento_planilha", "json", &V).unwrap(), "mapeamento_planilha.json");
-        assert_eq!(resolve("{arquivo}_{data}", "md", &V).unwrap(), "vendas_2026-01-02.md");
-        assert_eq!(resolve("  relatório 1 ", "md", &V).unwrap(), "relatório 1.md");
+        assert_eq!(
+            resolve("mapeamento_planilha", "json", &V).unwrap(),
+            "mapeamento_planilha.json"
+        );
+        assert_eq!(
+            resolve("{arquivo}_{data}", "md", &V).unwrap(),
+            "vendas_2026-01-02.md"
+        );
+        assert_eq!(
+            resolve("  relatório 1 ", "md", &V).unwrap(),
+            "relatório 1.md"
+        );
     }
 
     #[test]
     fn nomes_invalidos() {
-        for p in ["", "   ", "a/b", "a\\b", "a:b", "a?", "..", ".", "x.", "a\nb"] {
+        for p in [
+            "", "   ", "a/b", "a\\b", "a:b", "a?", "..", ".", "x.", "a\nb",
+        ] {
             assert!(invalid(p), "{p:?} deveria ser inválido");
         }
         for p in ["CON", "con", "Nul", "COM1", "lpt9", "CON.backup", "aux "] {
@@ -121,7 +135,8 @@ mod tests {
 
     #[test]
     fn sufixo_para_nome_livre() {
-        let dir = std::env::temp_dir().join(format!("xlsm-inspector-{}-naming", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("xlsm-inspector-{}-naming", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
 

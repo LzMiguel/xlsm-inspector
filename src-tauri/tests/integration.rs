@@ -6,7 +6,7 @@ use xlsm_inspector_lib::excel::cells::extract_cells;
 use xlsm_inspector_lib::excel::vba::{VbaOptions, extract_file};
 use xlsm_inspector_lib::excel::workbook::inspect;
 use xlsm_inspector_lib::model::{
-    CellContent, CellValue, SheetCells, VbaComponentKind, Warning, WarningKind,
+    CellContent, CellValue, ExtractScope, SheetCells, VbaComponentKind, Warning, WarningKind,
 };
 use xlsm_inspector_lib::output::export::{ExportTargets, OutputConfig, export_outputs};
 use xlsm_inspector_lib::output::json::cells_to_json;
@@ -151,7 +151,11 @@ fn com_vba() {
     };
     let attrs = |name: &str| {
         let c = comps.iter().find(|c| c.name == name).unwrap();
-        c.code.lines().filter(|l| l.starts_with("Attribute")).collect::<Vec<_>>().join("\n")
+        c.code
+            .lines()
+            .filter(|l| l.starts_with("Attribute"))
+            .collect::<Vec<_>>()
+            .join("\n")
     };
     assert_eq!(kind("modUtilitarios"), VbaComponentKind::Module);
     assert_eq!(
@@ -250,7 +254,10 @@ fn exporta_tres_arquivos() {
     );
 
     // sem VBA: vba_code.md é omitido, sem erro (sobrescreve os da rodada anterior)
-    let cfg = OutputConfig { on_exists: OnExists::Overwrite, ..OutputConfig::default() };
+    let cfg = OutputConfig {
+        on_exists: OnExists::Overwrite,
+        ..OutputConfig::default()
+    };
     let written = export_outputs(
         &fx("simples.xlsx"),
         &out,
@@ -297,8 +304,14 @@ fn modelo_personalizado_nao_altera_json() {
     export_to(&b, &custom).unwrap();
 
     let read = |d: &Path, n: &str| fs::read(d.join(n)).unwrap();
-    assert_eq!(read(&a, "mapeamento_planilha.json"), read(&b, "mapeamento_planilha.json"));
-    assert_ne!(read(&a, "mapeamento_planilha.md"), read(&b, "mapeamento_planilha.md"));
+    assert_eq!(
+        read(&a, "mapeamento_planilha.json"),
+        read(&b, "mapeamento_planilha.json")
+    );
+    assert_ne!(
+        read(&a, "mapeamento_planilha.md"),
+        read(&b, "mapeamento_planilha.md")
+    );
     assert!(
         fs::read_to_string(b.join("mapeamento_planilha.md"))
             .unwrap()
@@ -307,33 +320,87 @@ fn modelo_personalizado_nao_altera_json() {
     fs::remove_dir_all(&base).ok();
 }
 
+/// Escopo parcial: o `.md` ganha o aviso, o JSON só tem as linhas mantidas.
+#[test]
+fn exporta_amostra_com_aviso() {
+    let dir = std::env::temp_dir().join(format!("xlsm_inspector_scope_{}", std::process::id()));
+    let cfg = OutputConfig {
+        scope: ExtractScope::Head { rows: 1 },
+        ..OutputConfig::default()
+    };
+    export_to(&dir, &cfg).unwrap();
+
+    let md = fs::read_to_string(dir.join("mapeamento_planilha.md")).unwrap();
+    assert!(md.contains("> Amostra: 1 de "), "aviso ausente:\n{md}");
+
+    let json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(dir.join("mapeamento_planilha.json")).unwrap())
+            .unwrap();
+    let (full, _) = cells("simples.xlsx");
+    let total: usize = full.iter().map(|s| s.cells.len()).sum();
+    let kept: usize = json
+        .as_object()
+        .unwrap()
+        .values()
+        .map(|s| s.as_object().unwrap().len())
+        .sum();
+    assert!(kept < total);
+    fs::remove_dir_all(&dir).ok();
+}
+
 #[test]
 fn nomes_e_colisoes() {
     let dir = std::env::temp_dir().join(format!("xlsm_inspector_names_{}", std::process::id()));
-    let names = FileNames { json: "{arquivo}_dados".into(), ..FileNames::default() };
-    let cfg = OutputConfig { names, ..OutputConfig::default() };
+    let names = FileNames {
+        json: "{arquivo}_dados".into(),
+        ..FileNames::default()
+    };
+    let cfg = OutputConfig {
+        names,
+        ..OutputConfig::default()
+    };
 
     let written = export_to(&dir, &cfg).unwrap();
     assert!(dir.join("simples_dados.json").exists() && written.len() == 2);
 
     // já existem: por padrão não grava nada e avisa
-    assert!(matches!(export_to(&dir, &cfg), Err(AppError::FileExists(_))));
+    assert!(matches!(
+        export_to(&dir, &cfg),
+        Err(AppError::FileExists(_))
+    ));
     // sufixo: cria _2 sem tocar nos originais
-    let sufixo = OutputConfig { on_exists: OnExists::Suffix, ..cfg.clone() };
+    let sufixo = OutputConfig {
+        on_exists: OnExists::Suffix,
+        ..cfg.clone()
+    };
     export_to(&dir, &sufixo).unwrap();
-    assert!(dir.join("simples_dados_2.json").exists() && dir.join("mapeamento_planilha_2.md").exists());
+    assert!(
+        dir.join("simples_dados_2.json").exists() && dir.join("mapeamento_planilha_2.md").exists()
+    );
 
     // nome inválido e nomes repetidos falham antes de gravar
     let ruim = OutputConfig {
-        names: FileNames { json: "a/b".into(), ..FileNames::default() },
+        names: FileNames {
+            json: "a/b".into(),
+            ..FileNames::default()
+        },
         ..OutputConfig::default()
     };
-    assert!(matches!(export_to(&dir, &ruim), Err(AppError::InvalidName(_))));
+    assert!(matches!(
+        export_to(&dir, &ruim),
+        Err(AppError::InvalidName(_))
+    ));
     let igual = OutputConfig {
-        names: FileNames { vba_md: "mapeamento_planilha".into(), ..FileNames::default() },
+        names: FileNames {
+            vba_md: "mapeamento_planilha".into(),
+            ..FileNames::default()
+        },
         ..OutputConfig::default()
     };
-    assert!(matches!(export_to(&dir, &igual), Err(AppError::InvalidName(_))));
+    assert!(matches!(
+        export_to(&dir, &igual),
+        Err(AppError::InvalidName(_))
+    ));
     fs::remove_dir_all(&dir).ok();
 }
 
@@ -357,7 +424,10 @@ fn entrada_nunca_modificada() {
             ExportTargets::default(),
             None,
             &VbaOptions::default(),
-            &OutputConfig { on_exists: OnExists::Overwrite, ..OutputConfig::default() },
+            &OutputConfig {
+                on_exists: OnExists::Overwrite,
+                ..OutputConfig::default()
+            },
             &mut |_| {},
         )
         .unwrap();
@@ -375,16 +445,28 @@ fn entrada_nunca_modificada() {
 #[ignore = "desempenho: precisa de fixtures/grande.xlsx e de --release"]
 fn desempenho_100k_celulas() {
     let path = fx("grande.xlsx");
-    assert!(path.exists(), "gere grande.xlsx com tests/gerar_fixture_grande.py");
+    assert!(
+        path.exists(),
+        "gere grande.xlsx com tests/gerar_fixture_grande.py"
+    );
 
     let t = std::time::Instant::now();
     let (sheets, _) = extract_cells(&path, None, &mut |_| {}).unwrap();
     let json = cells_to_json(&sheets).unwrap();
-    let md = cells_to_markdown("grande.xlsx", &sheets, &OutputTemplate::default(), "2026-01-01");
+    let md = cells_to_markdown(
+        "grande.xlsx",
+        &sheets,
+        &OutputTemplate::default(),
+        "2026-01-01",
+    );
     let elapsed = t.elapsed();
 
     let total: usize = sheets.iter().map(|s| s.cells.len()).sum();
-    println!("{total} células, JSON {} KB, MD {} KB, em {elapsed:?}", json.len() / 1024, md.len() / 1024);
+    println!(
+        "{total} células, JSON {} KB, MD {} KB, em {elapsed:?}",
+        json.len() / 1024,
+        md.len() / 1024
+    );
     assert!(total >= 100_000);
     assert!(elapsed.as_secs_f64() < 5.0, "RNF02 estourou: {elapsed:?}");
 }

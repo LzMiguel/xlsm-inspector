@@ -18,7 +18,10 @@ mod tests {
     #[test]
     fn formato_do_prd() {
         let mut cells = IndexMap::new();
-        cells.insert("B1".to_string(), CellContent::Plain(CellValue::String("Olá".into())));
+        cells.insert(
+            "B1".to_string(),
+            CellContent::Plain(CellValue::String("Olá".into())),
+        );
         cells.insert(
             "A1".to_string(),
             CellContent::Formula {
@@ -27,8 +30,18 @@ mod tests {
             },
         );
         let sheets = vec![
-            SheetCells { name: "Zeta".into(), cells, tables: vec![] },
-            SheetCells { name: "Alfa".into(), cells: IndexMap::new(), tables: vec![] },
+            SheetCells {
+                name: "Zeta".into(),
+                cells,
+                tables: vec![],
+                sampled: None,
+            },
+            SheetCells {
+                name: "Alfa".into(),
+                cells: IndexMap::new(),
+                tables: vec![],
+                sampled: None,
+            },
         ];
         let json = cells_to_json(&sheets).unwrap();
 

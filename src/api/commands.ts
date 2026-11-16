@@ -9,6 +9,7 @@ import type {
   AppErrorCode,
   CellsExtraction,
   ExportTargets,
+  ExtractScope,
   FileNames,
   OnExists,
   OutputTemplate,
@@ -54,8 +55,8 @@ export const inspectWorkbook = (path: string) =>
   call<WorkbookSummary>("inspect_workbook", { path });
 
 /** `sheets` omitido = todas as abas. */
-export const extractCells = (path: string, sheets?: string[]) =>
-  call<CellsExtraction>("extract_cells", { path, sheets });
+export const extractCells = (path: string, sheets?: string[], scope?: ExtractScope) =>
+  call<CellsExtraction>("extract_cells", { path, sheets, scope });
 
 export const extractVba = (path: string, options?: VbaOptions) =>
   call<VbaComponent[]>("extract_vba", { path, options });
@@ -69,6 +70,7 @@ export interface ExportParams {
   names?: FileNames;
   template?: OutputTemplate;
   onExists?: OnExists;
+  scope?: ExtractScope;
 }
 
 /** Devolve os caminhos dos arquivos gerados. */

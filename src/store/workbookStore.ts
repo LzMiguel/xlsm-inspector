@@ -3,6 +3,7 @@ import { create } from "zustand";
 import type {
   AppError,
   ExtractionResult,
+  ExtractScope,
   Progress,
   VbaComponent,
   Warning,
@@ -27,6 +28,8 @@ interface WorkbookState {
   // Pré-visualização / opções (não resetam ao trocar de arquivo, exceto a seleção)
   tab: PreviewTab;
   selectedComponent: string | null;
+  /** Escopo da extração (tudo / primeiras N / amostra de N). Vale para o próximo "Extrair". */
+  scope: ExtractScope;
   /** Histórico de arquivos abertos (persistido; não é zerado por `reset`). */
   recent: RecentFile[];
 
@@ -43,6 +46,7 @@ interface WorkbookState {
   setVba: (vba: VbaComponent[]) => void;
   setError: (e: AppError) => void;
   setTab: (tab: PreviewTab) => void;
+  setScope: (scope: ExtractScope) => void;
   selectComponent: (name: string) => void;
   reset: () => void;
 }
@@ -67,6 +71,7 @@ const pickComponent = (vba: VbaComponent[], current: string | null) =>
 export const useWorkbookStore = create<WorkbookState>((set, get) => ({
   ...initial,
   recent: loadRecent(),
+  scope: { kind: "full" },
 
   addRecent: (path, name) => {
     const recent = withRecent(get().recent, { path, name, openedAt: Date.now() });
@@ -129,6 +134,8 @@ export const useWorkbookStore = create<WorkbookState>((set, get) => ({
   setError: (error) => set({ error, progress: null, status: "error" }),
 
   setTab: (tab) => set({ tab }),
+
+  setScope: (scope) => set({ scope }),
 
   selectComponent: (selectedComponent) => set({ selectedComponent }),
 

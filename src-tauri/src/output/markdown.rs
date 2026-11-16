@@ -16,7 +16,22 @@ fn value_text(v: &CellValue) -> String {
 
 /// Como no script original: `|` vira `\|` e quebra de linha vira `|`.
 fn escape(s: &str) -> String {
-    s.replace('|', "\\|").replace("\r\n", "\n").replace('\n', "|")
+    s.replace('|', "\\|")
+        .replace("\r\n", "\n")
+        .replace('\n', "|")
+}
+
+/// 52000 → "52.000"
+fn dots(n: usize) -> String {
+    let s = n.to_string();
+    let mut out = String::new();
+    for (i, c) in s.chars().enumerate() {
+        if i > 0 && (s.len() - i).is_multiple_of(3) {
+            out.push('.');
+        }
+        out.push(c);
+    }
+    out
 }
 
 /// `file_name` é o nome do arquivo de entrada, com extensão; `date`, `AAAA-MM-DD`.
@@ -36,8 +51,18 @@ pub fn cells_to_markdown(
             out.push_str("\n---\n");
         }
         let heading = fill(&t.sheet_heading, &[vars[0], vars[1], ("aba", &sheet.name)]);
+        let note = sheet
+            .sampled
+            .map(|s| {
+                format!(
+                    "\n> Amostra: {} de {} linhas.\n",
+                    dots(s.kept_rows),
+                    dots(s.total_rows)
+                )
+            })
+            .unwrap_or_default();
         out.push_str(&format!(
-            "\n{heading}\n\n| {} | {} |\n| ------ | ----------------- |\n",
+            "\n{heading}\n{note}\n| {} | {} |\n| ------ | ----------------- |\n",
             escape(&t.cell_header),
             escape(&t.content_header)
         ));
@@ -72,7 +97,11 @@ pub fn vba_to_markdown(
         .map(|c| {
             let heading = fill(
                 &t.vba_heading,
-                &[("arquivo", file_name), ("data", date), ("componente", &c.name)],
+                &[
+                    ("arquivo", file_name),
+                    ("data", date),
+                    ("componente", &c.name),
+                ],
             );
             format!("{heading}\n\n```vba\n{}\n```\n", c.code)
         })
@@ -84,12 +113,23 @@ pub fn vba_to_markdown(
 pub fn preview(t: &OutputTemplate, date: &str) -> String {
     let file = "exemplo.xlsm";
     let mut cells = IndexMap::new();
-    cells.insert("A1".to_string(), CellContent::Plain(CellValue::String("Total".into())));
+    cells.insert(
+        "A1".to_string(),
+        CellContent::Plain(CellValue::String("Total".into())),
+    );
     cells.insert(
         "B1".to_string(),
-        CellContent::Formula { formula: "=SOMA(B2:B9)".into(), valor: CellValue::Int(84) },
+        CellContent::Formula {
+            formula: "=SOMA(B2:B9)".into(),
+            valor: CellValue::Int(84),
+        },
     );
-    let sheets = [SheetCells { name: "Resumo".into(), cells, tables: vec![] }];
+    let sheets = [SheetCells {
+        name: "Resumo".into(),
+        cells,
+        tables: vec![],
+        sampled: None,
+    }];
     let code = "Sub Exemplo()\n    MsgBox \"Olá\"\nEnd Sub";
     let vba = [VbaComponent {
         name: "Module1".into(),
@@ -110,14 +150,30 @@ mod tests {
 
     fn sheets() -> Vec<SheetCells> {
         let mut cells = IndexMap::new();
-        cells.insert("A1".to_string(), CellContent::Plain(CellValue::String("a|b\nc".into())));
+        cells.insert(
+            "A1".to_string(),
+            CellContent::Plain(CellValue::String("a|b\nc".into())),
+        );
         cells.insert(
             "C3".to_string(),
-            CellContent::Formula { formula: "=SOMA(B1:B2)".into(), valor: CellValue::Int(84) },
+            CellContent::Formula {
+                formula: "=SOMA(B1:B2)".into(),
+                valor: CellValue::Int(84),
+            },
         );
         vec![
-            SheetCells { name: "Aba1".into(), cells, tables: vec![] },
-            SheetCells { name: "Vazia".into(), cells: IndexMap::new(), tables: vec![] },
+            SheetCells {
+                name: "Aba1".into(),
+                cells,
+                tables: vec![],
+                sampled: None,
+            },
+            SheetCells {
+                name: "Vazia".into(),
+                cells: IndexMap::new(),
+                tables: vec![],
+                sampled: None,
+            },
         ]
     }
 
@@ -140,9 +196,17 @@ mod tests {
             \n---\n\
             \n## Aba: Vazia\n\n| Célula | Conteúdo Extraído |\n| ------ | ----------------- |\n";
         let t = OutputTemplate::default();
-        assert_eq!(cells_to_markdown("arq.xlsm", &sheets(), &t, "2026-01-02"), esperado);
+        assert_eq!(
+            cells_to_markdown("arq.xlsm", &sheets(), &t, "2026-01-02"),
+            esperado
+        );
 
-        let vba = vba_to_markdown(&[comp("Module1", "Sub A()\nEnd Sub"), comp("Classe1", "x")], "arq.xlsm", &t, "2026-01-02");
+        let vba = vba_to_markdown(
+            &[comp("Module1", "Sub A()\nEnd Sub"), comp("Classe1", "x")],
+            "arq.xlsm",
+            &t,
+            "2026-01-02",
+        );
         assert_eq!(
             vba,
             "## COMPONENTE: Module1\n\n```vba\nSub A()\nEnd Sub\n```\n\n## COMPONENTE: Classe1\n\n```vba\nx\n```\n"
@@ -164,10 +228,31 @@ mod tests {
             footer: "Fim ({arquivo})".into(),
         };
         let md = cells_to_markdown("arq.xlsm", &sheets(), &t, "2026-01-02");
-        assert!(md.starts_with("# arq.xlsm em 2026-01-02\n\nLeia com atenção.\n\n### Aba1\n\n| Ref | Texto |\n"));
+        assert!(md.starts_with(
+            "# arq.xlsm em 2026-01-02\n\nLeia com atenção.\n\n### Aba1\n\n| Ref | Texto |\n"
+        ));
         assert!(md.contains("| **C3** | `Formula: =SOMA(B1:B2)` <br> **Resultado:** 84 |"));
         assert!(md.ends_with("\nFim (arq.xlsm)\n"));
-        assert!(vba_to_markdown(&[comp("M", "x")], "arq.xlsm", &t, "d").starts_with("## Módulo M\n"));
+        assert!(
+            vba_to_markdown(&[comp("M", "x")], "arq.xlsm", &t, "d").starts_with("## Módulo M\n")
+        );
+    }
+
+    #[test]
+    fn aviso_de_amostra() {
+        use crate::model::SampleInfo;
+        let mut s = sheets();
+        s[0].sampled = Some(SampleInfo {
+            total_rows: 52_000,
+            kept_rows: 100,
+        });
+        let md = cells_to_markdown("arq.xlsm", &s, &OutputTemplate::default(), "d");
+        assert!(md.contains("## Aba: Aba1\n\n> Amostra: 100 de 52.000 linhas.\n\n| Célula"));
+        assert_eq!(md.matches("Amostra:").count(), 1); // só a aba cortada
+        assert_eq!(
+            [dots(7), dots(1000), dots(1_234_567)],
+            ["7", "1.000", "1.234.567"]
+        );
     }
 
     #[test]

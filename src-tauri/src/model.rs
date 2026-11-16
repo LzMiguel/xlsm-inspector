@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct WorkbookSummary {
@@ -52,11 +52,32 @@ pub struct TableInfo {
     pub cells: Vec<String>,
 }
 
+/// Quantas linhas (com conteúdo) da aba ficaram na extração.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct SampleInfo {
+    pub total_rows: usize,
+    pub kept_rows: usize,
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct SheetCells {
     pub name: String,
     pub cells: IndexMap<String, CellContent>,
     pub tables: Vec<TableInfo>,
+    /// `Some` só quando o escopo cortou linhas desta aba.
+    pub sampled: Option<SampleInfo>,
+}
+
+/// Quais linhas extrair. Reduz saída e renderização; o arquivo continua sendo lido por inteiro.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ExtractScope {
+    #[default]
+    Full,
+    /// As primeiras `rows` linhas com conteúdo de cada aba.
+    Head { rows: usize },
+    /// `rows` linhas com conteúdo espaçadas por igual (determinístico, inclui a primeira).
+    Sample { rows: usize },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -81,6 +102,8 @@ pub struct VbaComponent {
 pub enum WarningKind {
     /// Fórmulas sem valor em cache (arquivo nunca salvo no Excel).
     MissingCache,
+    /// A aba foi cortada pelo escopo (primeiras linhas ou amostra).
+    Sampled,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -103,7 +126,12 @@ pub struct Progress {
 
 impl Progress {
     pub fn new(stage: &'static str, current: usize, total: usize, label: &str) -> Self {
-        Self { stage, current, total, label: label.to_string() }
+        Self {
+            stage,
+            current,
+            total,
+            label: label.to_string(),
+        }
     }
 }
 

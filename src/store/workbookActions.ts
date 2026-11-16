@@ -32,14 +32,14 @@ export async function chooseAndOpenWorkbook() {
 }
 
 export async function runExtraction() {
-  const { filePath, selectedSheets, summary } = store();
+  const { filePath, selectedSheets, summary, scope } = store();
   const vbaOptions = useSettingsStore.getState().settings.vba_options;
   if (!filePath) return;
 
   store().startExtracting();
   const unlisten = await onProgress((p) => store().setProgress(p)).catch(() => undefined);
   try {
-    const cells = await extractCells(filePath, selectedSheets);
+    const cells = await extractCells(filePath, selectedSheets, scope);
 
     // VBA: sem projeto não é erro, só lista vazia.
     let vba: VbaComponent[] = [];

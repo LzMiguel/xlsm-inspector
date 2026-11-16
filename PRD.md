@@ -106,6 +106,14 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta �
 - Predefinições: "Padrão", "Contexto para IA" (com texto de abertura) e as do usuário (salvar, substituir, excluir; duplicar = salvar com outro nome).
 - Pré-visualização ao vivo, renderizada pelo Rust com dados fictícios.
 
+### RF11 — Escopo: primeiras linhas e amostra
+
+- Seletor "Todas as linhas / Primeiras N linhas / Amostra de N linhas" na extração e, de forma independente, na exportação (que começa igual à extração).
+- Conta linhas com conteúdo, por aba. **Primeiras N**: as N primeiras. **Amostra**: N linhas espaçadas por igual, sempre incluindo a primeira (mesma entrada, mesma amostra).
+- Tabelas do Excel: o cabeçalho é mantido e o corpo segue a mesma seleção. O VBA não é cortado.
+- Avisos: selo "amostra: X de Y linhas" na aba, alerta informativo e, no `mapeamento_planilha.md`, `> Amostra: X de Y linhas.` sob o título da aba. O JSON mantém o formato (só tem menos células). Os nomes sugeridos ganham `_amostra`.
+- Limite conhecido: reduz saída e renderização, não o tempo de leitura (o arquivo é lido por inteiro).
+
 ## 7. Requisitos não-funcionais
 
 | ID    | Requisito                                                                                 |

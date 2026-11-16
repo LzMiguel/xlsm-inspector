@@ -7,8 +7,8 @@ use super::naming::{FileNames, OnExists, free_name, resolve};
 use super::template::{OutputTemplate, today};
 use super::{json::cells_to_json, markdown};
 use crate::error::AppError;
-use crate::excel::{cells::extract_cells, vba, vba::VbaOptions};
-use crate::model::Progress;
+use crate::excel::{cells::extract_with_scope, vba, vba::VbaOptions};
+use crate::model::{ExtractScope, Progress};
 
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(default)]
@@ -20,7 +20,11 @@ pub struct ExportTargets {
 
 impl Default for ExportTargets {
     fn default() -> Self {
-        Self { json: true, cells_md: true, vba_md: true }
+        Self {
+            json: true,
+            cells_md: true,
+            vba_md: true,
+        }
     }
 }
 
@@ -30,6 +34,7 @@ pub struct OutputConfig {
     pub names: FileNames,
     pub template: OutputTemplate,
     pub on_exists: OnExists,
+    pub scope: ExtractScope,
 }
 
 fn write(dir: &Path, name: &str, content: &str, written: &mut Vec<String>) -> Result<(), AppError> {
@@ -48,11 +53,13 @@ fn plan(
     cfg: &OutputConfig,
     date: &str,
 ) -> Result<[Option<String>; 3], AppError> {
-    let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+    let stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
     let vars = [("arquivo", stem.as_str()), ("data", date)];
-    let name = |on: bool, pattern: &str, ext: &str| {
-        on.then(|| resolve(pattern, ext, &vars)).transpose()
-    };
+    let name =
+        |on: bool, pattern: &str, ext: &str| on.then(|| resolve(pattern, ext, &vars)).transpose();
     let mut names = [
         name(targets.json, &cfg.names.json, "json")?,
         name(targets.cells_md, &cfg.names.cells_md, "md")?,
@@ -61,8 +68,15 @@ fn plan(
 
     // o Windows não diferencia maiúsculas: "A.md" e "a.md" são o mesmo arquivo
     let lower: Vec<String> = names.iter().flatten().map(|n| n.to_lowercase()).collect();
-    if let Some(dup) = lower.iter().enumerate().find(|(i, n)| lower[..*i].contains(n)) {
-        return Err(AppError::InvalidName(format!("dois arquivos com o mesmo nome ({})", dup.1)));
+    if let Some(dup) = lower
+        .iter()
+        .enumerate()
+        .find(|(i, n)| lower[..*i].contains(n))
+    {
+        return Err(AppError::InvalidName(format!(
+            "dois arquivos com o mesmo nome ({})",
+            dup.1
+        )));
     }
 
     let existing: Vec<&str> = names
@@ -107,12 +121,15 @@ pub fn export_outputs(
     let mut written = Vec::new();
 
     if json_name.is_some() || md_name.is_some() {
-        let (cells, _) = extract_cells(path, sheets, on_progress)?;
+        let (cells, _) = extract_with_scope(path, sheets, cfg.scope, on_progress)?;
         if let Some(name) = &json_name {
             write(out_dir, name, &cells_to_json(&cells)?, &mut written)?;
         }
         if let Some(name) = &md_name {
-            let file_name = path.file_name().map(|n| n.to_string_lossy()).unwrap_or_default();
+            let file_name = path
+                .file_name()
+                .map(|n| n.to_string_lossy())
+                .unwrap_or_default();
             let md = markdown::cells_to_markdown(&file_name, &cells, &cfg.template, &date);
             write(out_dir, name, &md, &mut written)?;
         }
@@ -122,7 +139,10 @@ pub fn export_outputs(
         on_progress(Progress::new("vba", 0, 1, "VBA"));
         match vba::extract_file(path, vba_opts) {
             Ok(components) => {
-                let file_name = path.file_name().map(|n| n.to_string_lossy()).unwrap_or_default();
+                let file_name = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy())
+                    .unwrap_or_default();
                 let md = markdown::vba_to_markdown(&components, &file_name, &cfg.template, &date);
                 write(out_dir, name, &md, &mut written)?
             }

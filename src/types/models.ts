@@ -42,7 +42,20 @@ export interface SheetCells {
   /** "A1" -> conteúdo, na ordem da planilha. */
   cells: Record<string, CellContent>;
   tables: TableInfo[];
+  /** Preenchido só quando o escopo cortou linhas desta aba. */
+  sampled: SampleInfo | null;
 }
+
+export interface SampleInfo {
+  total_rows: number;
+  kept_rows: number;
+}
+
+/** Quais linhas extrair (espelho de `ExtractScope` em model.rs). */
+export type ExtractScope =
+  | { kind: "full" }
+  | { kind: "head"; rows: number }
+  | { kind: "sample"; rows: number };
 
 export type VbaComponentKind =
   | "Module"
@@ -59,7 +72,7 @@ export interface VbaComponent {
   line_count: number;
 }
 
-export type WarningKind = "MissingCache";
+export type WarningKind = "MissingCache" | "Sampled";
 
 export interface Warning {
   kind: WarningKind;
