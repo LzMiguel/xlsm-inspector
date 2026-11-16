@@ -3,6 +3,7 @@ import { Download } from "lucide-react";
 
 import { exportOutputs, pickFolder, revealInFolder, toAppError } from "../api/commands";
 import { useHotkey } from "../hooks/useHotkey";
+import { useSettingsStore } from "../store/settingsStore";
 import { useWorkbookStore } from "../store/workbookStore";
 import type { AppError, ExportTargets } from "../types/models";
 import { ErrorAlert } from "./ErrorAlert";
@@ -15,7 +16,8 @@ export function ExportPanel() {
   const filePath = useWorkbookStore((s) => s.filePath);
   const hasVba = useWorkbookStore((s) => s.summary?.has_vba ?? false);
   const selectedSheets = useWorkbookStore((s) => s.selectedSheets);
-  const vbaOptions = useWorkbookStore((s) => s.vbaOptions);
+  const vbaOptions = useSettingsStore((s) => s.settings.vba_options);
+  const defaultOutDir = useSettingsStore((s) => s.settings.default_out_dir);
   const result = useWorkbookStore((s) => s.result);
   const busyElsewhere = useWorkbookStore((s) => s.status === "loading" || s.status === "extracting");
 
@@ -34,7 +36,7 @@ export function ExportPanel() {
     if (!filePath || !canExport) return;
     setError(null);
     try {
-      const outDir = await pickFolder();
+      const outDir = await pickFolder(defaultOutDir ?? undefined);
       if (!outDir) return;
       setBusy(true);
       const files = await exportOutputs({

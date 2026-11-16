@@ -3,6 +3,7 @@ pub mod error;
 pub mod excel;
 pub mod model;
 pub mod output;
+pub mod store;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -14,6 +15,8 @@ pub fn run() {
             commands::extract_cells,
             commands::extract_vba,
             commands::export_outputs,
+            commands::get_settings,
+            commands::save_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

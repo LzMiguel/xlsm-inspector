@@ -2,6 +2,7 @@
 import { extractCells, extractVba, inspectWorkbook, pickWorkbook, toAppError } from "../api/commands";
 import { onProgress } from "../api/events";
 import type { VbaComponent } from "../types/models";
+import { useSettingsStore } from "./settingsStore";
 import { useWorkbookStore } from "./workbookStore";
 
 const store = () => useWorkbookStore.getState();
@@ -31,7 +32,8 @@ export async function chooseAndOpenWorkbook() {
 }
 
 export async function runExtraction() {
-  const { filePath, selectedSheets, summary, vbaOptions } = store();
+  const { filePath, selectedSheets, summary } = store();
+  const vbaOptions = useSettingsStore.getState().settings.vba_options;
   if (!filePath) return;
 
   store().startExtracting();
@@ -55,7 +57,8 @@ export async function runExtraction() {
 
 /** Reextrai só o VBA (mudou uma opção de limpeza). */
 export async function refreshVba() {
-  const { filePath, result, vbaOptions } = store();
+  const { filePath, result } = store();
+  const vbaOptions = useSettingsStore.getState().settings.vba_options;
   if (!filePath || !result) return;
   try {
     store().setVba(await extractVba(filePath, vbaOptions));

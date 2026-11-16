@@ -1,6 +1,8 @@
 import { Table2 } from "lucide-react";
 
 import { refreshVba, runExtraction } from "../store/workbookActions";
+import { updateVbaOptions } from "../store/settingsActions";
+import { useSettingsStore } from "../store/settingsStore";
 import { useWorkbookStore } from "../store/workbookStore";
 import type { Progress, VbaOptions } from "../types/models";
 import { Alert } from "./ui/Alert";
@@ -22,13 +24,12 @@ export function ExtractPanel() {
   const warnings = useWorkbookStore((s) => s.warnings);
   const hasVba = useWorkbookStore((s) => s.summary?.has_vba ?? false);
   const noSheets = useWorkbookStore((s) => s.selectedSheets.length === 0);
-  const vbaOptions = useWorkbookStore((s) => s.vbaOptions);
-  const setVbaOptions = useWorkbookStore((s) => s.setVbaOptions);
+  const vbaOptions = useSettingsStore((s) => s.settings.vba_options);
   const extracting = status === "extracting";
 
   // Mudou uma opção de limpeza: atualiza o VBA já extraído, sem reler as células.
   const changeOption = (o: Partial<VbaOptions>) => {
-    setVbaOptions(o);
+    updateVbaOptions(o);
     if (result) refreshVba();
   };
 

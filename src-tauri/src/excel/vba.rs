@@ -1,13 +1,13 @@
 use std::path::Path;
 
 use calamine::Reader;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::workbook::{open, xlsx_err, Book};
 use crate::error::AppError;
 use crate::model::{VbaComponent, VbaComponentKind};
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct VbaOptions {
     pub remove_blank_lines: bool,

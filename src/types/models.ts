@@ -93,6 +93,14 @@ export interface VbaOptions {
   hide_attributes: boolean;
 }
 
+/** Espelho de store/settings.rs. */
+export interface Settings {
+  version: number;
+  /** Pasta onde o diálogo de exportação abre. */
+  default_out_dir: string | null;
+  vba_options: VbaOptions;
+}
+
 export interface ExportTargets {
   json: boolean;
   cells_md: boolean;

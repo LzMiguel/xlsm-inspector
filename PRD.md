@@ -87,6 +87,12 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta �
 - Alertar quando houver fórmulas sem valor em cache (arquivo provavelmente gerado por script e nunca salvo no Excel), sugerindo abrir, salvar e fechar no Excel.
 - Alertar quando o arquivo estiver bloqueado (aberto no Excel) ou corrompido.
 
+### RF08 — Configurações
+
+- Janela de configurações (engrenagem na barra superior ou `Ctrl+,`).
+- Persistem entre sessões, em `settings.json` na pasta de configuração do app: pasta de exportação padrão (o diálogo de exportação abre nela) e opções de limpeza do VBA.
+- Arquivo ausente ou corrompido volta aos padrões, sem erro.
+
 ## 7. Requisitos não-funcionais
 
 | ID    | Requisito                                                                                 |

@@ -3,12 +3,13 @@
 
 use std::path::{Path, PathBuf};
 
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::error::AppError;
 use crate::excel::{cells, vba, vba::VbaOptions, workbook};
 use crate::model::{CellsExtraction, Progress, VbaComponent, WorkbookSummary};
 use crate::output::export::{self, ExportTargets};
+use crate::store::settings::{self, Settings};
 
 const PROGRESS_EVENT: &str = "extraction://progress";
 
@@ -78,4 +79,22 @@ pub async fn export_outputs(
         )
     })
     .await
+}
+
+fn config_dir(app: &AppHandle) -> Result<PathBuf, AppError> {
+    app.path()
+        .app_config_dir()
+        .map_err(|e| AppError::Internal(e.to_string()))
+}
+
+#[tauri::command]
+pub async fn get_settings(app: AppHandle) -> Result<Settings, AppError> {
+    let dir = config_dir(&app)?;
+    blocking(move || Ok(settings::load(&dir))).await
+}
+
+#[tauri::command]
+pub async fn save_settings(app: AppHandle, settings: Settings) -> Result<(), AppError> {
+    let dir = config_dir(&app)?;
+    blocking(move || settings::save(&dir, &settings)).await
 }

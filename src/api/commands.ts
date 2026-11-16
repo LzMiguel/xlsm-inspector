@@ -9,6 +9,7 @@ import type {
   AppErrorCode,
   CellsExtraction,
   ExportTargets,
+  Settings,
   VbaComponent,
   VbaOptions,
   WorkbookSummary,
@@ -75,8 +76,13 @@ export async function pickWorkbook(): Promise<string | null> {
   return typeof r === "string" ? r : null;
 }
 
-export async function pickFolder(): Promise<string | null> {
-  const r = await open({ multiple: false, directory: true });
+export const getSettings = () => call<Settings>("get_settings");
+
+export const saveSettings = (settings: Settings) => call<void>("save_settings", { settings });
+
+/** `defaultPath`: pasta onde o diálogo abre. */
+export async function pickFolder(defaultPath?: string): Promise<string | null> {
+  const r = await open({ multiple: false, directory: true, defaultPath });
   return typeof r === "string" ? r : null;
 }
 

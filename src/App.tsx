@@ -1,4 +1,5 @@
-import { FileSpreadsheet } from "lucide-react";
+import { useEffect, useState } from "react";
+import { FileSpreadsheet, Settings } from "lucide-react";
 
 import { ComponentList } from "./components/ComponentList";
 import { DropZone } from "./components/DropZone";
@@ -8,10 +9,13 @@ import { ExtractPanel } from "./components/ExtractPanel";
 import { FileCard } from "./components/FileCard";
 import { Preview } from "./components/Preview";
 import { RecentFiles } from "./components/RecentFiles";
+import { SettingsDialog } from "./components/SettingsDialog";
 import { SheetList } from "./components/SheetList";
 import { ThemeToggle } from "./components/ThemeToggle";
+import { Button } from "./components/ui/Button";
 import { useFileDrop } from "./hooks/useFileDrop";
 import { useHotkey } from "./hooks/useHotkey";
+import { loadSettings } from "./store/settingsActions";
 import { chooseAndOpenWorkbook, openWorkbook } from "./store/workbookActions";
 import { useWorkbookStore } from "./store/workbookStore";
 
@@ -22,6 +26,12 @@ function App() {
   const status = useWorkbookStore((s) => s.status);
   const error = useWorkbookStore((s) => s.error);
   const dragging = useFileDrop(openWorkbook);
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  useEffect(() => {
+    loadSettings();
+  }, []);
+  useHotkey(",", () => setSettingsOpen((o) => !o));
 
   const busy = status === "loading" || status === "extracting";
   useHotkey("o", () => {
@@ -36,7 +46,14 @@ function App() {
         <h1 className="truncate text-lg font-semibold">
           {summary?.file_name ?? "XLSM Inspector"}
         </h1>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1">
+          <Button
+            variant="ghost"
+            icon={Settings}
+            aria-label="Configurações (Ctrl+,)"
+            title="Configurações (Ctrl+,)"
+            onClick={() => setSettingsOpen(true)}
+          />
           <ThemeToggle />
         </div>
       </header>
@@ -82,6 +99,7 @@ function App() {
           </div>
         </main>
       </div>
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

@@ -5,7 +5,6 @@ import type {
   ExtractionResult,
   Progress,
   VbaComponent,
-  VbaOptions,
   Warning,
   WorkbookSummary,
 } from "../types/models";
@@ -28,7 +27,6 @@ interface WorkbookState {
   // Pré-visualização / opções (não resetam ao trocar de arquivo, exceto a seleção)
   tab: PreviewTab;
   selectedComponent: string | null;
-  vbaOptions: VbaOptions;
   /** Histórico de arquivos abertos (persistido; não é zerado por `reset`). */
   recent: RecentFile[];
 
@@ -46,7 +44,6 @@ interface WorkbookState {
   setError: (e: AppError) => void;
   setTab: (tab: PreviewTab) => void;
   selectComponent: (name: string) => void;
-  setVbaOptions: (o: Partial<VbaOptions>) => void;
   reset: () => void;
 }
 
@@ -69,7 +66,6 @@ const pickComponent = (vba: VbaComponent[], current: string | null) =>
 
 export const useWorkbookStore = create<WorkbookState>((set, get) => ({
   ...initial,
-  vbaOptions: { remove_blank_lines: true, hide_attributes: false },
   recent: loadRecent(),
 
   addRecent: (path, name) => {
@@ -135,8 +131,6 @@ export const useWorkbookStore = create<WorkbookState>((set, get) => ({
   setTab: (tab) => set({ tab }),
 
   selectComponent: (selectedComponent) => set({ selectedComponent }),
-
-  setVbaOptions: (o) => set({ vbaOptions: { ...get().vbaOptions, ...o } }),
 
   reset: () => set({ ...initial }),
 }));

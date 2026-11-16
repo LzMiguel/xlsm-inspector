@@ -171,6 +171,12 @@ Escala base de **4px**.
 - Lista com checkbox por aba, contador de células e ícone de fórmula se houver.
 - Ações "Marcar todas" / "Desmarcar todas".
 
+### Dialog / SettingsDialog
+
+- `<dialog>` nativo modal (foco preso, `Esc` fecha), `radius-lg`, `shadow-md`, fundo `--text` a 40%, largura máx. 512px.
+- Cabeçalho com título `text-lg` e botão fechar. Corpo em seções com título `text-sm` semibold.
+- Abre pela engrenagem da barra superior ou `Ctrl+,`.
+
 ### Tabs
 
 - Alterna entre **Células** e **VBA**.

@@ -25,21 +25,21 @@ App desktop com **Tauri v2**: o frontend roda em uma WebView (React) e o backend
 
 ## 2. Stack
 
-| Camada              | Tecnologia                                                       |
-| ------------------- | ---------------------------------------------------------------- |
-| Shell desktop       | Tauri v2                                                         |
-| Frontend            | React 18+, TypeScript, Vite                                      |
-| Estilo              | Tailwind CSS + tokens do `Design-System.md`                      |
-| Componentes base    | Próprios, em `components/ui/` (Tailwind + tokens; sem shadcn)    |
-| Fontes              | `@fontsource-variable/inter` e `jetbrains-mono` (no bundle)      |
-| Estado              | Zustand (estado global leve)                                     |
-| Tabelas grandes     | `@tanstack/react-virtual`                                        |
-| Destaque de código  | Shiki (motor JS, gramática `vb`, tema por variáveis CSS)         |
-| Leitura Excel + VBA | `calamine`                                                       |
-| Serialização        | `serde`, `serde_json` (com `preserve_order`)                     |
-| Ordem estável       | `indexmap`                                                       |
-| Erros               | `thiserror`                                                      |
-| Plugins Tauri       | `dialog` (abrir pasta/arquivo), `opener` (revelar no Explorer)   |
+| Camada              | Tecnologia                                                     |
+| ------------------- | -------------------------------------------------------------- |
+| Shell desktop       | Tauri v2                                                       |
+| Frontend            | React 18+, TypeScript, Vite                                    |
+| Estilo              | Tailwind CSS + tokens do `Design-System.md`                    |
+| Componentes base    | Próprios, em `components/ui/` (Tailwind + tokens; sem shadcn)  |
+| Fontes              | `@fontsource-variable/inter` e `jetbrains-mono` (no bundle)    |
+| Estado              | Zustand (estado global leve)                                   |
+| Tabelas grandes     | `@tanstack/react-virtual`                                      |
+| Destaque de código  | Shiki (motor JS, gramática `vb`, tema por variáveis CSS)       |
+| Leitura Excel + VBA | `calamine`                                                     |
+| Serialização        | `serde`, `serde_json` (com `preserve_order`)                   |
+| Ordem estável       | `indexmap`                                                     |
+| Erros               | `thiserror`                                                    |
+| Plugins Tauri       | `dialog` (abrir pasta/arquivo), `opener` (revelar no Explorer) |
 
 ## 3. Estrutura de pastas
 
@@ -79,10 +79,13 @@ xlsm-inspector/
 │   │   │   ├── cells.rs         # valores + fórmulas
 │   │   │   ├── vba.rs           # módulos VBA
 │   │   │   └── coords.rs        # (linha, coluna) → "A1"
-│   │   └── output/
+│   │   ├── output/
+│   │   │   ├── mod.rs
+│   │   │   ├── json.rs
+│   │   │   └── markdown.rs
+│   │   └── store/
 │   │       ├── mod.rs
-│   │       ├── json.rs
-│   │       └── markdown.rs
+│   │       └── settings.rs      # configurações (settings.json)
 │   ├── tests/
 │   │   └── fixtures/            # planilhas de teste
 │   ├── capabilities/
@@ -95,7 +98,7 @@ xlsm-inspector/
 └── AGENTS.md
 ```
 
-**Regra:** `excel/` e `output/` não conhecem o Tauri. Recebem caminhos/dados e devolvem `Result`. Isso permite testá-los com `cargo test` e reaproveitá-los numa CLI no futuro.
+**Regra:** `excel/`, `output/` e `store/` não conhecem o Tauri. Recebem caminhos/dados e devolvem `Result`. Isso permite testá-los com `cargo test` e reaproveitá-los numa CLI no futuro.
 
 ## 4. Modelo de dados (Rust)
 
@@ -152,12 +155,15 @@ Os campos `formula` e `valor` mantêm os nomes do script Python para que o JSON 
 
 ## 5. Comandos IPC
 
-| Comando            | Entrada                      | Saída                         | Observação                                                           |
-| ------------------ | ---------------------------- | ----------------------------- | -------------------------------------------------------------------- |
-| `inspect_workbook` | `path`                       | `WorkbookSummary`             | Rápido; só metadados.                                                |
-| `extract_cells`    | `path`, `sheets?: string[]`  | `{ sheets: SheetCells[], warnings: Warning[] }` | Emite eventos de progresso. Sem `sheets` = todas as abas.          |
-| `extract_vba`      | `path`, `options?`           | `VbaComponent[]`              | `options`: `remove_blank_lines`, `hide_attributes`. Sem VBA → erro `NoVbaProject`. |
-| `export_outputs`   | `path`, `out_dir`, `targets?`, `sheets?`, `vba_options?` | `string[]` (arquivos gerados) | Re-extrai no Rust e escreve. `targets`: `{json, cells_md, vba_md}` (padrão: todos). Sem VBA, omite `vba_code.md`. |
+| Comando            | Entrada                                                  | Saída                                           | Observação                                                                                                        |
+| ------------------ | -------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `inspect_workbook` | `path`                                                   | `WorkbookSummary`                               | Rápido; só metadados.                                                                                             |
+| `extract_cells`    | `path`, `sheets?: string[]`                              | `{ sheets: SheetCells[], warnings: Warning[] }` | Emite eventos de progresso. Sem `sheets` = todas as abas.                                                         |
+| `extract_vba`      | `path`, `options?`                                       | `VbaComponent[]`                                | `options`: `remove_blank_lines`, `hide_attributes`. Sem VBA → erro `NoVbaProject`.                                |
+| `export_outputs`   | `path`, `out_dir`, `targets?`, `sheets?`, `vba_options?` | `string[]` (arquivos gerados)                   | Re-extrai no Rust e escreve. `targets`: `{json, cells_md, vba_md}` (padrão: todos). Sem VBA, omite `vba_code.md`. |
+
+| `get_settings` | — | `Settings` | Lê `settings.json` em `app_config_dir`. Ausente ou corrompido → padrões. |
+| `save_settings` | `settings` | — | Grava via arquivo temporário + rename. Campos: `version`, `default_out_dir`, `vba_options`. |
 
 > Argumentos do `invoke` em camelCase no JS (`outDir`, `vbaOptions`); campos dos structs em snake_case.
 

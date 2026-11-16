@@ -58,14 +58,12 @@ describe("workbookStore", () => {
     expect(s().selectedComponent).toBe("M3");
   });
 
-  it("novo arquivo descarta o resultado mas mantém as opções de VBA", () => {
-    s().setVbaOptions({ hide_attributes: true });
+  it("novo arquivo descarta o resultado", () => {
     s().setSummary(summary);
     s().setResult(result(["M1"]));
     s().startLoading("outro.xlsx");
     expect(s().result).toBeNull();
     expect(s().summary).toBeNull();
-    expect(s().vbaOptions).toEqual({ remove_blank_lines: true, hide_attributes: true });
   });
 
   it("erro zera o progresso e marca o status", () => {
