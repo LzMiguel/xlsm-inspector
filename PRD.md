@@ -129,6 +129,12 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta �
 - Extrair também as conexões de `xl/connections.xml` (nome, descrição e string de conexão).
 - Arquivo sem consultas: exibir estado vazio, sem erro.
 
+### RF13 — Diagnóstico
+
+- Aba **Diagnóstico** (ao lado de Células e VBA): cartões de contagem e listas de erros de fórmula (`#REF!`, `#DIV/0!`…), fórmulas com referência a outro arquivo, abas ocultas (e "muito ocultas"), nomes definidos, tabelas e tabelas dinâmicas.
+- Clicar numa célula da lista abre a aba Células nela (ou na tabela que a contém).
+- Só leitura e local; não altera os arquivos exportados. Listas de células mostram até 500 itens; o total aparece nos cartões.
+
 ## 7. Requisitos não-funcionais
 
 | ID    | Requisito                                                                                 |

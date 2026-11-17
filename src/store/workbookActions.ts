@@ -2,6 +2,7 @@
 import {
   checkRecent,
   clearRecentFiles,
+  diagnoseWorkbook,
   extractVba,
   extractWorkbook,
   getRecent,
@@ -54,6 +55,18 @@ export async function runExtraction() {
     store().setError(toAppError(e));
   } finally {
     unlisten?.();
+  }
+}
+
+/** Diagnóstico do arquivo aberto (lê o arquivo; só é chamado ao abrir a aba). */
+export async function loadDiagnostics() {
+  const { filePath } = store();
+  if (!filePath) return;
+  try {
+    const d = await diagnoseWorkbook(filePath);
+    if (store().filePath === filePath) store().setDiagnostics(d); // ignora se trocou de arquivo
+  } catch (e) {
+    store().setError(toAppError(e));
   }
 }
 

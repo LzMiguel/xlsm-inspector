@@ -184,6 +184,11 @@ Escala base de **4px**.
 - Cada recente mostra um `Badge`: "em cache" (`primary`), "modificado" e "bloqueado" (`warning`), "não encontrado" (`danger`). Com cache ou modificado, um botão ícone (recarregar) ignora o cache.
 - Resultado vindo do cache: `Alert` `info` "Resultado do cache" com botão "Recarregar" no `ExtractPanel`.
 
+### Diagnóstico (`DiagnosticsView`)
+
+- Grade de cartões (`--surface-muted`, `radius-md`) com a contagem em `text-lg` e o rótulo em `text-xs`; contagem em `--danger` quando há erros ou referências externas.
+- Abaixo, uma seção por categoria (`text-sm` semibold) com lista em linhas divididas por `--border`. Células são botões `--accent` sublinhados (`Aba!A1`) que abrem a aba Células. "muito oculta" usa `Badge` `warning`. Ícone da aba: `Stethoscope`.
+
 ### ScopeSelector
 
 - `Select` (Todas / Primeiras N / Amostra de N) + `Input` numérico (mín. 1, padrão 100) quando não é "Todas". Aparece no `ExtractPanel` e no `ExportPanel`.

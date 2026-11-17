@@ -5,6 +5,7 @@ import type {
   ExtractionResult,
   ExtractScope,
   CachedExtraction,
+  Diagnostics,
   PathStatus,
   Progress,
   RecentFile,
@@ -14,7 +15,13 @@ import type {
 } from "../types/models";
 
 export type Status = "idle" | "loading" | "extracting" | "ready" | "error";
-export type PreviewTab = "cells" | "vba";
+export type PreviewTab = "cells" | "vba" | "diagnostics";
+
+/** Célula para a aba Células abrir já filtrada (vem do Diagnóstico). */
+export interface CellFocus {
+  sheet: string;
+  cell: string;
+}
 
 interface WorkbookState {
   filePath: string | null;
@@ -29,6 +36,9 @@ interface WorkbookState {
   // Pré-visualização / opções (não resetam ao trocar de arquivo, exceto a seleção)
   tab: PreviewTab;
   selectedComponent: string | null;
+  /** Diagnóstico do arquivo aberto (carregado ao abrir a aba). */
+  diagnostics: Diagnostics | null;
+  focus: CellFocus | null;
   /** Escopo da extração (tudo / primeiras N / amostra de N). Vale para o próximo "Extrair". */
   scope: ExtractScope;
   /** Veio do cache em disco (sem reler o arquivo). */
@@ -52,6 +62,9 @@ interface WorkbookState {
   setVba: (vba: VbaComponent[]) => void;
   setError: (e: AppError) => void;
   setTab: (tab: PreviewTab) => void;
+  setDiagnostics: (d: Diagnostics) => void;
+  /** Abre a aba Células na célula indicada. */
+  goToCell: (focus: CellFocus) => void;
   setScope: (scope: ExtractScope) => void;
   selectComponent: (name: string) => void;
   reset: () => void;
@@ -68,6 +81,8 @@ const initial = {
   error: null,
   tab: "cells" as PreviewTab,
   selectedComponent: null,
+  diagnostics: null,
+  focus: null,
   fromCache: false,
 };
 
@@ -143,7 +158,11 @@ export const useWorkbookStore = create<WorkbookState>((set, get) => ({
 
   setError: (error) => set({ error, progress: null, status: "error" }),
 
-  setTab: (tab) => set({ tab }),
+  setTab: (tab) => set({ tab, focus: null }),
+
+  setDiagnostics: (diagnostics) => set({ diagnostics }),
+
+  goToCell: (focus) => set({ tab: "cells", focus }),
 
   setScope: (scope) => set({ scope }),
 

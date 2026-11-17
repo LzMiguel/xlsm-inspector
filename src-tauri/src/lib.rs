@@ -13,6 +13,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::open_workbook,
             commands::extract_workbook,
+            commands::diagnose_workbook,
             commands::extract_vba,
             commands::get_recent,
             commands::remove_recent,

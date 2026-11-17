@@ -3,6 +3,7 @@ import { Search, Table2 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { useHotkey } from "../hooks/useHotkey";
+import { useWorkbookStore } from "../store/workbookStore";
 import type { CellContent, SheetCells, TableInfo } from "../types/models";
 import { fmt } from "./cellFormat";
 import { TableView } from "./TableView";
@@ -26,15 +27,23 @@ function toRow(coord: string, c: CellContent): Row {
 }
 
 export function CellTable({ sheets }: { sheets: SheetCells[] }) {
-  const [sheetName, setSheetName] = useState(sheets[0]?.name ?? "");
-  const [query, setQuery] = useState("");
+  // vindo do Diagnóstico: abre na aba e na célula (ou na tabela que a contém)
+  const f = useWorkbookStore((s) => s.focus);
+  const focus = f && sheets.some((s) => s.name === f.sheet) ? f : null;
+  const [sheetName, setSheetName] = useState(focus?.sheet ?? sheets[0]?.name ?? "");
+  const [query, setQuery] = useState(focus?.cell ?? "");
   const deferred = useDeferredValue(query);
   const searchRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useHotkey("f", () => searchRef.current?.focus());
 
-  const [tableName, setTableName] = useState<string | null>(null);
+  const [tableName, setTableName] = useState<string | null>(
+    () =>
+      sheets
+        .find((s) => s.name === focus?.sheet)
+        ?.tables.find((t) => t.cells.includes(focus?.cell ?? ""))?.name ?? null,
+  );
 
   const sheet = sheets.find((s) => s.name === sheetName) ?? sheets[0];
   const table = sheet?.tables.find((t) => t.name === tableName) ?? null;

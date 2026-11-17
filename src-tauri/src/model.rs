@@ -135,6 +135,49 @@ impl Progress {
     }
 }
 
+/// Célula com problema: `detail` é o erro (`#DIV/0!`) ou a fórmula com referência externa.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct CellIssue {
+    pub sheet: String,
+    pub cell: String,
+    pub detail: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct DefinedName {
+    pub name: String,
+    pub refers_to: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct HiddenSheet {
+    pub name: String,
+    /// "muito oculta": só aparece no editor VBA, não no menu "Reexibir".
+    pub very_hidden: bool,
+}
+
+/// Tabela ou tabela dinâmica de uma aba (`range` só nas tabelas).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct SheetObject {
+    pub sheet: String,
+    pub name: String,
+    pub range: Option<String>,
+}
+
+/// Visão geral dos problemas e das peças da planilha (RF13). As listas de células são cortadas
+/// em `MAX_LISTED`; `*_count` tem o total real.
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
+pub struct Diagnostics {
+    pub errors: Vec<CellIssue>,
+    pub error_count: usize,
+    pub external_refs: Vec<CellIssue>,
+    pub external_count: usize,
+    pub names: Vec<DefinedName>,
+    pub hidden_sheets: Vec<HiddenSheet>,
+    pub tables: Vec<SheetObject>,
+    pub pivots: Vec<SheetObject>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExtractionResult {
     pub sheets: Vec<SheetCells>,

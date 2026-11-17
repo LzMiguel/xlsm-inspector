@@ -82,6 +82,42 @@ export interface Warning {
   message: string;
 }
 
+/** Célula com problema: `detail` é o erro (`#DIV/0!`) ou a fórmula com referência externa. */
+export interface CellIssue {
+  sheet: string;
+  cell: string;
+  detail: string;
+}
+
+export interface DefinedName {
+  name: string;
+  refers_to: string;
+}
+
+export interface HiddenSheet {
+  name: string;
+  very_hidden: boolean;
+}
+
+/** Tabela ou tabela dinâmica (`range` só nas tabelas). */
+export interface SheetObject {
+  sheet: string;
+  name: string;
+  range: string | null;
+}
+
+/** As listas de células vêm cortadas; `*_count` tem o total real. */
+export interface Diagnostics {
+  errors: CellIssue[];
+  error_count: number;
+  external_refs: CellIssue[];
+  external_count: number;
+  names: DefinedName[];
+  hidden_sheets: HiddenSheet[];
+  tables: SheetObject[];
+  pivots: SheetObject[];
+}
+
 export interface ExtractionResult {
   sheets: SheetCells[];
   vba: VbaComponent[];

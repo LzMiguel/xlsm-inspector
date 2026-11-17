@@ -79,6 +79,30 @@ describe("workbookStore", () => {
     expect(s().fromCache).toBe(false);
   });
 
+  it("vai para a célula: abre a aba Células com o foco; trocar de aba limpa o foco", () => {
+    s().setTab("diagnostics");
+    s().goToCell({ sheet: "A", cell: "B2" });
+    expect(s().tab).toBe("cells");
+    expect(s().focus).toEqual({ sheet: "A", cell: "B2" });
+    s().setTab("vba");
+    expect(s().focus).toBeNull();
+  });
+
+  it("novo arquivo descarta o diagnóstico", () => {
+    s().setDiagnostics({
+      errors: [],
+      error_count: 0,
+      external_refs: [],
+      external_count: 0,
+      names: [],
+      hidden_sheets: [],
+      tables: [],
+      pivots: [],
+    });
+    s().startLoading("outro.xlsx");
+    expect(s().diagnostics).toBeNull();
+  });
+
   it("erro zera o progresso e marca o status", () => {
     s().setProgress({ stage: "cells", current: 1, total: 2, label: "A" });
     s().setError({ code: "CorruptedFile", message: "x" });

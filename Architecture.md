@@ -77,6 +77,7 @@ xlsm-inspector/
 │   │   │   ├── mod.rs
 │   │   │   ├── workbook.rs      # abrir arquivo, resumo
 │   │   │   ├── cells.rs         # valores + fórmulas
+│   │   │   ├── diagnostics.rs   # erros, nomes, abas ocultas, tabelas, refs. externas (RF13)
 │   │   │   ├── vba.rs           # módulos VBA
 │   │   │   └── coords.rs        # (linha, coluna) → "A1"
 │   │   ├── output/
@@ -172,6 +173,7 @@ Os campos `formula` e `valor` mantêm os nomes do script Python para que o JSON 
 | `get_recent` / `remove_recent` / `clear_recent` | —, `path`, — | `RecentFile[]` | Histórico (até 10) em `recent.json`. |
 | `check_recent` | — | `{path, status}[]` | `status`: `Cached`, `Modified`, `NotCached`, `Missing`, `Locked`. Só `metadata` + JSON do cache; não abre as planilhas. |
 | `clear_cache` | — | — | Apaga `cache/`. |
+| `diagnose_workbook` | `path` | `Diagnostics` | Lê o arquivo (somente leitura) e devolve erros de fórmula, referências externas (`[n]` na fórmula), nomes definidos, abas ocultas/muito ocultas, tabelas e tabelas dinâmicas. Listas de células cortadas em 500; `error_count`/`external_count` têm o total. Independe da extração e do cache. |
 | `extract_vba`      | `path`, `options?`                                       | `VbaComponent[]`                                | `options`: `remove_blank_lines`, `hide_attributes`. Sem VBA → erro `NoVbaProject`.                                |
 | `export_outputs`   | `path`, `out_dir`, `targets?`, `sheets?`, `vba_options?`, `names?`, `template?`, `on_exists?` | `string[]` (arquivos gerados)                   | Re-extrai no Rust e escreve. `targets`: `{json, cells_md, vba_md}` (padrão: todos). Sem VBA, omite `vba_code.md`. `names`: padrões de nome (`{arquivo}`, `{data}`); `template`: textos do Markdown; `scope`: igual ao de `extract_cells` (a exportação é independente da extração); `on_exists`: `fail` (padrão, erro `FileExists`), `overwrite` ou `suffix` (`_2`). Nomes e colisões são checados antes de extrair. O JSON nunca muda. |
 | `builtin_templates` | — | `TemplatePreset[]` | Predefinições embutidas ("Padrão" = formato da v1.0, "Contexto para IA"). |
@@ -251,6 +253,13 @@ Botão "Exportar" ─► diálogo de pasta ─► invoke("export_outputs")
 
 - Escapar `|` e trocar `\n` por `|` nas células, como no script original.
 - Uma seção por aba, separadas por `---`.
+
+### Diagnóstico (RF13)
+
+- `excel/diagnostics.rs` reaproveita `read_sheet` e `read_tables`; erros vêm de `CellValue::Error` (com ou sem fórmula). Nomes internos `_xlnm.*` são filtrados.
+- Abas ocultas: `sheets_metadata()` (`Hidden`/`VeryHidden`). Tabelas dinâmicas: `pivot_tables()` do calamine; se falhar, a lista fica vazia (não derruba o diagnóstico).
+- Referência externa: `[n]` solto na fórmula (não conta `Tabela[Col]`). Limite conhecido: um texto literal `"[1]"` dentro da fórmula também conta.
+- Fora do cache de propósito: o resultado é recalculado ao abrir a aba.
 
 ### Cache e recentes (RF12, RNF08)
 

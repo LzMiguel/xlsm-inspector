@@ -7,6 +7,7 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import type {
   AppError,
   AppErrorCode,
+  Diagnostics,
   ExportTargets,
   ExtractionResult,
   ExtractScope,
@@ -64,6 +65,8 @@ export const extractWorkbook = (
   scope?: ExtractScope,
   vbaOptions?: VbaOptions,
 ) => call<ExtractionResult>("extract_workbook", { path, sheets, scope, vbaOptions });
+
+export const diagnoseWorkbook = (path: string) => call<Diagnostics>("diagnose_workbook", { path });
 
 export const getRecent = () => call<RecentFile[]>("get_recent");
 export const removeRecentFile = (path: string) => call<RecentFile[]>("remove_recent", { path });

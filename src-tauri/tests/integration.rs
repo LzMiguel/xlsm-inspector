@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 
 use xlsm_inspector_lib::error::AppError;
 use xlsm_inspector_lib::excel::cells::extract_cells;
+use xlsm_inspector_lib::excel::diagnostics::diagnose;
 use xlsm_inspector_lib::excel::vba::{VbaOptions, extract_file};
 use xlsm_inspector_lib::excel::workbook::inspect;
 use xlsm_inspector_lib::model::{
@@ -530,4 +531,33 @@ fn desempenho_100k_celulas() {
     );
     assert!(total >= 100_000);
     assert!(elapsed.as_secs_f64() < 5.0, "RNF02 estourou: {elapsed:?}");
+}
+
+#[test]
+fn diagnostico() {
+    let path = fx("diagnostico.xlsx");
+    assert!(
+        path.exists(),
+        "gere diagnostico.xlsx com tests/gerar_fixture_diagnostico.py"
+    );
+    let d = diagnose(&path).expect("diagnóstico");
+
+    assert_eq!(d.error_count, 1);
+    assert_eq!(
+        (d.errors[0].sheet.as_str(), d.errors[0].cell.as_str(), d.errors[0].detail.as_str()),
+        ("Dados", "D1", "#DIV/0!")
+    );
+    assert_eq!((d.external_count, d.external_refs[0].cell.as_str()), (1, "D2"));
+    assert!(d.names.iter().any(|n| n.name == "Total" && n.refers_to.contains("Dados")));
+    let hidden: Vec<_> = d.hidden_sheets.iter().map(|h| (h.name.as_str(), h.very_hidden)).collect();
+    assert_eq!(hidden, [("Oculta", false), ("MuitoOculta", true)]);
+    assert_eq!(d.tables.len(), 1);
+    assert_eq!((d.tables[0].name.as_str(), d.tables[0].range.as_deref()), ("tblItens", Some("A1:B3")));
+}
+
+#[test]
+fn diagnostico_sem_problemas() {
+    let d = diagnose(&fx("simples.xlsx")).expect("diagnóstico");
+    assert_eq!((d.error_count, d.external_count), (0, 0));
+    assert!(d.hidden_sheets.is_empty());
 }

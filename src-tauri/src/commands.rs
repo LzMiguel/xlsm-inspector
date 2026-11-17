@@ -7,8 +7,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::error::AppError;
-use crate::excel::{vba, vba::VbaOptions};
-use crate::model::{ExtractScope, ExtractionResult, Progress, VbaComponent};
+use crate::excel::{diagnostics, vba, vba::VbaOptions};
+use crate::model::{Diagnostics, ExtractScope, ExtractionResult, Progress, VbaComponent};
 use crate::output::export::{self, ExportTargets, OutputConfig};
 use crate::output::markdown;
 use crate::output::naming::{FileNames, OnExists};
@@ -116,6 +116,12 @@ pub async fn extract_workbook(
         )
     })
     .await
+}
+
+/// Problemas e peças da planilha (erros, nomes, abas ocultas, tabelas, externas). Só leitura.
+#[tauri::command]
+pub async fn diagnose_workbook(path: String) -> Result<Diagnostics, AppError> {
+    blocking(move || diagnostics::diagnose(Path::new(&path))).await
 }
 
 #[tauri::command]
