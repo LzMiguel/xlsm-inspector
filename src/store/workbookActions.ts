@@ -1,23 +1,34 @@
 // Orquestra api + store. Componentes chamam estas funções; nada de invoke aqui.
-import { extractCells, extractVba, inspectWorkbook, pickWorkbook, toAppError } from "../api/commands";
+import {
+  checkRecent,
+  clearRecentFiles,
+  extractVba,
+  extractWorkbook,
+  getRecent,
+  openWorkbookFile,
+  pickWorkbook,
+  removeRecentFile,
+  toAppError,
+} from "../api/commands";
 import { onProgress } from "../api/events";
-import type { VbaComponent } from "../types/models";
+import type { PathStatus } from "../types/models";
 import { useSettingsStore } from "./settingsStore";
 import { useWorkbookStore } from "./workbookStore";
 
 const store = () => useWorkbookStore.getState();
+const vbaOptions = () => useSettingsStore.getState().settings.vba_options;
 
-export async function openWorkbook(path: string) {
+/** `reload`: ignora o cache e relê o arquivo. */
+export async function openWorkbook(path: string, reload = false) {
   store().startLoading(path);
   try {
-    const summary = await inspectWorkbook(path);
+    // o Rust devolve a última extração se o cache for válido e atualiza os recentes
+    const { summary, cached } = await openWorkbookFile(path, reload, vbaOptions());
     store().setSummary(summary);
-    store().addRecent(path, summary.file_name);
+    if (cached) store().loadCached(cached);
   } catch (e) {
     // mantém a tela inicial; o erro aparece em um Alert
-    const err = toAppError(e);
-    if (err.code === "FileNotFound") store().removeRecent(path);
-    store().setError(err);
+    store().setError(toAppError(e));
   }
 }
 
@@ -32,22 +43,13 @@ export async function chooseAndOpenWorkbook() {
 }
 
 export async function runExtraction() {
-  const { filePath, selectedSheets, summary, scope } = store();
-  const vbaOptions = useSettingsStore.getState().settings.vba_options;
+  const { filePath, selectedSheets, scope } = store();
   if (!filePath) return;
 
   store().startExtracting();
   const unlisten = await onProgress((p) => store().setProgress(p)).catch(() => undefined);
   try {
-    const cells = await extractCells(filePath, selectedSheets, scope);
-
-    // VBA: sem projeto não é erro, só lista vazia.
-    let vba: VbaComponent[] = [];
-    if (summary?.has_vba) {
-      store().setProgress({ stage: "vba", current: 0, total: 0, label: "VBA" });
-      vba = await extractVba(filePath, vbaOptions);
-    }
-    store().setResult({ sheets: cells.sheets, vba, warnings: cells.warnings });
+    store().setResult(await extractWorkbook(filePath, selectedSheets, scope, vbaOptions()));
   } catch (e) {
     store().setError(toAppError(e));
   } finally {
@@ -58,10 +60,37 @@ export async function runExtraction() {
 /** Reextrai só o VBA (mudou uma opção de limpeza). */
 export async function refreshVba() {
   const { filePath, result } = store();
-  const vbaOptions = useSettingsStore.getState().settings.vba_options;
   if (!filePath || !result) return;
   try {
-    store().setVba(await extractVba(filePath, vbaOptions));
+    store().setVba(await extractVba(filePath, vbaOptions()));
+  } catch (e) {
+    store().setError(toAppError(e));
+  }
+}
+
+/** Lista de recentes (rápida) e, em seguida, a situação de cada um (só metadata, em segundo plano). */
+export async function loadRecent() {
+  try {
+    store().setRecent(await getRecent());
+    const status: Record<string, PathStatus> = {};
+    for (const r of await checkRecent()) status[r.path] = r.status;
+    store().setRecentStatus(status);
+  } catch {
+    // histórico é conveniência: sem ele a tela inicial só fica sem a lista
+  }
+}
+
+export async function forgetRecent(path: string) {
+  try {
+    store().setRecent(await removeRecentFile(path));
+  } catch (e) {
+    store().setError(toAppError(e));
+  }
+}
+
+export async function forgetAllRecent() {
+  try {
+    store().setRecent(await clearRecentFiles());
   } catch (e) {
     store().setError(toAppError(e));
   }

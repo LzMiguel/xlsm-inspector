@@ -1,17 +1,20 @@
-//! Camada fina: recebe do frontend, delega a `excel/` e `output/` em thread
+//! Camada fina: recebe do frontend, delega a `excel/`, `output/` e `store/` em thread
 //! separada e traduz progresso para eventos Tauri.
 
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::error::AppError;
-use crate::excel::{cells, vba, vba::VbaOptions, workbook};
-use crate::model::{CellsExtraction, ExtractScope, Progress, VbaComponent, WorkbookSummary};
+use crate::excel::{vba, vba::VbaOptions};
+use crate::model::{ExtractScope, ExtractionResult, Progress, VbaComponent};
 use crate::output::export::{self, ExportTargets, OutputConfig};
 use crate::output::markdown;
 use crate::output::naming::{FileNames, OnExists};
 use crate::output::template::{self, OutputTemplate, TemplatePreset};
+use crate::store::cache::{self, OpenResult, RecentStatus};
+use crate::store::recent::{self, RecentFile};
 use crate::store::settings::{self, Settings};
 
 const PROGRESS_EVENT: &str = "extraction://progress";
@@ -32,28 +35,85 @@ fn emitter(app: AppHandle) -> impl FnMut(Progress) {
     }
 }
 
-#[tauri::command]
-pub async fn inspect_workbook(path: String) -> Result<WorkbookSummary, AppError> {
-    blocking(move || workbook::inspect(Path::new(&path))).await
+fn config_dir(app: &AppHandle) -> Result<PathBuf, AppError> {
+    app.path()
+        .app_config_dir()
+        .map_err(|e| AppError::Internal(e.to_string()))
 }
 
-/// `sheets: None` = todas as abas.
+/// Cache e dados do app ficam na pasta de dados (não na de configuração).
+fn data_dir(app: &AppHandle) -> Result<PathBuf, AppError> {
+    app.path()
+        .app_data_dir()
+        .map_err(|e| AppError::Internal(e.to_string()))
+}
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as u64)
+}
+
+/// Abre a planilha: resumo + (se houver cache válido) a última extração.
+/// `reload: true` ignora o cache e relê o arquivo. Atualiza os recentes.
 #[tauri::command]
-pub async fn extract_cells(
+pub async fn open_workbook(
+    app: AppHandle,
+    path: String,
+    reload: Option<bool>,
+    vba_options: Option<VbaOptions>,
+) -> Result<OpenResult, AppError> {
+    let (cfg, data) = (config_dir(&app)?, data_dir(&app)?);
+    blocking(move || {
+        let use_cache = settings::load(&cfg).use_cache;
+        let res = cache::open(
+            &data,
+            Path::new(&path),
+            use_cache,
+            reload.unwrap_or(false),
+            vba_options.unwrap_or_default(),
+        );
+        // a lista de recentes é conveniência: falhar ao gravá-la não impede abrir
+        match &res {
+            Ok(r) => {
+                let file = RecentFile {
+                    path: path.clone(),
+                    name: r.summary.file_name.clone(),
+                    opened_at: now_ms(),
+                };
+                let _ = recent::add(&cfg, file);
+            }
+            Err(AppError::FileNotFound(_)) => {
+                let _ = recent::remove(&cfg, &path);
+            }
+            Err(_) => {}
+        }
+        res
+    })
+    .await
+}
+
+/// Células + VBA de uma vez. `sheets: None` = todas as abas.
+#[tauri::command]
+pub async fn extract_workbook(
     app: AppHandle,
     path: String,
     sheets: Option<Vec<String>>,
     scope: Option<ExtractScope>,
-) -> Result<CellsExtraction, AppError> {
+    vba_options: Option<VbaOptions>,
+) -> Result<ExtractionResult, AppError> {
+    let (cfg, data) = (config_dir(&app)?, data_dir(&app)?);
     blocking(move || {
         let mut emit = emitter(app);
-        let (sheets, warnings) = cells::extract_with_scope(
+        cache::extract(
+            &data,
             Path::new(&path),
+            settings::load(&cfg).use_cache,
             sheets.as_deref(),
             scope.unwrap_or_default(),
+            vba_options.unwrap_or_default(),
             &mut emit,
-        )?;
-        Ok(CellsExtraction { sheets, warnings })
+        )
     })
     .await
 }
@@ -66,7 +126,8 @@ pub async fn extract_vba(
     blocking(move || vba::extract_file(Path::new(&path), &options.unwrap_or_default())).await
 }
 
-/// Re-extrai no Rust e grava os arquivos; devolve os caminhos gerados.
+/// Grava os arquivos (reaproveita o cache se ele tiver as mesmas abas, escopo e opções);
+/// devolve os caminhos gerados.
 // Cada parâmetro é uma chave do `invoke`; agrupar quebraria o contrato com o frontend.
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
@@ -82,20 +143,27 @@ pub async fn export_outputs(
     on_exists: Option<OnExists>,
     scope: Option<ExtractScope>,
 ) -> Result<Vec<String>, AppError> {
+    let (conf, data) = (config_dir(&app)?, data_dir(&app)?);
     blocking(move || {
         let mut emit = emitter(app);
+        let (scope, vba_options) = (scope.unwrap_or_default(), vba_options.unwrap_or_default());
+        let cached = settings::load(&conf)
+            .use_cache
+            .then(|| cache::cached_result(&data, Path::new(&path), sheets.as_deref(), scope, vba_options))
+            .flatten();
         let cfg = OutputConfig {
             names: names.unwrap_or_default(),
             template: template.unwrap_or_default(),
             on_exists: on_exists.unwrap_or_default(),
-            scope: scope.unwrap_or_default(),
+            scope,
+            cached,
         };
         export::export_outputs(
             Path::new(&path),
             &PathBuf::from(out_dir),
             targets.unwrap_or_default(),
             sheets.as_deref(),
-            &vba_options.unwrap_or_default(),
+            &vba_options,
             &cfg,
             &mut emit,
         )
@@ -114,12 +182,6 @@ pub fn preview_template(template: OutputTemplate) -> String {
     markdown::preview(&template, &template::today())
 }
 
-fn config_dir(app: &AppHandle) -> Result<PathBuf, AppError> {
-    app.path()
-        .app_config_dir()
-        .map_err(|e| AppError::Internal(e.to_string()))
-}
-
 #[tauri::command]
 pub async fn get_settings(app: AppHandle) -> Result<Settings, AppError> {
     let dir = config_dir(&app)?;
@@ -130,4 +192,44 @@ pub async fn get_settings(app: AppHandle) -> Result<Settings, AppError> {
 pub async fn save_settings(app: AppHandle, settings: Settings) -> Result<(), AppError> {
     let dir = config_dir(&app)?;
     blocking(move || settings::save(&dir, &settings)).await
+}
+
+#[tauri::command]
+pub async fn get_recent(app: AppHandle) -> Result<Vec<RecentFile>, AppError> {
+    let dir = config_dir(&app)?;
+    blocking(move || Ok(recent::load(&dir))).await
+}
+
+#[tauri::command]
+pub async fn remove_recent(app: AppHandle, path: String) -> Result<Vec<RecentFile>, AppError> {
+    let dir = config_dir(&app)?;
+    blocking(move || recent::remove(&dir, &path)).await
+}
+
+#[tauri::command]
+pub async fn clear_recent(app: AppHandle) -> Result<Vec<RecentFile>, AppError> {
+    let dir = config_dir(&app)?;
+    blocking(move || recent::clear(&dir)).await
+}
+
+/// Situação de cada recente (só `metadata` + JSON do cache; não abre as planilhas).
+#[tauri::command]
+pub async fn check_recent(app: AppHandle) -> Result<Vec<RecentStatus>, AppError> {
+    let (cfg, data) = (config_dir(&app)?, data_dir(&app)?);
+    blocking(move || {
+        Ok(recent::load(&cfg)
+            .into_iter()
+            .map(|r| RecentStatus {
+                status: cache::status(&data, Path::new(&r.path)),
+                path: r.path,
+            })
+            .collect())
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn clear_cache(app: AppHandle) -> Result<(), AppError> {
+    let dir = data_dir(&app)?;
+    blocking(move || cache::clear(&dir)).await
 }

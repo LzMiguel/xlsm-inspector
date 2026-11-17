@@ -8,7 +8,7 @@ use super::template::{OutputTemplate, today};
 use super::{json::cells_to_json, markdown};
 use crate::error::AppError;
 use crate::excel::{cells::extract_with_scope, vba, vba::VbaOptions};
-use crate::model::{ExtractScope, Progress};
+use crate::model::{ExtractScope, ExtractionResult, Progress};
 
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(default)]
@@ -35,6 +35,8 @@ pub struct OutputConfig {
     pub template: OutputTemplate,
     pub on_exists: OnExists,
     pub scope: ExtractScope,
+    /// Resultado já extraído com as mesmas abas, escopo e opções de VBA (vem do cache).
+    pub cached: Option<ExtractionResult>,
 }
 
 fn write(dir: &Path, name: &str, content: &str, written: &mut Vec<String>) -> Result<(), AppError> {
@@ -120,29 +122,39 @@ pub fn export_outputs(
     let [json_name, md_name, vba_name] = plan(path, out_dir, targets, cfg, &date)?;
     let mut written = Vec::new();
 
+    let file_name = path
+        .file_name()
+        .map(|n| n.to_string_lossy())
+        .unwrap_or_default();
+
     if json_name.is_some() || md_name.is_some() {
-        let (cells, _) = extract_with_scope(path, sheets, cfg.scope, on_progress)?;
+        // com resultado em cache (mesmas abas, escopo e opções) o arquivo não é relido
+        let fresh;
+        let cells = match &cfg.cached {
+            Some(c) => &c.sheets,
+            None => {
+                fresh = extract_with_scope(path, sheets, cfg.scope, on_progress)?.0;
+                &fresh
+            }
+        };
         if let Some(name) = &json_name {
-            write(out_dir, name, &cells_to_json(&cells)?, &mut written)?;
+            write(out_dir, name, &cells_to_json(cells)?, &mut written)?;
         }
         if let Some(name) = &md_name {
-            let file_name = path
-                .file_name()
-                .map(|n| n.to_string_lossy())
-                .unwrap_or_default();
-            let md = markdown::cells_to_markdown(&file_name, &cells, &cfg.template, &date);
+            let md = markdown::cells_to_markdown(&file_name, cells, &cfg.template, &date);
             write(out_dir, name, &md, &mut written)?;
         }
     }
 
     if let Some(name) = &vba_name {
         on_progress(Progress::new("vba", 0, 1, "VBA"));
-        match vba::extract_file(path, vba_opts) {
+        let components = match &cfg.cached {
+            Some(c) if c.vba.is_empty() => Err(AppError::NoVbaProject),
+            Some(c) => Ok(c.vba.clone()),
+            None => vba::extract_file(path, vba_opts),
+        };
+        match components {
             Ok(components) => {
-                let file_name = path
-                    .file_name()
-                    .map(|n| n.to_string_lossy())
-                    .unwrap_or_default();
                 let md = markdown::vba_to_markdown(&components, &file_name, &cfg.template, &date);
                 write(out_dir, name, &md, &mut written)?
             }

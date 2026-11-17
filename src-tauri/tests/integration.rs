@@ -13,6 +13,7 @@ use xlsm_inspector_lib::output::json::cells_to_json;
 use xlsm_inspector_lib::output::markdown::cells_to_markdown;
 use xlsm_inspector_lib::output::naming::{FileNames, OnExists};
 use xlsm_inspector_lib::output::template::OutputTemplate;
+use xlsm_inspector_lib::store::cache;
 
 fn fx(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -346,6 +347,66 @@ fn exporta_amostra_com_aviso() {
         .sum();
     assert!(kept < total);
     fs::remove_dir_all(&dir).ok();
+}
+
+/// Com resultado em cache a exportação usa ele e não relê o arquivo (o caminho nem precisa existir).
+#[test]
+fn exporta_do_cache_sem_reler_o_arquivo() {
+    let dir = std::env::temp_dir().join(format!("xlsm_inspector_cached_{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let mut cells = indexmap::IndexMap::new();
+    cells.insert("A1".to_string(), CellContent::Plain(CellValue::Int(7)));
+    let cached = xlsm_inspector_lib::model::ExtractionResult {
+        sheets: vec![SheetCells { name: "SoNoCache".into(), cells, tables: vec![], sampled: None }],
+        vba: vec![],
+        warnings: vec![],
+    };
+    let cfg = OutputConfig { cached: Some(cached), ..OutputConfig::default() };
+
+    let written = export_outputs(
+        &dir.join("nao_existe.xlsx"),
+        &dir,
+        ExportTargets::default(),
+        None,
+        &VbaOptions::default(),
+        &cfg,
+        &mut |_| {},
+    )
+    .unwrap();
+    assert_eq!(written.len(), 2); // json + md; sem VBA no cache, o vba_code.md é omitido
+    let md = fs::read_to_string(dir.join("mapeamento_planilha.md")).unwrap();
+    assert!(md.contains("## Aba: SoNoCache") && md.contains("| **A1** | 7 |"));
+    fs::remove_dir_all(&dir).ok();
+}
+
+/// Abrir de novo sem alteração devolve a extração do cache (idêntica à original);
+/// arquivo modificado, opções de VBA diferentes ou "recarregar" não usam a extração guardada.
+#[test]
+fn cache_ponta_a_ponta() {
+    let tmp = std::env::temp_dir().join(format!("xlsm_inspector_cache_{}", std::process::id()));
+    let data = tmp.join("data");
+    fs::create_dir_all(&tmp).unwrap();
+    let book = tmp.join("a.xlsx");
+    fs::copy(fx("simples.xlsx"), &book).unwrap();
+    let v = VbaOptions::default();
+
+    assert!(cache::open(&data, &book, true, false, v).unwrap().cached.is_none());
+    let res = cache::extract(&data, &book, true, None, ExtractScope::Full, v, &mut |_| {}).unwrap();
+
+    let hit = cache::open(&data, &book, true, false, v).unwrap().cached.expect("deveria vir do cache");
+    assert_eq!(cells_to_json(&hit.result.sheets).unwrap(), cells_to_json(&res.sheets).unwrap());
+    assert_eq!(hit.scope, ExtractScope::Full);
+
+    let outras = VbaOptions { remove_blank_lines: false, hide_attributes: true };
+    assert!(cache::open(&data, &book, true, false, outras).unwrap().cached.is_none());
+    assert!(cache::open(&data, &book, false, false, v).unwrap().cached.is_none()); // cache desligado
+
+    // arquivo "salvo de novo": mesma coisa, outra data
+    let f = fs::OpenOptions::new().write(true).open(&book).unwrap();
+    f.set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(120)).unwrap();
+    drop(f);
+    assert!(cache::open(&data, &book, true, false, v).unwrap().cached.is_none());
+    fs::remove_dir_all(&tmp).ok();
 }
 
 #[test]

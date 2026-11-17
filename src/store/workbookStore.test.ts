@@ -66,6 +66,19 @@ describe("workbookStore", () => {
     expect(s().summary).toBeNull();
   });
 
+  it("restaura a extração do cache: abas na ordem do arquivo, escopo e resultado", () => {
+    s().setSummary(summary);
+    s().loadCached({ sheets: ["B"], scope: { kind: "head", rows: 5 }, result: result(["M1"]) });
+    expect(s().selectedSheets).toEqual(["B"]);
+    expect(s().scope).toEqual({ kind: "head", rows: 5 });
+    expect(s().result?.vba).toHaveLength(1);
+    expect(s().selectedComponent).toBe("M1");
+    expect(s().fromCache).toBe(true);
+    expect(s().status).toBe("ready");
+    s().startExtracting();
+    expect(s().fromCache).toBe(false);
+  });
+
   it("erro zera o progresso e marca o status", () => {
     s().setProgress({ stage: "cells", current: 1, total: 2, label: "A" });
     s().setError({ code: "CorruptedFile", message: "x" });

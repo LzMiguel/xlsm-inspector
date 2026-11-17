@@ -1,6 +1,6 @@
-import { Table2 } from "lucide-react";
+import { RefreshCw, Table2 } from "lucide-react";
 
-import { refreshVba, runExtraction } from "../store/workbookActions";
+import { openWorkbook, refreshVba, runExtraction } from "../store/workbookActions";
 import { updateVbaOptions } from "../store/settingsActions";
 import { useSettingsStore } from "../store/settingsStore";
 import { useWorkbookStore } from "../store/workbookStore";
@@ -26,6 +26,8 @@ export function ExtractPanel() {
   const hasVba = useWorkbookStore((s) => s.summary?.has_vba ?? false);
   const noSheets = useWorkbookStore((s) => s.selectedSheets.length === 0);
   const vbaOptions = useSettingsStore((s) => s.settings.vba_options);
+  const filePath = useWorkbookStore((s) => s.filePath);
+  const fromCache = useWorkbookStore((s) => s.fromCache);
   const scope = useWorkbookStore((s) => s.scope);
   const setScope = useWorkbookStore((s) => s.setScope);
   const extracting = status === "extracting";
@@ -59,6 +61,25 @@ export function ExtractPanel() {
         )}
         {noSheets && <p className="text-sm text-warning">Marque ao menos uma aba.</p>}
       </div>
+
+      {fromCache && !extracting && (
+        <Alert
+          variant="info"
+          title="Resultado do cache"
+          action={
+            <Button
+              size="sm"
+              variant="secondary"
+              icon={RefreshCw}
+              onClick={() => filePath && openWorkbook(filePath, true)}
+            >
+              Recarregar
+            </Button>
+          }
+        >
+          O arquivo não foi relido: é a última extração, com o arquivo igual ao de então.
+        </Alert>
+      )}
 
       {hasVba && (
         <div className="flex flex-wrap gap-x-6 gap-y-2">

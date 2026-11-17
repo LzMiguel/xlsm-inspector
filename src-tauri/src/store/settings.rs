@@ -25,6 +25,8 @@ pub struct Settings {
     pub template: OutputTemplate,
     /// Predefinições do usuário (as embutidas vêm de `template::builtin_presets`).
     pub presets: Vec<TemplatePreset>,
+    /// Guarda no disco o resultado das últimas 5 planilhas (store/cache.rs).
+    pub use_cache: bool,
 }
 
 impl Default for Settings {
@@ -36,6 +38,7 @@ impl Default for Settings {
             file_names: FileNames::default(),
             template: OutputTemplate::default(),
             presets: Vec::new(),
+            use_cache: true,
         }
     }
 }
@@ -131,6 +134,7 @@ mod tests {
         let s = load(&dir);
         assert_eq!(s.default_out_dir.as_deref(), Some("D:\\x"));
         assert!(s.vba_options.hide_attributes && s.vba_options.remove_blank_lines);
+        assert!(s.use_cache, "o cache vem ligado por padrão");
         let _ = fs::remove_dir_all(&dir);
     }
 }

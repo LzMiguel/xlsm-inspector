@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS: Settings = {
     footer: "",
   },
   presets: [],
+  use_cache: true,
 };
 
 interface SettingsState {

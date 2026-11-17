@@ -4,13 +4,14 @@ import type {
   AppError,
   ExtractionResult,
   ExtractScope,
+  CachedExtraction,
+  PathStatus,
   Progress,
+  RecentFile,
   VbaComponent,
   Warning,
   WorkbookSummary,
 } from "../types/models";
-
-import { loadRecent, saveRecent, withRecent, type RecentFile } from "./recentFiles";
 
 export type Status = "idle" | "loading" | "extracting" | "ready" | "error";
 export type PreviewTab = "cells" | "vba";
@@ -30,12 +31,17 @@ interface WorkbookState {
   selectedComponent: string | null;
   /** Escopo da extração (tudo / primeiras N / amostra de N). Vale para o próximo "Extrair". */
   scope: ExtractScope;
-  /** Histórico de arquivos abertos (persistido; não é zerado por `reset`). */
+  /** Veio do cache em disco (sem reler o arquivo). */
+  fromCache: boolean;
+  /** Histórico de arquivos abertos (guardado no Rust; não é zerado por `reset`). */
   recent: RecentFile[];
+  /** Situação de cada recente, por caminho (verificada em segundo plano). */
+  recentStatus: Record<string, PathStatus>;
 
-  addRecent: (path: string, name: string) => void;
-  removeRecent: (path: string) => void;
-  clearRecent: () => void;
+  setRecent: (list: RecentFile[]) => void;
+  setRecentStatus: (status: Record<string, PathStatus>) => void;
+  /** Restaura a última extração guardada: abas, escopo e resultado. */
+  loadCached: (c: CachedExtraction) => void;
   startLoading: (path: string) => void;
   setSummary: (summary: WorkbookSummary) => void;
   toggleSheet: (name: string) => void;
@@ -62,6 +68,7 @@ const initial = {
   error: null,
   tab: "cells" as PreviewTab,
   selectedComponent: null,
+  fromCache: false,
 };
 
 /** Mantém a seleção atual se o componente ainda existir; senão, o primeiro. */
@@ -70,24 +77,26 @@ const pickComponent = (vba: VbaComponent[], current: string | null) =>
 
 export const useWorkbookStore = create<WorkbookState>((set, get) => ({
   ...initial,
-  recent: loadRecent(),
+  recent: [],
+  recentStatus: {},
   scope: { kind: "full" },
 
-  addRecent: (path, name) => {
-    const recent = withRecent(get().recent, { path, name, openedAt: Date.now() });
-    saveRecent(recent);
-    set({ recent });
-  },
+  setRecent: (recent) => set({ recent }),
 
-  removeRecent: (path) => {
-    const recent = get().recent.filter((r) => r.path !== path);
-    saveRecent(recent);
-    set({ recent });
-  },
+  setRecentStatus: (recentStatus) => set({ recentStatus }),
 
-  clearRecent: () => {
-    saveRecent([]);
-    set({ recent: [] });
+  loadCached: (c) => {
+    const names = get().summary?.sheets.map((s) => s.name) ?? [];
+    set({
+      selectedSheets: names.filter((n) => c.sheets.includes(n)),
+      scope: c.scope,
+      result: c.result,
+      warnings: c.result.warnings,
+      selectedComponent: pickComponent(c.result.vba, null),
+      progress: null,
+      status: "ready",
+      fromCache: true,
+    });
   },
 
   // Novo arquivo: descarta qualquer resultado anterior.
@@ -112,7 +121,8 @@ export const useWorkbookStore = create<WorkbookState>((set, get) => ({
   setAllSheets: (selected) =>
     set({ selectedSheets: selected ? (get().summary?.sheets.map((s) => s.name) ?? []) : [] }),
 
-  startExtracting: () => set({ status: "extracting", progress: null, result: null, error: null }),
+  startExtracting: () =>
+    set({ status: "extracting", progress: null, result: null, error: null, fromCache: false }),
 
   setProgress: (progress) => set({ progress }),
 

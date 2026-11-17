@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { FolderOpen } from "lucide-react";
 
-import { pickFolder, toAppError } from "../api/commands";
+import { clearCache, pickFolder, toAppError } from "../api/commands";
 import { updateSettings, updateVbaOptions } from "../store/settingsActions";
 import { useSettingsStore } from "../store/settingsStore";
+import { loadRecent } from "../store/workbookActions";
 import { ErrorAlert } from "./ErrorAlert";
 import { OutputSettings } from "./OutputSettings";
 import { Button } from "./ui/Button";
@@ -22,6 +23,17 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   const error = useSettingsStore((s) => s.error);
   const setError = useSettingsStore((s) => s.setError);
   const [tab, setTab] = useState<Tab>("geral");
+  const [cacheCleared, setCacheCleared] = useState(false);
+
+  async function emptyCache() {
+    try {
+      await clearCache();
+      setCacheCleared(true);
+      loadRecent(); // atualiza os selos "em cache" da tela inicial
+    } catch (e) {
+      setError(toAppError(e));
+    }
+  }
 
   async function chooseFolder() {
     try {
@@ -60,6 +72,25 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               >
                 Limpar
               </Button>
+            </div>
+          </section>
+
+          <section className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold">Cache</h3>
+            <p className="text-sm text-muted">
+              Guarda no disco, só neste computador, a última extração das 5 planilhas mais recentes.
+              Reabrir uma planilha que não mudou não relê o arquivo.
+            </p>
+            <Checkbox
+              label="Guardar resultados em cache"
+              checked={settings.use_cache}
+              onChange={(v) => updateSettings({ use_cache: v })}
+            />
+            <div className="flex items-center gap-2">
+              <Button size="sm" onClick={emptyCache}>
+                Limpar cache
+              </Button>
+              {cacheCleared && <span className="text-sm text-muted">Cache limpo.</span>}
             </div>
           </section>
 

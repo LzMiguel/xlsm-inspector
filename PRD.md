@@ -114,6 +114,21 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta �
 - Avisos: selo "amostra: X de Y linhas" na aba, alerta informativo e, no `mapeamento_planilha.md`, `> Amostra: X de Y linhas.` sob o título da aba. O JSON mantém o formato (só tem menos células). Os nomes sugeridos ganham `_amostra`.
 - Limite conhecido: reduz saída e renderização, não o tempo de leitura (o arquivo é lido por inteiro).
 
+### RF12 — Cache e recentes
+
+- O histórico (até 10 arquivos) fica no app, em `recent.json`. Cada item mostra um selo: "em cache", "modificado", "não encontrado" ou "bloqueado", verificado em segundo plano (só metadados; não abre as planilhas) quando a tela inicial aparece.
+- O app guarda em disco a última extração das 5 planilhas mais recentes. Reabrir uma planilha **que não mudou** (mesmo tamanho e data de modificação) restaura abas, escopo e resultado sem reler o arquivo; modificada, relê. "Recarregar" ignora o cache.
+- A exportação reaproveita o resultado guardado quando abas, escopo e opções de VBA são iguais.
+- Configurações → Geral: ligar/desligar o cache e "Limpar cache". Planilhas acima de 50 MB não entram no cache.
+
+### RF13 — Extração de Power Query
+
+- Detectar se o arquivo contém consultas Power Query (elemento `DataMashup` em `customXml/`).
+- Extrair o código M de todas as consultas a partir de `Formulas/Section1.m`.
+- Separar uma seção por consulta, preservando nomes com espaço ou acento (`#"Relatório Mensal"`).
+- Extrair também as conexões de `xl/connections.xml` (nome, descrição e string de conexão).
+- Arquivo sem consultas: exibir estado vazio, sem erro.
+
 ## 7. Requisitos não-funcionais
 
 | ID    | Requisito                                                                                 |
@@ -125,6 +140,7 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta �
 | RNF05 | Plataforma principal: Windows 10/11.                                                      |
 | RNF06 | Executável instalável sem privilégios de administrador (quando possível).                 |
 | RNF07 | O arquivo original nunca é modificado (abertura somente leitura).                         |
+| RNF08 | Cache só local, em disco, desligável e apagável; nenhum dado sai do computador.           |
 
 ## 8. Formato de saída
 

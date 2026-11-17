@@ -7,17 +7,19 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import type {
   AppError,
   AppErrorCode,
-  CellsExtraction,
   ExportTargets,
+  ExtractionResult,
   ExtractScope,
   FileNames,
   OnExists,
+  OpenResult,
   OutputTemplate,
+  RecentFile,
+  RecentStatus,
   Settings,
   TemplatePreset,
   VbaComponent,
   VbaOptions,
-  WorkbookSummary,
 } from "../types/models";
 
 const CODES: readonly AppErrorCode[] = [
@@ -51,12 +53,23 @@ async function call<T>(cmd: string, args?: Record<string, unknown>): Promise<T> 
   }
 }
 
-export const inspectWorkbook = (path: string) =>
-  call<WorkbookSummary>("inspect_workbook", { path });
+/** `reload`: ignora o cache e relê o arquivo. */
+export const openWorkbookFile = (path: string, reload?: boolean, vbaOptions?: VbaOptions) =>
+  call<OpenResult>("open_workbook", { path, reload, vbaOptions });
 
-/** `sheets` omitido = todas as abas. */
-export const extractCells = (path: string, sheets?: string[], scope?: ExtractScope) =>
-  call<CellsExtraction>("extract_cells", { path, sheets, scope });
+/** Células + VBA. `sheets` omitido = todas as abas. */
+export const extractWorkbook = (
+  path: string,
+  sheets?: string[],
+  scope?: ExtractScope,
+  vbaOptions?: VbaOptions,
+) => call<ExtractionResult>("extract_workbook", { path, sheets, scope, vbaOptions });
+
+export const getRecent = () => call<RecentFile[]>("get_recent");
+export const removeRecentFile = (path: string) => call<RecentFile[]>("remove_recent", { path });
+export const clearRecentFiles = () => call<RecentFile[]>("clear_recent");
+export const checkRecent = () => call<RecentStatus[]>("check_recent");
+export const clearCache = () => call<void>("clear_cache");
 
 export const extractVba = (path: string, options?: VbaOptions) =>
   call<VbaComponent[]>("extract_vba", { path, options });

@@ -179,6 +179,11 @@ Escala base de **4px**.
 - `wide`: largura máx. 768px (usada nas configurações). Abas "Geral" e "Saída" (`Tabs`).
 - Aba "Saída" (`OutputSettings`): campos de nome de arquivo, seletor de predefinição, formulário do modelo e `<pre>` de pré-visualização em duas colunas (uma só em telas estreitas).
 
+### Recentes e cache
+
+- Cada recente mostra um `Badge`: "em cache" (`primary`), "modificado" e "bloqueado" (`warning`), "não encontrado" (`danger`). Com cache ou modificado, um botão ícone (recarregar) ignora o cache.
+- Resultado vindo do cache: `Alert` `info` "Resultado do cache" com botão "Recarregar" no `ExtractPanel`.
+
 ### ScopeSelector
 
 - `Select` (Todas / Primeiras N / Amostra de N) + `Input` numérico (mín. 1, padrão 100) quando não é "Todas". Aparece no `ExtractPanel` e no `ExportPanel`.

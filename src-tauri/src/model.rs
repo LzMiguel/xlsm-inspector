@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkbookSummary {
     pub path: String,
     pub file_name: String,
@@ -10,7 +10,7 @@ pub struct WorkbookSummary {
     pub has_vba: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SheetInfo {
     pub name: String,
     pub cell_count: usize,
@@ -18,7 +18,7 @@ pub struct SheetInfo {
 }
 
 /// Serializado "untagged": `null`, bool, número ou texto.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum CellValue {
     Empty,
@@ -31,7 +31,7 @@ pub enum CellValue {
 }
 
 /// Serializado "untagged": valor simples ou `{ "formula", "valor" }`.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum CellContent {
     Plain(CellValue),
@@ -39,7 +39,7 @@ pub enum CellContent {
 }
 
 /// Tabela do Excel (ListObject): só metadado; o conteúdo continua em `SheetCells::cells`.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TableInfo {
     pub name: String,
     /// Intervalo com cabeçalho, ex.: "A1:Z300".
@@ -53,13 +53,13 @@ pub struct TableInfo {
 }
 
 /// Quantas linhas (com conteúdo) da aba ficaram na extração.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SampleInfo {
     pub total_rows: usize,
     pub kept_rows: usize,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SheetCells {
     pub name: String,
     pub cells: IndexMap<String, CellContent>,
@@ -69,7 +69,7 @@ pub struct SheetCells {
 }
 
 /// Quais linhas extrair. Reduz saída e renderização; o arquivo continua sendo lido por inteiro.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ExtractScope {
     #[default]
@@ -80,7 +80,7 @@ pub enum ExtractScope {
     Sample { rows: usize },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VbaComponentKind {
     Module,
     Class,
@@ -90,7 +90,7 @@ pub enum VbaComponentKind {
     Unknown,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VbaComponent {
     pub name: String,
     pub kind: VbaComponentKind,
@@ -98,7 +98,7 @@ pub struct VbaComponent {
     pub line_count: usize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WarningKind {
     /// Fórmulas sem valor em cache (arquivo nunca salvo no Excel).
     MissingCache,
@@ -106,7 +106,7 @@ pub enum WarningKind {
     Sampled,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Warning {
     pub kind: WarningKind,
     pub sheet: String,
@@ -135,14 +135,7 @@ impl Progress {
     }
 }
 
-/// Saída do comando `extract_cells` (células + avisos).
-#[derive(Debug, Clone, Serialize)]
-pub struct CellsExtraction {
-    pub sheets: Vec<SheetCells>,
-    pub warnings: Vec<Warning>,
-}
-
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExtractionResult {
     pub sheets: Vec<SheetCells>,
     pub vba: Vec<VbaComponent>,

@@ -88,7 +88,9 @@ xlsm-inspector/
 │   │   │   └── export.rs        # grava os arquivos
 │   │   └── store/
 │   │       ├── mod.rs
-│   │       └── settings.rs      # configurações (settings.json)
+│   │       ├── settings.rs      # configurações (settings.json)
+│   │       ├── recent.rs        # histórico de arquivos (recent.json)
+│   │       └── cache.rs         # cache em disco das últimas 5 extrações
 │   ├── tests/
 │   │   └── fixtures/            # planilhas de teste
 │   ├── capabilities/
@@ -165,8 +167,11 @@ Os campos `formula` e `valor` mantêm os nomes do script Python para que o JSON 
 
 | Comando            | Entrada                                                  | Saída                                           | Observação                                                                                                        |
 | ------------------ | -------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `inspect_workbook` | `path`                                                   | `WorkbookSummary`                               | Rápido; só metadados.                                                                                             |
-| `extract_cells`    | `path`, `sheets?: string[]`, `scope?`                    | `{ sheets: SheetCells[], warnings: Warning[] }` | Emite eventos de progresso. Sem `sheets` = todas as abas. `scope`: `full` (padrão), `head` ou `sample` com `rows`; corta por linha com conteúdo, mantém cabeçalhos de tabela e gera aviso `Sampled`. O arquivo ainda é lido inteiro. |
+| `open_workbook` | `path`, `reload?`, `vba_options?` | `{ summary, cached }` | Resumo + (cache válido e mesmas opções de VBA) a última extração `{sheets, scope, result}`, sem reler o arquivo. `reload: true` ignora o cache. Atualiza os recentes; `FileNotFound` remove o item. |
+| `extract_workbook` | `path`, `sheets?`, `scope?`, `vba_options?` | `ExtractionResult` | Células + VBA em um passo; emite eventos de progresso. Sem `sheets` = todas. `scope`: `full` (padrão), `head` ou `sample` com `rows`; corta por linha com conteúdo, mantém cabeçalhos de tabela e gera aviso `Sampled`. Guarda no cache (se ligado). O arquivo ainda é lido inteiro. |
+| `get_recent` / `remove_recent` / `clear_recent` | —, `path`, — | `RecentFile[]` | Histórico (até 10) em `recent.json`. |
+| `check_recent` | — | `{path, status}[]` | `status`: `Cached`, `Modified`, `NotCached`, `Missing`, `Locked`. Só `metadata` + JSON do cache; não abre as planilhas. |
+| `clear_cache` | — | — | Apaga `cache/`. |
 | `extract_vba`      | `path`, `options?`                                       | `VbaComponent[]`                                | `options`: `remove_blank_lines`, `hide_attributes`. Sem VBA → erro `NoVbaProject`.                                |
 | `export_outputs`   | `path`, `out_dir`, `targets?`, `sheets?`, `vba_options?`, `names?`, `template?`, `on_exists?` | `string[]` (arquivos gerados)                   | Re-extrai no Rust e escreve. `targets`: `{json, cells_md, vba_md}` (padrão: todos). Sem VBA, omite `vba_code.md`. `names`: padrões de nome (`{arquivo}`, `{data}`); `template`: textos do Markdown; `scope`: igual ao de `extract_cells` (a exportação é independente da extração); `on_exists`: `fail` (padrão, erro `FileExists`), `overwrite` ou `suffix` (`_2`). Nomes e colisões são checados antes de extrair. O JSON nunca muda. |
 | `builtin_templates` | — | `TemplatePreset[]` | Predefinições embutidas ("Padrão" = formato da v1.0, "Contexto para IA"). |
@@ -196,7 +201,7 @@ O frontend mapeia `code` para a mensagem e o componente `Alert` corretos.
 ### Abrir arquivo
 
 ```text
-DropZone/diálogo ─► invoke("inspect_workbook", path)
+DropZone/diálogo ─► invoke("open_workbook", path)  ─► cache válido? devolve a última extração
                   ─► Rust abre com calamine, lê nomes das abas e checa VBA
                   ─► WorkbookSummary ─► store ─► FileCard + SheetList
 ```
@@ -204,7 +209,7 @@ DropZone/diálogo ─► invoke("inspect_workbook", path)
 ### Extrair
 
 ```text
-Botão "Extrair" ─► invoke("extract_cells", path, abas)
+Botão "Extrair" ─► invoke("extract_workbook", path, abas, escopo)
                     ├─ spawn_blocking: para cada aba
                     │    worksheet_range (valores) + worksheet_formula (fórmulas)
                     │    une por posição absoluta, converte para "A1"
@@ -246,6 +251,15 @@ Botão "Exportar" ─► diálogo de pasta ─► invoke("export_outputs")
 
 - Escapar `|` e trocar `\n` por `|` nas células, como no script original.
 - Uma seção por aba, separadas por `---`.
+
+### Cache e recentes (RF12, RNF08)
+
+- Dados só locais, em disco: `settings.json` e `recent.json` em `app_config_dir`; `cache/<hash>.json` em `app_data_dir`. Nenhuma rede (RNF01); a planilha nunca é escrita (RNF07).
+- Entrada do cache = resumo + última extração (`abas`, `escopo`, opções de VBA, `ExtractionResult`). Vale enquanto **tamanho + data de modificação** do arquivo forem os mesmos e `cache_version` bater; JSON corrompido ou de outra versão é ignorado.
+- Impressão digital lida **antes** de abrir o arquivo; uma extração só é guardada se o arquivo ainda for o mesmo.
+- LRU de 5 arquivos (o uso renova a data do JSON). Planilha acima de 50 MB não entra. `use_cache` desliga tudo; `clear_cache` apaga a pasta.
+- Reabrir com cache válido restaura abas, escopo e resultado; se as opções de VBA mudaram, só o resumo vem do cache. `export_outputs` reaproveita o resultado se abas, escopo e opções forem as mesmas.
+- `check_recent` usa só `metadata` e roda em segundo plano ao abrir a tela inicial. Limite: tamanho + mtime pode errar em pastas sincronizadas (OneDrive); "Recarregar" ignora o cache.
 
 ### Desempenho
 

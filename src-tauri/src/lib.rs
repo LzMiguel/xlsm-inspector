@@ -11,9 +11,14 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            commands::inspect_workbook,
-            commands::extract_cells,
+            commands::open_workbook,
+            commands::extract_workbook,
             commands::extract_vba,
+            commands::get_recent,
+            commands::remove_recent,
+            commands::clear_recent,
+            commands::check_recent,
+            commands::clear_cache,
             commands::export_outputs,
             commands::get_settings,
             commands::save_settings,

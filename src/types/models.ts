@@ -82,11 +82,6 @@ export interface Warning {
   message: string;
 }
 
-export interface CellsExtraction {
-  sheets: SheetCells[];
-  warnings: Warning[];
-}
-
 export interface ExtractionResult {
   sheets: SheetCells[];
   vba: VbaComponent[];
@@ -117,6 +112,36 @@ export interface Settings {
   template: OutputTemplate;
   /** Predefinições do usuário (as embutidas vêm de `builtin_templates`). */
   presets: TemplatePreset[];
+  /** Guarda no disco o resultado das últimas 5 planilhas. */
+  use_cache: boolean;
+}
+
+/** Espelho de store/recent.rs. */
+export interface RecentFile {
+  path: string;
+  name: string;
+  /** Epoch em ms da última abertura. */
+  opened_at: number;
+}
+
+/** Cached: há cache e o arquivo não mudou. Modified: há cache, mas o arquivo mudou. */
+export type PathStatus = "Cached" | "Modified" | "NotCached" | "Missing" | "Locked";
+
+export interface RecentStatus {
+  path: string;
+  status: PathStatus;
+}
+
+/** Última extração guardada no cache (espelho de store/cache.rs). */
+export interface CachedExtraction {
+  sheets: string[];
+  scope: ExtractScope;
+  result: ExtractionResult;
+}
+
+export interface OpenResult {
+  summary: WorkbookSummary;
+  cached: CachedExtraction | null;
 }
 
 /** Espelho de output/naming.rs: padrões sem extensão. `{arquivo}` e `{data}`. */
