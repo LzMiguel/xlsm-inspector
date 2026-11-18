@@ -4,11 +4,13 @@ Contexto para o Claude (e outros agentes) neste repositório. As regras completa
 
 ## Projeto
 
-**XLSM Inspector**: app desktop (Tauri v2 + React + TypeScript) que lê `.xlsx`/`.xlsm` e exporta:
+**XLSM Inspector**: app desktop (Tauri v2 + React + TypeScript) que lê planilhas (`.xlsx`/`.xlsm`), Word (`.docx`/`.docm`), PowerPoint (`.pptx`/`.pptm`) e PDF, e exporta:
 
 - `mapeamento_planilha.json` (células: valor + fórmula);
 - `mapeamento_planilha.md` (mesmo conteúdo em Markdown);
-- `vba_code.md` (código VBA por componente).
+- `vba_code.md` (código VBA por componente);
+- `contexto_ia.md` (arquivo único para IA, opcionalmente em partes);
+- conforme o `GUIDE.md`: Power Query, diagnóstico, Word, PowerPoint e PDF.
 
 Substitui dois scripts Python (`openpyxl` + `oletools`). 100% offline.
 
@@ -33,7 +35,7 @@ Se uma tarefa conflitar com esses documentos, **pare e pergunte**.
 1. Nunca modificar o arquivo de entrada (somente leitura).
 2. Nunca executar macros; VBA é só texto.
 3. Sem rede, telemetria, CDN ou fontes externas.
-4. Todo processamento de Excel é no Rust; o frontend só exibe.
+4. Todo processamento de arquivos (Excel, Word, PowerPoint, PDF) é no Rust; o frontend só exibe.
 5. JSON usa as chaves `formula` e `valor`. Markdown segue o `PRD.md`.
 6. Mudanças pequenas e focadas; sem refatorar o que não foi pedido.
 

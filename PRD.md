@@ -2,20 +2,23 @@
 
 ## 1. Visão geral
 
-O **XLSM Inspector** é um aplicativo desktop (Tauri + React) que lê planilhas do Excel (`.xlsx` / `.xlsm`) e gera um mapeamento completo do conteúdo em dois formatos:
+O **XLSM Inspector** é um aplicativo desktop (Tauri + React) que lê diversos arquivos e os transforma em texto estruturado:
 
-- **JSON**, para automações e scripts.
-- **Markdown**, para leitura humana e para servir de contexto a agentes de IA.
+- **Excel** (`.xlsx` / `.xlsm`): células (valores e fórmulas), código VBA, consultas Power Query e diagnóstico.
+- **Word** (`.docx` / `.docm`): títulos, parágrafos, listas, tabelas, comentários e campos.
+- **PowerPoint** (`.pptx` / `.pptm`): texto, tabelas e notas de cada slide.
+- **PDF** com texto selecionável: texto por página, metadados e campos de formulário.
+- **VBA** também em `.docm` e `.pptm`.
 
-Além das células (valores e fórmulas), o app extrai o **código VBA** de módulos, módulos de classe, planilhas, `ThisWorkbook` e UserForms.
+A saída é **Markdown**, para leitura humana e para servir de contexto a agentes de IA e **JSON** para as células das planilhas, para automações e scripts.
 
-Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta única, com interface, sem depender de Python instalado na máquina.
+O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta única, com interface, sem depender de Python instalado na máquina.
 
 ## 2. Problema
 
 - Entender uma planilha complexa (muitas abas, fórmulas encadeadas, macros) exige abrir célula por célula e o editor VBA.
-- Agentes de IA não leem `.xlsm` diretamente; precisam de uma representação em texto.
-- Os scripts atuais dependem de Python e bibliotecas instaladas, o que dificulta o uso por outras pessoas da equipe.
+- Agentes de IA não leem `.xlsm`, `.docx`, `.pptx` nem PDF diretamente; precisam de uma representação em texto, de tamanho controlado.
+- Documentos do Office e PDFs que acompanham a planilha (especificações, apresentações, manuais) ficam em outras ferramentas, sem um formato de saída comum.
 
 ## 3. Público-alvo
 
@@ -25,26 +28,32 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta �
 ## 4. Objetivos
 
 1. Gerar o mapeamento de células (valor + fórmula) em JSON e Markdown com um clique.
-2. Extrair todo o código VBA em um Markdown organizado por componente.
-3. Funcionar 100% offline, sem enviar dados para fora da máquina.
-4. Ser distribuído como um executável único para Windows.
+2. Extrair todo o código VBA (Excel, Word e PowerPoint) em um Markdown organizado por componente.
+3. Extrair o conteúdo de documentos Word, apresentações PowerPoint e PDFs em Markdown.
+4. Diagnosticar planilhas (erros, referências externas, nomes, abas ocultas) e extrair Power Query.
+5. Gerar uma saída otimizada para IA: arquivo único com estimativa de tokens e divisão em partes.
+6. Funcionar 100% offline, sem enviar dados para fora da máquina.
+7. Ser distribuído como um executável único para Windows.
 
 ## 5. Fora de escopo (não-objetivos)
 
-- Editar a planilha ou o código VBA.
+- Editar os arquivos de entrada ou o código VBA.
 - Recalcular fórmulas (o app usa os valores em cache salvos pelo Excel).
 - Executar macros.
 - Extrair o layout visual de UserForms (controles, posições, propriedades).
 - Análise de segurança de macros (detecção de padrões suspeitos).
-- Suporte a `.xls` (formato binário antigo) no MVP.
+- Formatos binários antigos: `.xls`, `.doc`, `.ppt`.
+- OCR: PDF escaneado (sem texto) só gera um aviso.
+- Reproduzir a aparência dos documentos (formatação, imagens, gráficos, layout de slides e de páginas).
+- Contagem exata de tokens de um modelo de IA (o app só estima).
 
 ## 6. Requisitos funcionais
 
 ### RF01 — Seleção de arquivo
 
 - Abrir arquivo via botão (diálogo nativo) ou arrastando para a janela.
-- Aceitar `.xlsx` e `.xlsm`.
-- Exibir nome, tamanho, número de abas e se contém VBA.
+- Aceitar `.xlsx`, `.xlsm`, `.docx`, `.docm`, `.pptx`, `.pptm` e `.pdf`. O tipo é detectado pela extensão e a interface mostra só o que se aplica a ele.
+- Exibir nome, tamanho, tipo e um resumo do conteúdo (abas, slides, páginas...) e se contém VBA.
 - Tela inicial com histórico dos 10 últimos arquivos abertos (guardado localmente; clicar reabre, `X` remove, "Limpar histórico" apaga). Botão **Início** volta à tela inicial a partir de um arquivo aberto.
 
 ### RF02 — Seleção de abas
@@ -64,22 +73,23 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta �
 - Detectar se o arquivo contém projeto VBA.
 - Listar todos os componentes e extrair o código-fonte de cada um.
 - Remover linhas em branco (comportamento do script atual; tornar configurável).
-- Opção para ocultar linhas `Attribute VB_...`.
+- Opção para ocultar linhas `Attribute VB_...` e `Option Explicit`.
 - Classificar o componente (Módulo, Classe, Planilha, Pasta de trabalho, UserForm) quando possível.
 
 ### RF05 — Pré-visualização
 
 - Aba **Células:** tabela com coordenada, fórmula e valor, filtrável por aba e por texto. Cada tabela do Excel (ListObject) vira uma linha com o intervalo na coluna Célula e o nome clicável em Valor (`A1:Z300 | tblProdutos`); ao clicar, abre a tabela com colunas nomeadas e botão Voltar. Os arquivos exportados não mudam.
 - Aba **VBA:** lista de componentes à esquerda e código com destaque de sintaxe à direita.
+- Abas por tipo de arquivo: **Diagnóstico** (RF14) e **Power Query** (RF13) nas planilhas; **Documento** (Word, RF16), **Slides** (PowerPoint, RF17) e **PDF** (RF18). Listas grandes são virtualizadas.
 
 ### RF06 — Exportação
 
-- Escolher a pasta de saída.
-- Gerar os arquivos:
-  - `mapeamento_planilha.json`
-  - `mapeamento_planilha.md`
-  - `vba_code.md`
-- Permitir escolher quais arquivos gerar.
+- O botão **Exportar…** (ou `Ctrl+E`) abre um diálogo com as opções da exportação; o botão **Exportar** do diálogo pede a pasta de saída e grava os arquivos.
+- Opções no diálogo: escopo de linhas (RF11), modelo do Markdown (RF10, só para aquela exportação), quais arquivos gerar e o nome de cada um (RF09), arquivo único para IA (RF19).
+- Arquivos que podem ser gerados:
+  - Planilhas: `mapeamento_planilha.json`, `mapeamento_planilha.md`, `vba_code.md`, `power_query.md`.
+  - Word: `documento.md`. PowerPoint: `apresentacao.md`. PDF: `pdf.md`. Documentos com macro também geram `vba_code.md`.
+  - Qualquer tipo: arquivo único para IA (`contexto_ia.md`, ou `contexto_ia_parte_N.md`).
 - Botão para abrir a pasta de saída após exportar.
 
 ### RF07 — Avisos
@@ -95,7 +105,7 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta �
 
 ### RF09 — Nome dos arquivos
 
-- Padrão de nome por arquivo gerado (`json`, `md` das células, `md` do VBA), com `{arquivo}` (planilha, sem extensão) e `{data}` (AAAA-MM-DD). Extensão fixa. Configurável em Configurações → Saída e ajustável a cada exportação no painel Exportar.
+- Padrão de nome por arquivo gerado (`json`, `md` das células, `md` do VBA, arquivo único para IA e, conforme as fases, Power Query, documento, apresentação e PDF), com `{arquivo}` (arquivo de entrada, sem extensão) e `{data}` (AAAA-MM-DD). Extensão fixa. Configurável em Configurações → Saída e ajustável a cada exportação no diálogo Exportar.
 - Validação (Windows): vazio, `< > : " / \ | ? *`, controle, terminar em ponto, nomes reservados (`CON`, `NUL`, `COM1`…), mais de 100 caracteres, dois arquivos com o mesmo nome. Falha antes de extrair.
 - Se o arquivo já existir na pasta, o app pergunta: sobrescrever, adicionar sufixo (`_2`, `_3`…) ou cancelar.
 
@@ -104,7 +114,8 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta �
 - Os textos do Markdown de células e VBA são personalizáveis: título, texto de abertura, título de aba, cabeçalhos da tabela, rótulos de fórmula/valor, título de componente VBA e rodapé. Placeholders: `{arquivo}` (com extensão), `{data}`, `{aba}`, `{componente}`.
 - O modelo **Padrão** reproduz byte a byte o formato da seção 8. O JSON nunca é personalizável.
 - Predefinições: "Padrão", "Contexto para IA" (com texto de abertura) e as do usuário (salvar, substituir, excluir; duplicar = salvar com outro nome).
-- Pré-visualização ao vivo, renderizada pelo Rust com dados fictícios.
+- Configurações → **Modelos** (aba própria): predefinição ativa, editor e pré-visualização ao vivo, renderizada pelo Rust com dados fictícios. No diálogo Exportar, o modelo pode ser trocado só para aquela exportação.
+- Os modelos de Word, PowerPoint e PDF são próprios de cada formato (a predefinição de planilha não se aplica).
 
 ### RF11 — Escopo: primeiras linhas e amostra
 
@@ -167,6 +178,23 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta �
 - Extrair o texto por página.
 - Extrair metadados (título, autor, datas) e campos de formulário (nome e valor).
 - PDF sem texto (escaneado): exibir aviso, sem erro.
+
+### RF19 — Saída otimizada para IA
+
+- Opção "Arquivo único para IA": um só `.md` com resumo, conteúdo (células, documento, slides ou páginas) e VBA, usando o modelo escolhido.
+- Estimativa de tokens (≈ caracteres ÷ 4), sempre rotulada como estimativa, mostrada no diálogo Exportar.
+- Opção "Dividir em partes de N tokens": corta só entre seções (aba, tabela, componente VBA, slide, página), nunca no meio de um bloco de código ou de uma linha de tabela. A junção das partes reproduz o arquivo único. Uma seção maior que N fica sozinha na parte e passa do limite.
+
+### RF20 — VBA avançado
+
+- Índice de procedimentos (`Sub`, `Function`, `Property Get/Let/Set`, com `Private/Public/Static/Friend`) com linha inicial e final, na lista de componentes.
+- Busca global (células e VBA) sobre o resultado já em memória.
+- Exportar componentes como `.bas`, `.cls` e `.frm` (sem o `.frx`), em Windows-1252 para reimportar no editor VBA sem perder acentos.
+
+### RF21 — Comparar versões
+
+- Ao detectar que um arquivo mudou, o app guarda a geração anterior no cache e mostra as diferenças: abas adicionadas/removidas, células alteradas (antes e depois) e componentes VBA alterados (diff por linha).
+- Aba **Mudanças** e exportação opcional em `.md`.
 
 ## 7. Requisitos não-funcionais
 
@@ -240,16 +268,21 @@ End Sub
 
 ## 11. Roadmap
 
-| Fase       | Entregas                                                                                                                    |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **MVP**    | RF01, RF03, RF04, RF06 (sem pré-visualização, todas as abas).                                                               |
-| **v1.0**   | RF02, RF05, RF07, tema escuro.                                                                                              |
-| **v1.1**   | Configurações persistentes (pasta padrão, opções de limpeza).                                                               |
-| **Futuro** | Processamento em lote (pasta inteira), mapa de dependências entre fórmulas, exportação de um único `.md` combinado para IA. |
+| Fase       | Entregas                                                                                                                                                                                                                      |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **MVP**    | RF01, RF03, RF04, RF06 (sem pré-visualização, todas as abas).                                                                                                                                                                 |
+| **v1.0**   | RF02, RF05, RF07, tema escuro.                                                                                                                                                                                                |
+| **v1.1**   | Configurações persistentes (pasta padrão, opções de limpeza).                                                                                                                                                                 |
+| **v1.2**   | Saída para IA (RF19), Power Query (RF13), base multiformato e VBA em Word/PowerPoint (RF15), Word (RF16), PowerPoint (RF17), PDF (RF18), VBA avançado (RF20), comparar versões (RF21). A ordem de entrega está no `GUIDE.md`. |
+| **Futuro** | Processamento em lote (pasta inteira), mapa de dependências entre fórmulas.                                                                                                                                                   |
 
 ## 12. Riscos e questões em aberto
 
 - **Valores em cache ausentes:** depende de o arquivo ter sido salvo pelo Excel. Mitigado pelo aviso RF07.
 - **Codepage do VBA:** comentários com acentos podem vir com encoding errado em alguns projetos. Validar com arquivos reais.
 - **Classificação de componentes:** a lib não informa o tipo diretamente; inferência por nome/atributos pode falhar em casos raros.
+- **PDF:** a extração de texto depende de como o PDF foi gerado (colunas, tabelas e ordem de leitura podem sair misturadas). Validar com PDFs variados; a biblioteca ainda será escolhida (`GUIDE.md`, Fase 13).
+- **Word:** os nomes dos estilos de título mudam com o idioma do Office; resolver pelo `styles.xml`.
+- **Arquivos Office grandes ou maliciosos:** são ZIPs de XML; ler em streaming e tratar entradas gigantes como arquivo corrompido.
+- **Tokens:** a estimativa (≈ caracteres ÷ 4) pode diferir bastante da contagem real de cada modelo.
 - **Arquivos em pastas sincronizadas (OneDrive/SharePoint):** podem estar bloqueados ou como placeholder não baixado.

@@ -157,7 +157,7 @@ Escala base de **4px**.
 
 ### DropZone
 
-- Área tracejada (`--border`, 2px, `radius-lg`) com ícone, texto "Arraste um .xlsx ou .xlsm" e botão "Selecionar arquivo".
+- Área tracejada (`--border`, 2px, `radius-lg`) com ícone, texto "Arraste um arquivo (.xlsx, .xlsm, .docx, .docm, .pptx, .pptm ou .pdf)" e botão "Selecionar arquivo".
 - Ao arrastar por cima: borda `--primary`, fundo `--primary-soft`.
 - Arquivo inválido: borda `--danger` e mensagem curta.
 
@@ -173,12 +173,17 @@ Escala base de **4px**.
 
 ### Dialog / SettingsDialog
 
-- `<dialog>` nativo modal (foco preso, `Esc` fecha), `radius-lg`, `shadow-md`, fundo `--text` a 40%, largura máx. 512px.
+- `<dialog>` nativo modal (foco preso, `Esc` fecha), `radius-lg`, `shadow-md`, fundo (`::backdrop`) escurecido com o token `--color-overlay` (preto a 60%, igual nos dois temas), largura máx. 512px.
 - Cabeçalho com título `text-lg` e botão fechar. Corpo em seções com título `text-sm` semibold.
 - Abre pela engrenagem da barra superior ou `Ctrl+,`.
-- `wide`: largura máx. 768px (usada nas configurações). Abas "Geral" e "Saída" (`Tabs`).
+- `wide`: largura máx. 768px (usada nas configurações). Abas "Geral", "Saída" e "Modelos" (`Tabs`).
 - Aba "Saída" (`OutputSettings`): campos de nome de arquivo.
 - Aba "Modelos" (`TemplateSettings`): seletor de predefinição, formulário do modelo e `<pre>` de pré-visualização em duas colunas (uma só em telas estreitas).
+
+### ExportPanel (diálogo Exportar)
+
+- Na barra lateral há só o botão "Exportar…" (`Ctrl+E`), que abre um `Dialog`. As opções ficam no diálogo: `ScopeSelector`, `Select` "Modelo do Markdown" (só para aquela exportação), um `Checkbox` por arquivo (com o campo de nome e a extensão) e, no arquivo único para IA, "Dividir em partes de N tokens" (`Input` numérico) e a estimativa de tokens em `text-xs` `--text-muted`, sempre rotulada "estimativa".
+- Rodapé do diálogo: "Cancelar" (`ghost`) e "Exportar" (`primary`, com `loading`). Conflito de nome e erros aparecem como `Alert` dentro do diálogo; o resultado vira `Toast` "Abrir pasta" depois que o diálogo fecha.
 
 ### Recentes e cache
 

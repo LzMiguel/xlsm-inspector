@@ -80,7 +80,7 @@ Referências: `PRD.md` (o quê), `Architecture.md` (como), `Design-System.md` (v
 
 ---
 
-## Fase 5 — Diagnóstico da planilha (RF13)
+## Fase 5 — Diagnóstico da planilha (RF14)
 
 1. `excel/diagnostics.rs`: erros de fórmula por aba (`#REF!`, `#DIV/0!`...), nomes definidos, abas ocultas, tabelas, tabelas dinâmicas e referências a arquivos externos (fórmulas com `[n]`).
    **Antes de prometer cada item, conferir na API do calamine 0.38 o que é exposto** (`defined_names`, `sheets_metadata`, tabelas dinâmicas).
@@ -91,17 +91,17 @@ Referências: `PRD.md` (o quê), `Architecture.md` (como), `Design-System.md` (v
 
 ---
 
-## Fase 6 — Saída otimizada para IA (RF14)
+## Fase 6 — Saída otimizada para IA (RF19)
 
-1. `output/bundle.rs`: `.md` único combinado (resumo + células + VBA), usando o template "Contexto para IA".
+1. `output/bundle.rs`: `.md` único combinado (resumo + células + VBA), usando o modelo escolhido na exportação (o "Contexto para IA" é uma predefinição).
 2. `output/tokens.rs`: estimativa **aproximada** (≈ caracteres / 4, rotulada como estimativa). Divisão em partes de N tokens cortando só em limites de seção (aba, tabela, componente VBA), nunca no meio de bloco de código ou de linha de tabela.
-3. UI: estimativa de tokens no `ExportPanel`; opções "Arquivo único" e "Dividir em partes de N tokens".
+3. UI: o botão "Exportar…" abre um dialog com as opções (escopo, modelo do Markdown, arquivos, nomes); estimativa de tokens; opções "Arquivo único" e "Dividir em partes de N tokens". Configurações ganhou a aba "Modelos" (separada de "Saída").
 
 **Pronto quando:** testes provam que nenhuma parte quebra bloco de código ou tabela e que a junção das partes reproduz o arquivo único.
 
 ---
 
-## Fase 7 — VBA avançado (RF15)
+## Fase 7 — VBA avançado (RF20)
 
 1. `excel/vba_index.rs`: índice de procedimentos (`Sub`, `Function`, `Property Get/Let/Set`; `Private/Public/Static/Friend`) com linha inicial e final.
    Testes de borda: `End Sub` em comentário, `Declare`, procedimento de uma linha.
@@ -115,7 +115,7 @@ Referências: `PRD.md` (o quê), `Architecture.md` (como), `Design-System.md` (v
 
 ---
 
-## Fase 8 — Comparar versões (RF16)
+## Fase 8 — Comparar versões (RF21)
 
 1. O cache guarda **uma geração anterior** (`previous`) ao detectar `Modified`.
 2. `output/diff.rs` (puro): abas adicionadas/removidas, células alteradas (coordenada, antes, depois) e componentes VBA alterados (diff por linha simples; sem dependência nova).
@@ -125,7 +125,71 @@ Referências: `PRD.md` (o quê), `Architecture.md` (como), `Design-System.md` (v
 
 ---
 
-## Fase 9 — Qualidade e release (v1.1)
+## Fase 9 — Power Query (RF13)
+
+1. `excel/power_query.rs`: abre o `.xlsx`/`.xlsm` como ZIP e procura em `customXml/item*.xml` o elemento `DataMashup` (conteúdo em base64).
+   - Formato do `DataMashup`: 4 bytes de versão, 4 bytes (little-endian) com o tamanho do pacote, e então um ZIP (OPC) com `Formulas/Section1.m`. **Confirmar o layout com uma fixture antes de implementar.**
+   - O código M traz uma consulta por `shared <nome> = ...;`. Separar por consulta e preservar nomes como `#"Relatório Mensal"`.
+2. Conexões: ler `xl/connections.xml` (nome, descrição e string de conexão). **A string de conexão pode ter caminho de servidor ou usuário: só exibir, nunca testar a conexão (RNF01).**
+3. Dependências novas (`zip`, `quick-xml`): o `calamine` as usa por dentro, mas não as reexporta. Justificar no PR; sem plugin de rede.
+4. `model.rs` e `models.ts`: `PowerQuery { queries: [{ name, code }], connections: [...] }`; comando `extract_power_query`; sem consultas → lista vazia (não é erro).
+5. UI: aba "Power Query" (lista de consultas + código `m` com destaque simples). Saída: `power_query.md` como novo alvo da exportação, com nome configurável (RF09).
+
+**Pronto quando:** uma fixture sintética com duas consultas (uma com nome com espaço e acento) e uma conexão sai separada e correta; arquivo sem consultas mostra o estado vazio.
+
+---
+
+## Fase 10 — Base multiformato e VBA em Word e PowerPoint (RF15)
+
+Esta fase prepara o app para receber `.docx`, `.pptx` e `.pdf` (Fases 11-13). Hoje tudo parte de "planilha".
+
+1. Detecção por extensão: `SourceKind { Excel, Word, PowerPoint, Pdf }` (em `excel/` ou módulo novo `source.rs`, sem Tauri). Extensão não suportada → `UnsupportedFormat`. Diálogo, arrastar e soltar e `README` passam a listar os formatos.
+2. O modelo atual (`WorkbookSummary`, `ExtractionResult`) continua para Excel. Cada formato novo ganha o **seu** resultado (`WordDocument`, `Presentation`, `PdfDocument`); não forçar tudo em `sheets`. Decidir na hora se `open_workbook` vira `open_document` com um enum ou se cada formato tem comando próprio (recomendado: enum, para a tela inicial e os recentes continuarem únicos).
+3. Subir `cache_version`: o cache atual é de planilha.
+4. RF15: `.docm` e `.pptm`. Projeto VBA em `word/vbaProject.bin` ou `ppt/vbaProject.bin`. **Conferir se o `calamine` 0.38 lê um `vbaProject.bin` solto (`VbaProject` a partir do CFB); se não, ler o ZIP e passar os bytes.** Saída e opções iguais às do RF04 (`vba_code.md`).
+5. UI: o seletor de arquivo e a tela inicial aceitam os formatos; as abas mudam conforme o tipo (Células só para Excel; VBA para `.xlsm`, `.docm`, `.pptm`).
+
+**Pronto quando:** fixtures sintéticas `.docm` e `.pptm` com um módulo VBA saem em `vba_code.md` igual ao de uma planilha; `.docx` sem VBA devolve `NoVbaProject`; extensão desconhecida devolve `UnsupportedFormat`.
+
+---
+
+## Fase 11 — Extração de Word (RF16)
+
+1. `excel/` não é lugar disso: criar `word/` (sem Tauri). Ler `word/document.xml` com `quick-xml` em streaming (arquivo grande não vai inteiro para a memória).
+2. Na ordem do corpo: títulos (`w:pStyle` = `Heading1`/`Título1`...; **o id do estilo muda com o idioma**, conferir em `word/styles.xml` o nome de cada estilo), parágrafos, listas (`w:numPr`; numeradas x marcadores vêm de `word/numbering.xml`) e tabelas (`w:tbl` → tabela Markdown, com `|` e quebra de linha escapados como no RF03).
+3. Cabeçalhos e rodapés (`word/header*.xml`, `footer*.xml`), comentários (`word/comments.xml`, com autor e o trecho entre `commentRangeStart`/`End`) e controles de conteúdo (`w:sdt`: título e valor).
+4. Alterações controladas: `w:ins` conta como texto; `w:del` (`w:delText`) não. Opção "listar alterações" gera uma seção extra com autor e texto.
+5. `model.rs` e `models.ts`: `WordDocument`; comando; saída `documento.md` (nome configurável) usando um modelo próprio (a predefinição de Excel não serve).
+6. UI: aba "Documento" (virtualizada se grande).
+
+**Pronto quando:** fixture sintética com título 1 e 2, lista numerada e com marcadores, tabela com `|`, cabeçalho, comentário, controle de conteúdo e uma inserção/exclusão sai na ordem certa e com o Markdown esperado.
+
+---
+
+## Fase 12 — Extração de PowerPoint (RF17)
+
+1. `pptx/` (sem Tauri). A ordem dos slides vem de `ppt/presentation.xml` (`sldIdLst`) + `_rels`, **não** do número no nome do arquivo.
+2. Por slide: título (placeholder `title`/`ctrTitle`), texto de cada forma (`a:t` por parágrafo), tabelas (`a:tbl`) e notas (`ppt/notesSlides/`). Slide oculto: atributo `show="0"`.
+3. Opcional "posição e tamanho": `a:off`/`a:ext` em EMU; 1 cm = 360000 EMU. Desligado por padrão (polui a saída).
+4. Modelo, comando e UI (aba "Slides"), saída `apresentacao.md`.
+
+**Pronto quando:** fixture com 3 slides fora de ordem nos arquivos internos, um oculto, uma tabela e uma nota sai na ordem da apresentação, com o oculto indicado.
+
+---
+
+## Fase 13 — Extração de PDF (RF18)
+
+1. **Decidir a biblioteca antes de codar** (nova dependência, justificar): `lopdf` (baixo nível, só Rust) ou `pdf-extract`. Critérios: só Rust, sem rede, texto em UTF-8/acentos, tamanho do binário. Testar com a fixture antes de adotar.
+2. Texto por página; metadados (título, autor, datas); campos de formulário AcroForm (nome e valor).
+3. PDF sem texto (escaneado): aviso `NoText`, sem erro e sem OCR (OCR continua fora de escopo).
+4. PDF protegido por senha → erro claro (`CorruptedFile` ou um código novo; manter `models.ts` em sincronia).
+5. Modelo, comando e UI (aba "PDF"); saída `pdf.md`. Listas grandes virtualizadas.
+
+**Pronto quando:** fixture com 2 páginas de texto com acento, metadados e um campo de formulário sai correta; PDF só de imagem devolve o aviso e nenhum erro.
+
+---
+
+## Fase 14 — Qualidade e release (v1.1)
 
 1. `npm run lint`, `npm run typecheck`, `npm run test`.
 2. `cargo fmt`, `cargo clippy --all-targets -- -D warnings`, `cargo test`.
@@ -137,7 +201,7 @@ Referências: `PRD.md` (o quê), `Architecture.md` (como), `Design-System.md` (v
 
 ---
 
-## Fase 10 — Depois
+## Fase 15 — Depois
 
 - Processamento em lote (pasta inteira).
 - Mapa de dependências entre fórmulas.
@@ -148,18 +212,26 @@ Referências: `PRD.md` (o quê), `Architecture.md` (como), `Design-System.md` (v
 
 ## Checklist de requisitos
 
-| Req   | Descrição                          | Fase | OK  |
-| ----- | ---------------------------------- | ---- | --- |
-| RF08  | Configurações persistentes         | 1    | [ ] |
-| RF09  | Nome dos arquivos de saída         | 2    | [ ] |
-| RF10  | Modelos de saída (Markdown)        | 2    | [ ] |
-| RF11  | Amostra / head (leitura e exportação) | 3 | [ ] |
-| RF12  | Cache e verificação dos recentes   | 4    | [ ] |
-| RF13  | Diagnóstico da planilha            | 5    | [ ] |
-| RF14  | Saída otimizada para IA            | 6    | [ ] |
-| RF15  | VBA avançado                       | 7    | [ ] |
-| RF16  | Comparar versões                   | 8    | [ ] |
-| RNF08 | Cache local e desligável           | 4    | [ ] |
+| Req   | Descrição                             | Fase | OK  |
+| ----- | ------------------------------------- | ---- | --- |
+| RF08  | Configurações persistentes            | 1    | [ ] |
+| RF09  | Nome dos arquivos de saída            | 2    | [ ] |
+| RF10  | Modelos de saída (Markdown)           | 2    | [ ] |
+| RF11  | Amostra / head (leitura e exportação) | 3    | [ ] |
+| RF12  | Cache e verificação dos recentes      | 4    | [ ] |
+| RF14  | Diagnóstico da planilha               | 5    | [ ] |
+| RF19  | Saída otimizada para IA               | 6    | [ ] |
+| RF20  | VBA avançado                          | 7    | [ ] |
+| RF21  | Comparar versões                      | 8    | [ ] |
+| RF13  | Extração de Power Query               | 9    | [ ] |
+| RF15  | VBA em Word e PowerPoint              | 10   | [ ] |
+| RF16  | Extração de Word                      | 11   | [ ] |
+| RF17  | Extração de PowerPoint                | 12   | [ ] |
+| RF18  | Extração de PDF                       | 13   | [ ] |
+| RNF08 | Cache local e desligável              | 4    | [ ] |
+| RNF09 | Exportação para IA                    | 6    | [ ] |
+| RNF10 | VBA avançado                          | 7    | [ ] |
+| RNF11 | Comparar versões                      | 8    | [ ] |
 
 ---
 
@@ -174,6 +246,10 @@ Referências: `PRD.md` (o quê), `Architecture.md` (como), `Design-System.md` (v
 - **Amostra não acelera o parsing**: só reduz saída, IPC e renderização.
 - **Template padrão**: qualquer mudança no formato padrão quebra a paridade com a v1.0; teste byte a byte.
 - **OneDrive**: pode bloquear build e arquivos de entrada.
+- **Office Open XML**: `.docx`, `.pptx` e `.xlsx` são ZIPs de XML; ler em streaming (`quick-xml`), nunca executar nada do arquivo e tratar ZIP corrompido ou com entradas gigantes (ZIP bomb) como `CorruptedFile`.
+- **Estilos do Word dependem do idioma**: `Heading1` x `Título1`; resolver pelo nome do estilo em `styles.xml`.
+- **Dependências novas** (`zip`, `quick-xml`, biblioteca de PDF): justificar cada uma (CLAUDE.md) e conferir que não puxam rede.
+- **Fixtures sintéticas** para cada formato (CLAUDE.md): nada de documento real.
 
 ---
 
@@ -191,14 +267,19 @@ Ao pedir, cite a fase e a etapa deste guia (ex.: "Fase 4, passo 3"). O agente se
 
 ## Commits sugeridos (Conventional Commits)
 
-| Marco  | Mensagem                                      |
-| ------ | --------------------------------------------- |
-| Fase 1 | `feat: configurações persistentes`            |
-| Fase 2 | `feat: nomes de arquivo e modelos de saída`   |
-| Fase 3 | `feat: amostra e head na extração e exportação` |
-| Fase 4 | `feat: cache dos recentes`                    |
-| Fase 5 | `feat: diagnóstico da planilha`               |
-| Fase 6 | `feat: saída otimizada para IA`               |
-| Fase 7 | `feat(vba): índice e exportação de componentes` |
-| Fase 8 | `feat: comparar versões`                      |
-| Fase 9 | `chore: release v1.1.0`                       |
+| Marco   | Mensagem                                             |
+| ------- | ---------------------------------------------------- |
+| Fase 1  | `feat: configurações persistentes`                   |
+| Fase 2  | `feat: nomes de arquivo e modelos de saída`          |
+| Fase 3  | `feat: amostra e head na extração e exportação`      |
+| Fase 4  | `feat: cache dos recentes`                           |
+| Fase 5  | `feat: diagnóstico da planilha`                      |
+| Fase 6  | `feat: saída otimizada para IA`                      |
+| Fase 7  | `feat(vba): índice e exportação de componentes`      |
+| Fase 8  | `feat: comparar versões`                             |
+| Fase 9  | `feat: extração de Power Query`                      |
+| Fase 10 | `feat: base multiformato e VBA em Word e PowerPoint` |
+| Fase 11 | `feat: extração de Word`                             |
+| Fase 12 | `feat: extração de PowerPoint`                       |
+| Fase 13 | `feat: extração de PDF`                              |
+| Fase 14 | `chore: release v1.1.0`                              |

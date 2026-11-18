@@ -2,7 +2,7 @@
 
 # 🔍 XLSM Inspector
 
-**Transforme planilhas Excel e macros VBA em arquivos legíveis, sem sair do seu computador.**
+**Transforme planilhas, macros VBA, documentos Word, apresentações PowerPoint e PDFs em texto legível (e pronto para IA), sem sair do seu computador.**
 
 ![Tauri](https://img.shields.io/badge/Tauri-v2-24C8DB?logo=tauri&logoColor=white)
 ![Rust](https://img.shields.io/badge/Rust-backend-000000?logo=rust&logoColor=white)
@@ -16,7 +16,7 @@
 
 ## Por que usar?
 
-Entender uma planilha herdada, auditar fórmulas ou revisar macros normalmente exige abrir o Excel, clicar célula por célula e navegar pelo editor VBA. O **XLSM Inspector** lê o arquivo `.xlsx` / `.xlsm` e entrega tudo em texto: fácil de ler, comparar, versionar e enviar para uma IA analisar.
+Entender uma planilha herdada, auditar fórmulas, revisar macros ou aproveitar um documento como contexto para uma IA normalmente exige abrir cada arquivo e navegar célula por célula, slide por slide. O **XLSM Inspector** lê `.xlsx` / `.xlsm`, `.docx` / `.docm`, `.pptx` / `.pptm` e `.pdf` (com texto) e entrega tudo em texto: fácil de ler, comparar, versionar e enviar para uma IA analisar.
 
 Ele substitui dois scripts Python (`openpyxl` + `oletools`) por um único app com interface gráfica.
 
@@ -28,6 +28,8 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por um único app co
 - 🎯 **Escopo flexível:** todas as linhas, as primeiras N ou uma amostra de N linhas espaçadas por igual, ideal para planilhas enormes.
 - 📝 **Modelos de saída:** personalize nomes de arquivo e o Markdown gerado.
 - ⚡ **Cache e recentes:** reabrir uma planilha que não mudou é instantâneo.
+- 🤖 **Saída para IA:** arquivo único, estimativa de tokens e divisão em partes sem quebrar tabelas nem código.
+- 🔎 **Diagnóstico e Power Query** das planilhas, e extração de **Word, PowerPoint e PDF** (em desenvolvimento, ver `GUIDE.md`).
 - 🌗 **Tema claro e escuro.**
 
 ## 📦 O que ele gera
@@ -37,13 +39,16 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por um único app co
 | `mapeamento_planilha.json` | Células com `valor` e `formula`      |
 | `mapeamento_planilha.md`   | Mesmo conteúdo em Markdown           |
 | `vba_code.md`              | Código VBA organizado por componente |
+| `contexto_ia.md`           | Arquivo único para IA (opcional; pode sair em partes `_parte_N`) |
+
+Word, PowerPoint, PDF e Power Query terão saídas próprias (`documento.md`, `apresentacao.md`, `pdf.md`, `power_query.md`), conforme o `GUIDE.md`.
 
 ## 🔒 Privacidade e segurança
 
 - O arquivo de entrada **nunca é modificado** (somente leitura).
 - Macros **nunca são executadas**; o VBA é tratado apenas como texto.
 - **Sem rede, telemetria, CDN ou fontes externas.** Seus dados não saem da máquina.
-- Todo o processamento de Excel roda em Rust; o frontend só exibe.
+- Todo o processamento dos arquivos roda em Rust; o frontend só exibe.
 
 ## 🧰 Tecnologias
 

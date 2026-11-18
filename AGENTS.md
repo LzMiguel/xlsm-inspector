@@ -4,10 +4,12 @@ Instruções para agentes que trabalham neste repositório.
 
 ## Sobre o projeto
 
-**XLSM Inspector** é um app desktop (Tauri v2 + React + TypeScript) que lê planilhas `.xlsx`/`.xlsm` e exporta:
+**XLSM Inspector** é um app desktop (Tauri v2 + React + TypeScript) que lê planilhas (`.xlsx`/`.xlsm`), documentos Word (`.docx`/`.docm`), apresentações PowerPoint (`.pptx`/`.pptm`) e PDFs, e exporta:
 
 - mapeamento de células (valor + fórmula) em JSON e Markdown;
-- código VBA (módulos, classes, planilhas, `ThisWorkbook`, UserForms) em Markdown.
+- código VBA (módulos, classes, planilhas, `ThisWorkbook`, UserForms) em Markdown;
+- arquivo único para IA, com estimativa de tokens e divisão em partes;
+- conforme o `GUIDE.md`: Power Query, diagnóstico, texto de Word, PowerPoint e PDF.
 
 Antes de qualquer mudança relevante, leia:
 

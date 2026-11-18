@@ -615,7 +615,7 @@ fn diagnostico_sem_problemas() {
     assert!(d.hidden_sheets.is_empty());
 }
 
-/// RF14: o arquivo único junta resumo, células e VBA; dividido, as partes reproduzem o único.
+/// RF19 (saída para IA): o arquivo único junta resumo, células e VBA; dividido, as partes reproduzem o único.
 #[test]
 fn arquivo_unico_para_ia() {
     let base = std::env::temp_dir().join(format!("xlsm_inspector_bundle_{}", std::process::id()));

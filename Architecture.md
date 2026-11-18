@@ -20,7 +20,7 @@ App desktop com **Tauri v2**: o frontend roda em uma WebView (React) e o backend
 └──────────────────────────────┼───────────────────────────┘
                                ▼
                     Sistema de arquivos local
-              (.xlsx/.xlsm de entrada, .json/.md de saída)
+              (.xlsx/.xlsm/.docx/.docm/.pptx/.pptm/.pdf de entrada, .json/.md de saída)
 ```
 
 ## 2. Stack
@@ -77,7 +77,7 @@ xlsm-inspector/
 │   │   │   ├── mod.rs
 │   │   │   ├── workbook.rs      # abrir arquivo, resumo
 │   │   │   ├── cells.rs         # valores + fórmulas
-│   │   │   ├── diagnostics.rs   # erros, nomes, abas ocultas, tabelas, refs. externas (RF13)
+│   │   │   ├── diagnostics.rs   # erros, nomes, abas ocultas, tabelas, refs. externas (RF14)
 │   │   │   ├── vba.rs           # módulos VBA
 │   │   │   └── coords.rs        # (linha, coluna) → "A1"
 │   │   ├── output/
@@ -86,8 +86,8 @@ xlsm-inspector/
 │   │   │   ├── markdown.rs      # recebe o OutputTemplate
 │   │   │   ├── template.rs      # modelo do Markdown, predefinições, {placeholders}
 │   │   │   ├── naming.rs        # nomes de arquivo: validação, colisão
-│   │   │   ├── bundle.rs        # Markdown único para IA: resumo + células + VBA (RF14)
-│   │   │   ├── tokens.rs        # estimativa de tokens e divisão em partes (RF14)
+│   │   │   ├── bundle.rs        # Markdown único para IA: resumo + células + VBA (RF19)
+│   │   │   ├── tokens.rs        # estimativa de tokens e divisão em partes (RF19)
 │   │   │   └── export.rs        # grava os arquivos
 │   │   └── store/
 │   │       ├── mod.rs
@@ -257,14 +257,14 @@ Botão "Exportar" ─► diálogo de pasta ─► invoke("export_outputs")
 - Escapar `|` e trocar `\n` por `|` nas células, como no script original.
 - Uma seção por aba, separadas por `---`.
 
-### Diagnóstico (RF13)
+### Diagnóstico (RF14)
 
 - `excel/diagnostics.rs` reaproveita `read_sheet` e `read_tables`; erros vêm de `CellValue::Error` (com ou sem fórmula). Nomes internos `_xlnm.*` são filtrados.
 - Abas ocultas: `sheets_metadata()` (`Hidden`/`VeryHidden`). Tabelas dinâmicas: `pivot_tables()` do calamine; se falhar, a lista fica vazia (não derruba o diagnóstico).
 - Referência externa: `[n]` solto na fórmula (não conta `Tabela[Col]`). Limite conhecido: um texto literal `"[1]"` dentro da fórmula também conta.
 - Fora do cache de propósito: o resultado é recalculado ao abrir a aba.
 
-### Saída para IA (RF14)
+### Saída para IA (RF19)
 
 - `bundle.rs` monta o `.md` único com o modelo ativo: abertura (título + texto de abertura) + `## Resumo` (células/fórmulas por aba, componentes VBA) + abas + componentes VBA + rodapé. O "Contexto para IA" é uma predefinição do modelo; o arquivo único usa o modelo ativo.
 - Blocos indivisíveis: abertura+resumo, cada aba, cada componente VBA, rodapé. `tokens::split_units` agrupa blocos até N tokens e só corta entre eles, então nenhuma parte quebra bloco de código ou linha de tabela, e a junção das partes é idêntica ao arquivo único. Um bloco maior que N fica sozinho na parte (passa do limite).

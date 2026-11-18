@@ -164,7 +164,7 @@ pub struct SheetObject {
     pub range: Option<String>,
 }
 
-/// Visão geral dos problemas e das peças da planilha (RF13). As listas de células são cortadas
+/// Visão geral dos problemas e das peças da planilha (RF14). As listas de células são cortadas
 /// em `MAX_LISTED`; `*_count` tem o total real.
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct Diagnostics {
