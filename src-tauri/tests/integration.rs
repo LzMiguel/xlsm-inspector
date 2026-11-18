@@ -358,11 +358,19 @@ fn exporta_do_cache_sem_reler_o_arquivo() {
     let mut cells = indexmap::IndexMap::new();
     cells.insert("A1".to_string(), CellContent::Plain(CellValue::Int(7)));
     let cached = xlsm_inspector_lib::model::ExtractionResult {
-        sheets: vec![SheetCells { name: "SoNoCache".into(), cells, tables: vec![], sampled: None }],
+        sheets: vec![SheetCells {
+            name: "SoNoCache".into(),
+            cells,
+            tables: vec![],
+            sampled: None,
+        }],
         vba: vec![],
         warnings: vec![],
     };
-    let cfg = OutputConfig { cached: Some(cached), ..OutputConfig::default() };
+    let cfg = OutputConfig {
+        cached: Some(cached),
+        ..OutputConfig::default()
+    };
 
     let written = export_outputs(
         &dir.join("nao_existe.xlsx"),
@@ -391,22 +399,52 @@ fn cache_ponta_a_ponta() {
     fs::copy(fx("simples.xlsx"), &book).unwrap();
     let v = VbaOptions::default();
 
-    assert!(cache::open(&data, &book, true, false, v).unwrap().cached.is_none());
+    assert!(
+        cache::open(&data, &book, true, false, v)
+            .unwrap()
+            .cached
+            .is_none()
+    );
     let res = cache::extract(&data, &book, true, None, ExtractScope::Full, v, &mut |_| {}).unwrap();
 
-    let hit = cache::open(&data, &book, true, false, v).unwrap().cached.expect("deveria vir do cache");
-    assert_eq!(cells_to_json(&hit.result.sheets).unwrap(), cells_to_json(&res.sheets).unwrap());
+    let hit = cache::open(&data, &book, true, false, v)
+        .unwrap()
+        .cached
+        .expect("deveria vir do cache");
+    assert_eq!(
+        cells_to_json(&hit.result.sheets).unwrap(),
+        cells_to_json(&res.sheets).unwrap()
+    );
     assert_eq!(hit.scope, ExtractScope::Full);
 
-    let outras = VbaOptions { remove_blank_lines: false, hide_attributes: true };
-    assert!(cache::open(&data, &book, true, false, outras).unwrap().cached.is_none());
-    assert!(cache::open(&data, &book, false, false, v).unwrap().cached.is_none()); // cache desligado
+    let outras = VbaOptions {
+        remove_blank_lines: false,
+        hide_attributes: true,
+    };
+    assert!(
+        cache::open(&data, &book, true, false, outras)
+            .unwrap()
+            .cached
+            .is_none()
+    );
+    assert!(
+        cache::open(&data, &book, false, false, v)
+            .unwrap()
+            .cached
+            .is_none()
+    ); // cache desligado
 
     // arquivo "salvo de novo": mesma coisa, outra data
     let f = fs::OpenOptions::new().write(true).open(&book).unwrap();
-    f.set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(120)).unwrap();
+    f.set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(120))
+        .unwrap();
     drop(f);
-    assert!(cache::open(&data, &book, true, false, v).unwrap().cached.is_none());
+    assert!(
+        cache::open(&data, &book, true, false, v)
+            .unwrap()
+            .cached
+            .is_none()
+    );
     fs::remove_dir_all(&tmp).ok();
 }
 
@@ -500,9 +538,6 @@ fn entrada_nunca_modificada() {
     fs::remove_dir_all(&out).ok();
 }
 
-/// RNF02: ~100 mil células (extração + JSON + Markdown) em menos de 5 s.
-/// Gere o arquivo com `python src-tauri/tests/gerar_fixture_grande.py` e rode:
-/// `cargo test --release desempenho -- --ignored --nocapture`
 #[test]
 #[ignore = "desempenho: precisa de fixtures/grande.xlsx e de --release"]
 fn desempenho_100k_celulas() {
@@ -544,15 +579,33 @@ fn diagnostico() {
 
     assert_eq!(d.error_count, 1);
     assert_eq!(
-        (d.errors[0].sheet.as_str(), d.errors[0].cell.as_str(), d.errors[0].detail.as_str()),
+        (
+            d.errors[0].sheet.as_str(),
+            d.errors[0].cell.as_str(),
+            d.errors[0].detail.as_str()
+        ),
         ("Dados", "D1", "#DIV/0!")
     );
-    assert_eq!((d.external_count, d.external_refs[0].cell.as_str()), (1, "D2"));
-    assert!(d.names.iter().any(|n| n.name == "Total" && n.refers_to.contains("Dados")));
-    let hidden: Vec<_> = d.hidden_sheets.iter().map(|h| (h.name.as_str(), h.very_hidden)).collect();
+    assert_eq!(
+        (d.external_count, d.external_refs[0].cell.as_str()),
+        (1, "D2")
+    );
+    assert!(
+        d.names
+            .iter()
+            .any(|n| n.name == "Total" && n.refers_to.contains("Dados"))
+    );
+    let hidden: Vec<_> = d
+        .hidden_sheets
+        .iter()
+        .map(|h| (h.name.as_str(), h.very_hidden))
+        .collect();
     assert_eq!(hidden, [("Oculta", false), ("MuitoOculta", true)]);
     assert_eq!(d.tables.len(), 1);
-    assert_eq!((d.tables[0].name.as_str(), d.tables[0].range.as_deref()), ("tblItens", Some("A1:B3")));
+    assert_eq!(
+        (d.tables[0].name.as_str(), d.tables[0].range.as_deref()),
+        ("tblItens", Some("A1:B3"))
+    );
 }
 
 #[test]
@@ -560,4 +613,60 @@ fn diagnostico_sem_problemas() {
     let d = diagnose(&fx("simples.xlsx")).expect("diagnóstico");
     assert_eq!((d.error_count, d.external_count), (0, 0));
     assert!(d.hidden_sheets.is_empty());
+}
+
+/// RF14: o arquivo único junta resumo, células e VBA; dividido, as partes reproduzem o único.
+#[test]
+fn arquivo_unico_para_ia() {
+    let base = std::env::temp_dir().join(format!("xlsm_inspector_bundle_{}", std::process::id()));
+    let only_bundle = ExportTargets {
+        json: false,
+        cells_md: false,
+        vba_md: false,
+        bundle: true,
+    };
+    let run = |dir: &Path, file: &str, split_tokens: Option<usize>| {
+        fs::create_dir_all(dir).unwrap();
+        export_outputs(
+            &fx(file),
+            dir,
+            only_bundle,
+            None,
+            &VbaOptions::default(),
+            &OutputConfig {
+                split_tokens,
+                ..OutputConfig::default()
+            },
+            &mut |_| {},
+        )
+        .unwrap()
+    };
+
+    // uma parte, com VBA
+    let (a, b) = (base.join("unico"), base.join("partes"));
+    let written = run(&a, "com_vba.xlsm", None);
+    assert_eq!(written.len(), 1);
+    let unico = fs::read_to_string(&written[0]).unwrap();
+    assert!(written[0].ends_with("contexto_ia.md"));
+    assert!(unico.contains("## Resumo") && unico.contains("## COMPONENTE:"));
+
+    // limite mínimo: um bloco por parte; juntas, idênticas ao único
+    let partes = run(&b, "com_vba.xlsm", Some(1));
+    assert!(partes.len() > 1);
+    assert!(partes[0].ends_with("contexto_ia_parte_1.md"));
+    let juntas: String = partes
+        .iter()
+        .map(|p| fs::read_to_string(p).unwrap())
+        .collect();
+    assert_eq!(juntas, unico);
+    for p in &partes {
+        let txt = fs::read_to_string(p).unwrap();
+        assert_eq!(txt.matches("```").count() % 2, 0, "{p}");
+    }
+
+    // sem VBA: sem seção de componentes
+    let sem = run(&base.join("sem_vba"), "simples.xlsx", None);
+    assert!(!fs::read_to_string(&sem[0]).unwrap().contains("COMPONENTE"));
+
+    fs::remove_dir_all(&base).ok();
 }

@@ -9,6 +9,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::error::AppError;
 use crate::excel::{diagnostics, vba, vba::VbaOptions};
 use crate::model::{Diagnostics, ExtractScope, ExtractionResult, Progress, VbaComponent};
+use crate::output::bundle::{BundleEstimate, estimate_bundle as estimate_bundle_of};
 use crate::output::export::{self, ExportTargets, OutputConfig};
 use crate::output::markdown;
 use crate::output::naming::{FileNames, OnExists};
@@ -148,6 +149,7 @@ pub async fn export_outputs(
     template: Option<OutputTemplate>,
     on_exists: Option<OnExists>,
     scope: Option<ExtractScope>,
+    split_tokens: Option<usize>,
 ) -> Result<Vec<String>, AppError> {
     let (conf, data) = (config_dir(&app)?, data_dir(&app)?);
     blocking(move || {
@@ -155,13 +157,22 @@ pub async fn export_outputs(
         let (scope, vba_options) = (scope.unwrap_or_default(), vba_options.unwrap_or_default());
         let cached = settings::load(&conf)
             .use_cache
-            .then(|| cache::cached_result(&data, Path::new(&path), sheets.as_deref(), scope, vba_options))
+            .then(|| {
+                cache::cached_result(
+                    &data,
+                    Path::new(&path),
+                    sheets.as_deref(),
+                    scope,
+                    vba_options,
+                )
+            })
             .flatten();
         let cfg = OutputConfig {
             names: names.unwrap_or_default(),
             template: template.unwrap_or_default(),
             on_exists: on_exists.unwrap_or_default(),
             scope,
+            split_tokens,
             cached,
         };
         export::export_outputs(
@@ -173,6 +184,63 @@ pub async fn export_outputs(
             &cfg,
             &mut emit,
         )
+    })
+    .await
+}
+
+/// Tokens (estimados) e nº de partes do arquivo único. Usa o cache; sem ele, extrai (e guarda).
+#[tauri::command]
+pub async fn estimate_bundle(
+    app: AppHandle,
+    path: String,
+    sheets: Option<Vec<String>>,
+    scope: Option<ExtractScope>,
+    vba_options: Option<VbaOptions>,
+    template: Option<OutputTemplate>,
+    split_tokens: Option<usize>,
+) -> Result<BundleEstimate, AppError> {
+    let (conf, data) = (config_dir(&app)?, data_dir(&app)?);
+    blocking(move || {
+        let (scope, vba_options) = (scope.unwrap_or_default(), vba_options.unwrap_or_default());
+        let use_cache = settings::load(&conf).use_cache;
+        let cached = use_cache
+            .then(|| {
+                cache::cached_result(
+                    &data,
+                    Path::new(&path),
+                    sheets.as_deref(),
+                    scope,
+                    vba_options,
+                )
+            })
+            .flatten();
+        let result = match cached {
+            Some(r) => r,
+            None => {
+                let mut emit = emitter(app);
+                cache::extract(
+                    &data,
+                    Path::new(&path),
+                    use_cache,
+                    sheets.as_deref(),
+                    scope,
+                    vba_options,
+                    &mut emit,
+                )?
+            }
+        };
+        let file_name = Path::new(&path)
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        Ok(estimate_bundle_of(
+            &file_name,
+            &result.sheets,
+            &result.vba,
+            &template.unwrap_or_default(),
+            &template::today(),
+            split_tokens,
+        ))
     })
     .await
 }

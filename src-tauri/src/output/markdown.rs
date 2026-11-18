@@ -41,49 +41,97 @@ pub fn cells_to_markdown(
     t: &OutputTemplate,
     date: &str,
 ) -> String {
+    let mut out = header_block(file_name, t, date);
+    for (i, sheet) in sheets.iter().enumerate() {
+        if i > 0 {
+            out.push_str(SHEET_SEPARATOR);
+        }
+        out.push_str(&sheet_block(sheet, file_name, t, date));
+    }
+    if !t.footer.is_empty() {
+        out.push_str(&footer_block(file_name, t, date));
+    }
+    out
+}
+
+/// Entre uma aba e a seguinte.
+pub(super) const SHEET_SEPARATOR: &str = "\n---\n";
+
+/// Título e texto de abertura (`# título\n` + `\nintro\n`, se houver).
+pub(super) fn header_block(file_name: &str, t: &OutputTemplate, date: &str) -> String {
     let vars = [("arquivo", file_name), ("data", date)];
     let mut out = format!("{}\n", fill(&t.title, &vars));
     if !t.intro.is_empty() {
         out.push_str(&format!("\n{}\n", fill(&t.intro, &vars)));
     }
-    for (i, sheet) in sheets.iter().enumerate() {
-        if i > 0 {
-            out.push_str("\n---\n");
-        }
-        let heading = fill(&t.sheet_heading, &[vars[0], vars[1], ("aba", &sheet.name)]);
-        let note = sheet
-            .sampled
-            .map(|s| {
-                format!(
-                    "\n> Amostra: {} de {} linhas.\n",
-                    dots(s.kept_rows),
-                    dots(s.total_rows)
-                )
-            })
-            .unwrap_or_default();
-        out.push_str(&format!(
-            "\n{heading}\n{note}\n| {} | {} |\n| ------ | ----------------- |\n",
-            escape(&t.cell_header),
-            escape(&t.content_header)
-        ));
-        for (coord, content) in &sheet.cells {
-            let text = match content {
-                CellContent::Plain(v) => escape(&value_text(v)),
-                CellContent::Formula { formula, valor } => format!(
-                    "`{}: {}` <br> **{}:** {}",
-                    t.formula_label,
-                    escape(formula),
-                    t.value_label,
-                    escape(&value_text(valor))
-                ),
-            };
-            out.push_str(&format!("| **{coord}** | {text} |\n"));
-        }
-    }
-    if !t.footer.is_empty() {
-        out.push_str(&format!("\n{}\n", fill(&t.footer, &vars)));
+    out
+}
+
+pub(super) fn footer_block(file_name: &str, t: &OutputTemplate, date: &str) -> String {
+    format!(
+        "\n{}\n",
+        fill(&t.footer, &[("arquivo", file_name), ("data", date)])
+    )
+}
+
+/// Uma aba inteira: título, aviso de amostra, cabeçalho da tabela e todas as linhas.
+pub(super) fn sheet_block(
+    sheet: &SheetCells,
+    file_name: &str,
+    t: &OutputTemplate,
+    date: &str,
+) -> String {
+    let heading = fill(
+        &t.sheet_heading,
+        &[("arquivo", file_name), ("data", date), ("aba", &sheet.name)],
+    );
+    let note = sheet
+        .sampled
+        .map(|s| {
+            format!(
+                "\n> Amostra: {} de {} linhas.\n",
+                dots(s.kept_rows),
+                dots(s.total_rows)
+            )
+        })
+        .unwrap_or_default();
+    let mut out = format!(
+        "\n{heading}\n{note}\n| {} | {} |\n| ------ | ----------------- |\n",
+        escape(&t.cell_header),
+        escape(&t.content_header)
+    );
+    for (coord, content) in &sheet.cells {
+        let text = match content {
+            CellContent::Plain(v) => escape(&value_text(v)),
+            CellContent::Formula { formula, valor } => format!(
+                "`{}: {}` <br> **{}:** {}",
+                t.formula_label,
+                escape(formula),
+                t.value_label,
+                escape(&value_text(valor))
+            ),
+        };
+        out.push_str(&format!("| **{coord}** | {text} |\n"));
     }
     out
+}
+
+/// Um componente: título + bloco de código.
+pub(super) fn vba_block(
+    c: &VbaComponent,
+    file_name: &str,
+    t: &OutputTemplate,
+    date: &str,
+) -> String {
+    let heading = fill(
+        &t.vba_heading,
+        &[
+            ("arquivo", file_name),
+            ("data", date),
+            ("componente", &c.name),
+        ],
+    );
+    format!("{heading}\n\n```vba\n{}\n```\n", c.code)
 }
 
 pub fn vba_to_markdown(
@@ -94,17 +142,7 @@ pub fn vba_to_markdown(
 ) -> String {
     components
         .iter()
-        .map(|c| {
-            let heading = fill(
-                &t.vba_heading,
-                &[
-                    ("arquivo", file_name),
-                    ("data", date),
-                    ("componente", &c.name),
-                ],
-            );
-            format!("{heading}\n\n```vba\n{}\n```\n", c.code)
-        })
+        .map(|c| vba_block(c, file_name, t, date))
         .collect::<Vec<_>>()
         .join("\n")
 }

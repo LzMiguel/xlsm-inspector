@@ -21,6 +21,7 @@ pub fn run() {
             commands::check_recent,
             commands::clear_cache,
             commands::export_outputs,
+            commands::estimate_bundle,
             commands::get_settings,
             commands::save_settings,
             commands::builtin_templates,

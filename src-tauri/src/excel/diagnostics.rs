@@ -18,12 +18,26 @@ pub const MAX_LISTED: usize = 500;
 /// ponytail: um texto literal `"[1]"` dentro da fórmula também dispara; não vale um parser.
 fn has_external_ref(formula: &str) -> bool {
     let b = formula.as_bytes();
-    formula.match_indices('[').any(|(i, _)| {
-        let rest = &b[i + 1..];
-        let digits = rest.iter().take_while(|c| c.is_ascii_digit()).count();
-        let attached = i > 0 && (b[i - 1].is_ascii_alphanumeric() || b[i - 1] == b'_');
-        digits > 0 && rest.get(digits) == Some(&b']') && !attached
-    })
+    let mut depth = 0usize;
+    for (i, &ch) in b.iter().enumerate() {
+        match ch {
+            b'[' => {
+                // `[` dentro de outro `[...]` é especificador de tabela, nunca ref. externa
+                if depth == 0 {
+                    let rest = &b[i + 1..];
+                    let digits = rest.iter().take_while(|c| c.is_ascii_digit()).count();
+                    let attached = i > 0 && (b[i - 1].is_ascii_alphanumeric() || b[i - 1] == b'_');
+                    if digits > 0 && rest.get(digits) == Some(&b']') && !attached {
+                        return true;
+                    }
+                }
+                depth += 1;
+            }
+            b']' => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+    }
+    false
 }
 
 fn push(list: &mut Vec<CellIssue>, count: &mut usize, sheet: &str, cell: &str, detail: &str) {
@@ -48,7 +62,13 @@ fn scan_sheet(sheet: &SheetCells, d: &mut Diagnostics) {
             push(&mut d.errors, &mut d.error_count, &sheet.name, cell, e);
         }
         if let Some(f) = formula.filter(|f| has_external_ref(f)) {
-            push(&mut d.external_refs, &mut d.external_count, &sheet.name, cell, f);
+            push(
+                &mut d.external_refs,
+                &mut d.external_count,
+                &sheet.name,
+                cell,
+                f,
+            );
         }
     }
 }
@@ -153,16 +173,26 @@ mod tests {
             ("A1", CellContent::Plain(err("#REF!"))),
             ("A2", f("=1/0", err("#DIV/0!"))),
             ("A3", f("=1+1", CellValue::Int(2))),
-            ("A4", CellContent::Plain(CellValue::String("#DIV/0!".into()))), // texto, não erro
+            (
+                "A4",
+                CellContent::Plain(CellValue::String("#DIV/0!".into())),
+            ), // texto, não erro
             ("A5", f("=[1]X!A1", CellValue::Empty)),
         ]);
         let mut d = Diagnostics::default();
         scan_sheet(&s, &mut d);
 
         assert_eq!(d.error_count, 2);
-        let cells: Vec<_> = d.errors.iter().map(|e| (e.cell.as_str(), e.detail.as_str())).collect();
+        let cells: Vec<_> = d
+            .errors
+            .iter()
+            .map(|e| (e.cell.as_str(), e.detail.as_str()))
+            .collect();
         assert_eq!(cells, [("A1", "#REF!"), ("A2", "#DIV/0!")]);
-        assert_eq!((d.external_count, d.external_refs[0].cell.as_str()), (1, "A5"));
+        assert_eq!(
+            (d.external_count, d.external_refs[0].cell.as_str()),
+            (1, "A5")
+        );
     }
 
     #[test]
@@ -173,6 +203,9 @@ mod tests {
         let s = sheet(many.iter().map(|(k, v)| (k.as_str(), v.clone())).collect());
         let mut d = Diagnostics::default();
         scan_sheet(&s, &mut d);
-        assert_eq!((d.errors.len(), d.error_count), (MAX_LISTED, MAX_LISTED + 10));
+        assert_eq!(
+            (d.errors.len(), d.error_count),
+            (MAX_LISTED, MAX_LISTED + 10)
+        );
     }
 }

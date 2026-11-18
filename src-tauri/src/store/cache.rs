@@ -37,7 +37,10 @@ pub fn fingerprint(path: &Path) -> Result<Fingerprint, AppError> {
         .ok()
         .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
         .map_or(0, |d| d.as_millis() as u64);
-    Ok(Fingerprint { size: m.len(), mtime_ms })
+    Ok(Fingerprint {
+        size: m.len(),
+        mtime_ms,
+    })
 }
 
 /// O que foi extraído: abas (ordenadas), escopo e opções de VBA.
@@ -50,7 +53,12 @@ pub struct Options {
 
 impl Options {
     /// `sheets: None` = todas (`all`). A ordem pedida não importa.
-    pub fn new(sheets: Option<&[String]>, all: &[SheetInfo], scope: ExtractScope, vba: VbaOptions) -> Self {
+    pub fn new(
+        sheets: Option<&[String]>,
+        all: &[SheetInfo],
+        scope: ExtractScope,
+        vba: VbaOptions,
+    ) -> Self {
         let mut sheets: Vec<String> = match sheets {
             Some(s) => s.to_vec(),
             None => all.iter().map(|s| s.name.clone()).collect(),
@@ -78,7 +86,10 @@ pub struct Entry {
 impl Entry {
     /// O resultado guardado, se foi gerado com exatamente estas opções.
     pub fn extraction_for(&self, opts: &Options) -> Option<&ExtractionResult> {
-        self.extraction.as_ref().filter(|x| x.options == *opts).map(|x| &x.result)
+        self.extraction
+            .as_ref()
+            .filter(|x| x.options == *opts)
+            .map(|x| &x.result)
     }
 }
 
@@ -97,7 +108,8 @@ fn file_for(base: &Path, path: &str) -> PathBuf {
 fn read_entry(base: &Path, path: &str) -> Option<(PathBuf, Entry)> {
     let file = file_for(base, path);
     let e: Entry = serde_json::from_str(&fs::read_to_string(&file).ok()?).ok()?;
-    (e.cache_version == CACHE_VERSION && e.path.to_lowercase() == path.to_lowercase()).then_some((file, e))
+    (e.cache_version == CACHE_VERSION && e.path.to_lowercase() == path.to_lowercase())
+        .then_some((file, e))
 }
 
 /// Marca como usada agora (o mais antigo sai primeiro).
@@ -117,7 +129,9 @@ pub fn lookup(base: &Path, path: &Path) -> Option<Entry> {
 }
 
 fn prune(base: &Path) {
-    let Ok(rd) = fs::read_dir(dir(base)) else { return };
+    let Ok(rd) = fs::read_dir(dir(base)) else {
+        return;
+    };
     let mut files: Vec<(SystemTime, PathBuf)> = rd
         .flatten()
         .filter(|e| e.path().extension().is_some_and(|x| x == "json"))
@@ -132,14 +146,23 @@ fn prune(base: &Path) {
 fn write_entry(base: &Path, e: &Entry) -> Result<(), AppError> {
     let json = serde_json::to_string(e).map_err(|e| AppError::WriteFailed(e.to_string()))?;
     let name = file_for(base, &e.path);
-    let name = name.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    write_atomic(&dir(base), &name, &json).map_err(|e| AppError::WriteFailed(format!("cache: {e}")))?;
+    let name = name
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    write_atomic(&dir(base), &name, &json)
+        .map_err(|e| AppError::WriteFailed(format!("cache: {e}")))?;
     prune(base);
     Ok(())
 }
 
 /// Guarda o resumo (sem extração). `fp` deve ser lido ANTES de abrir o arquivo.
-pub fn store_summary(base: &Path, path: &Path, fp: Fingerprint, summary: &WorkbookSummary) -> Result<(), AppError> {
+pub fn store_summary(
+    base: &Path,
+    path: &Path,
+    fp: Fingerprint,
+    summary: &WorkbookSummary,
+) -> Result<(), AppError> {
     if fp.size > MAX_FILE_BYTES {
         return Ok(());
     }
@@ -163,11 +186,16 @@ pub fn store_extraction(
     opts: impl FnOnce(&[SheetInfo]) -> Options,
     result: &ExtractionResult,
 ) -> Result<(), AppError> {
-    let Some((_, mut e)) = read_entry(base, &path.to_string_lossy()) else { return Ok(()) };
+    let Some((_, mut e)) = read_entry(base, &path.to_string_lossy()) else {
+        return Ok(());
+    };
     if e.fingerprint != fp {
         return Ok(());
     }
-    e.extraction = Some(Extraction { options: opts(&e.summary.sheets), result: result.clone() });
+    e.extraction = Some(Extraction {
+        options: opts(&e.summary.sheets),
+        result: result.clone(),
+    });
     write_entry(base, &e)
 }
 
@@ -219,7 +247,8 @@ pub fn cached_result(
     vba: VbaOptions,
 ) -> Option<ExtractionResult> {
     let e = lookup(base, path)?;
-    e.extraction_for(&Options::new(sheets, &e.summary.sheets, scope, vba)).cloned()
+    e.extraction_for(&Options::new(sheets, &e.summary.sheets, scope, vba))
+        .cloned()
 }
 
 /// Extração guardada que o frontend restaura ao reabrir.
@@ -238,24 +267,39 @@ pub struct OpenResult {
 
 /// Abre a planilha. Com cache válido (e `reload` falso) responde sem reler o arquivo;
 /// a extração só volta se foi feita com as mesmas opções de VBA de agora.
-pub fn open(base: &Path, path: &Path, use_cache: bool, reload: bool, vba: VbaOptions) -> Result<OpenResult, AppError> {
+pub fn open(
+    base: &Path,
+    path: &Path,
+    use_cache: bool,
+    reload: bool,
+    vba: VbaOptions,
+) -> Result<OpenResult, AppError> {
     let fp = fingerprint(path)?;
     if use_cache
         && !reload
         && let Some(e) = lookup(base, path)
     {
-        let cached = e.extraction.filter(|x| x.options.vba == vba).map(|x| CachedExtraction {
-            sheets: x.options.sheets,
-            scope: x.options.scope,
-            result: x.result,
+        let cached = e
+            .extraction
+            .filter(|x| x.options.vba == vba)
+            .map(|x| CachedExtraction {
+                sheets: x.options.sheets,
+                scope: x.options.scope,
+                result: x.result,
+            });
+        return Ok(OpenResult {
+            summary: e.summary,
+            cached,
         });
-        return Ok(OpenResult { summary: e.summary, cached });
     }
     let summary = inspect(path)?;
     if use_cache {
         let _ = store_summary(base, path, fp, &summary); // falha de cache não impede abrir
     }
-    Ok(OpenResult { summary, cached: None })
+    Ok(OpenResult {
+        summary,
+        cached: None,
+    })
 }
 
 /// Células + VBA em um passo; guarda no cache se ligado.
@@ -276,9 +320,19 @@ pub fn extract(
         Err(AppError::NoVbaProject) => Vec::new(),
         Err(e) => return Err(e),
     };
-    let result = ExtractionResult { sheets: cells, vba, warnings };
+    let result = ExtractionResult {
+        sheets: cells,
+        vba,
+        warnings,
+    };
     if use_cache {
-        let _ = store_extraction(base, path, fp, |all| Options::new(sheets, all, scope, vba_opts), &result);
+        let _ = store_extraction(
+            base,
+            path,
+            fp,
+            |all| Options::new(sheets, all, scope, vba_opts),
+            &result,
+        );
     }
     Ok(result)
 }
@@ -291,7 +345,10 @@ mod tests {
     struct Tmp(PathBuf);
     impl Tmp {
         fn new(name: &str) -> Self {
-            let d = std::env::temp_dir().join(format!("xlsm-inspector-{}-cache-{name}", std::process::id()));
+            let d = std::env::temp_dir().join(format!(
+                "xlsm-inspector-{}-cache-{name}",
+                std::process::id()
+            ));
             let _ = fs::remove_dir_all(&d);
             fs::create_dir_all(&d).unwrap();
             Tmp(d)
@@ -315,15 +372,27 @@ mod tests {
             file_name: "a.xlsx".into(),
             size_bytes: 1,
             sheets: vec![
-                SheetInfo { name: "B".into(), cell_count: 1, formula_count: 0 },
-                SheetInfo { name: "A".into(), cell_count: 1, formula_count: 0 },
+                SheetInfo {
+                    name: "B".into(),
+                    cell_count: 1,
+                    formula_count: 0,
+                },
+                SheetInfo {
+                    name: "A".into(),
+                    cell_count: 1,
+                    formula_count: 0,
+                },
             ],
             has_vba: false,
         }
     }
 
     fn result() -> ExtractionResult {
-        ExtractionResult { sheets: vec![], vba: vec![], warnings: vec![] }
+        ExtractionResult {
+            sheets: vec![],
+            vba: vec![],
+            warnings: vec![],
+        }
     }
 
     fn opts(vba: VbaOptions) -> impl FnOnce(&[SheetInfo]) -> Options {
@@ -340,7 +409,12 @@ mod tests {
     #[test]
     fn opcoes_ignoram_a_ordem_das_abas() {
         let all = summary(Path::new("x")).sheets;
-        let a = Options::new(Some(&["B".into(), "A".into()]), &all, ExtractScope::Full, VbaOptions::default());
+        let a = Options::new(
+            Some(&["B".into(), "A".into()]),
+            &all,
+            ExtractScope::Full,
+            VbaOptions::default(),
+        );
         let b = Options::new(None, &all, ExtractScope::Full, VbaOptions::default());
         assert_eq!(a, b);
         assert_eq!(a.sheets, ["A", "B"]);
@@ -355,7 +429,12 @@ mod tests {
 
         let e = lookup(&t.0, &p).expect("deveria acertar");
         assert_eq!(status(&t.0, &p), PathStatus::Cached);
-        let o = Options::new(None, &e.summary.sheets, ExtractScope::Full, VbaOptions::default());
+        let o = Options::new(
+            None,
+            &e.summary.sheets,
+            ExtractScope::Full,
+            VbaOptions::default(),
+        );
         assert!(e.extraction_for(&o).is_some());
         assert!(cached_result(&t.0, &p, None, ExtractScope::Full, VbaOptions::default()).is_some());
     }
@@ -368,7 +447,8 @@ mod tests {
 
         // mesmo tamanho, outra data de modificação
         let f = fs::OpenOptions::new().write(true).open(&p).unwrap();
-        f.set_modified(SystemTime::now() + Duration::from_secs(60)).unwrap();
+        f.set_modified(SystemTime::now() + Duration::from_secs(60))
+            .unwrap();
         drop(f);
         assert!(lookup(&t.0, &p).is_none());
         assert_eq!(status(&t.0, &p), PathStatus::Modified);
@@ -384,10 +464,31 @@ mod tests {
         let t = Tmp::new("opts");
         let p = t.file("a.xlsx", "dados");
         put(&t, &p);
-        let outra = VbaOptions { remove_blank_lines: false, hide_attributes: true };
+        let outra = VbaOptions {
+            remove_blank_lines: false,
+            hide_attributes: true,
+        };
         assert!(cached_result(&t.0, &p, None, ExtractScope::Full, outra).is_none());
-        assert!(cached_result(&t.0, &p, None, ExtractScope::Head { rows: 5 }, VbaOptions::default()).is_none());
-        assert!(cached_result(&t.0, &p, Some(&["A".into()]), ExtractScope::Full, VbaOptions::default()).is_none());
+        assert!(
+            cached_result(
+                &t.0,
+                &p,
+                None,
+                ExtractScope::Head { rows: 5 },
+                VbaOptions::default()
+            )
+            .is_none()
+        );
+        assert!(
+            cached_result(
+                &t.0,
+                &p,
+                Some(&["A".into()]),
+                ExtractScope::Full,
+                VbaOptions::default()
+            )
+            .is_none()
+        );
         // o resumo continua valendo
         assert!(lookup(&t.0, &p).is_some());
     }
@@ -401,7 +502,10 @@ mod tests {
             store_summary(&t.0, p, fp, &summary(p)).unwrap();
             std::thread::sleep(Duration::from_millis(30));
         }
-        assert!(lookup(&t.0, &paths[0]).is_none(), "o mais antigo deveria ter saído");
+        assert!(
+            lookup(&t.0, &paths[0]).is_none(),
+            "o mais antigo deveria ter saído"
+        );
         assert!(paths[1..].iter().all(|p| lookup(&t.0, p).is_some()));
         assert_eq!(fs::read_dir(dir(&t.0)).unwrap().count(), MAX_ENTRIES);
     }
@@ -418,7 +522,10 @@ mod tests {
         std::thread::sleep(Duration::from_millis(30));
         let novo = t.file("novo.xlsx", "x");
         store_summary(&t.0, &novo, fingerprint(&novo).unwrap(), &summary(&novo)).unwrap();
-        assert!(lookup(&t.0, &paths[0]).is_some(), "p0 foi usado por último, não sai");
+        assert!(
+            lookup(&t.0, &paths[0]).is_some(),
+            "p0 foi usado por último, não sai"
+        );
         assert!(lookup(&t.0, &paths[1]).is_none(), "p1 virou o mais antigo");
     }
 
@@ -452,15 +559,27 @@ mod tests {
         let fp = fingerprint(&p).unwrap();
         store_summary(&t.0, &p, fp, &summary(&p)).unwrap();
         fs::write(&p, "outro conteúdo").unwrap(); // mudou depois de ler `fp`
-        let velho = Fingerprint { size: fp.size + 99, ..fp };
+        let velho = Fingerprint {
+            size: fp.size + 99,
+            ..fp
+        };
         store_extraction(&t.0, &p, velho, opts(VbaOptions::default()), &result()).unwrap();
-        assert!(read_entry(&t.0, &p.to_string_lossy()).unwrap().1.extraction.is_none());
+        assert!(
+            read_entry(&t.0, &p.to_string_lossy())
+                .unwrap()
+                .1
+                .extraction
+                .is_none()
+        );
     }
 
     #[test]
     fn status_de_arquivo_ausente_e_limpar() {
         let t = Tmp::new("status");
-        assert_eq!(status(&t.0, &t.0.join("nao_existe.xlsx")), PathStatus::Missing);
+        assert_eq!(
+            status(&t.0, &t.0.join("nao_existe.xlsx")),
+            PathStatus::Missing
+        );
         let p = t.file("a.xlsx", "dados");
         assert_eq!(status(&t.0, &p), PathStatus::NotCached);
         put(&t, &p);
@@ -473,7 +592,10 @@ mod tests {
     fn arquivo_grande_nao_entra() {
         let t = Tmp::new("grande");
         let p = t.file("a.xlsx", "x");
-        let fp = Fingerprint { size: MAX_FILE_BYTES + 1, mtime_ms: 0 };
+        let fp = Fingerprint {
+            size: MAX_FILE_BYTES + 1,
+            mtime_ms: 0,
+        };
         store_summary(&t.0, &p, fp, &summary(&p)).unwrap();
         assert!(!dir(&t.0).exists());
     }

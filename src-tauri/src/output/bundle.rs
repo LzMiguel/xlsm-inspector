@@ -1,0 +1,255 @@
+//! Markdown único para IA: resumo + células + VBA, com divisão opcional em partes.
+//! Não importa nada do Tauri.
+
+use serde::Serialize;
+
+use super::markdown::{SHEET_SEPARATOR, footer_block, header_block, sheet_block, vba_block};
+use super::template::OutputTemplate;
+use super::tokens;
+use crate::model::{CellContent, SheetCells, VbaComponent};
+
+fn summary_block(sheets: &[SheetCells], vba: &[VbaComponent]) -> String {
+    let mut out = String::from("\n## Resumo\n\n");
+    for s in sheets {
+        let formulas = s
+            .cells
+            .values()
+            .filter(|c| matches!(c, CellContent::Formula { .. }))
+            .count();
+        out.push_str(&format!(
+            "- Aba `{}`: {} célula(s), {} fórmula(s)\n",
+            s.name,
+            s.cells.len(),
+            formulas
+        ));
+    }
+    if !vba.is_empty() {
+        let names: Vec<&str> = vba.iter().map(|c| c.name.as_str()).collect();
+        out.push_str(&format!(
+            "- Componentes VBA ({}): {}\n",
+            vba.len(),
+            names.join(", ")
+        ));
+    }
+    out
+}
+
+/// Blocos indivisíveis do arquivo único, na ordem: abertura + resumo, cada aba, cada componente
+/// VBA e o rodapé. A junção de todos é o arquivo único; cortar entre eles nunca parte um bloco
+/// de código nem uma tabela.
+pub fn bundle_units(
+    file_name: &str,
+    sheets: &[SheetCells],
+    vba: &[VbaComponent],
+    t: &OutputTemplate,
+    date: &str,
+) -> Vec<String> {
+    let mut units = vec![header_block(file_name, t, date) + &summary_block(sheets, vba)];
+    for (i, sheet) in sheets.iter().enumerate() {
+        let sep = if i > 0 { SHEET_SEPARATOR } else { "" };
+        units.push(format!("{sep}{}", sheet_block(sheet, file_name, t, date)));
+    }
+    for (i, c) in vba.iter().enumerate() {
+        let sep = if i == 0 { "\n---\n\n" } else { "\n" };
+        units.push(format!("{sep}{}", vba_block(c, file_name, t, date)));
+    }
+    if !t.footer.is_empty() {
+        units.push(footer_block(file_name, t, date));
+    }
+    units
+}
+
+/// O arquivo único inteiro.
+pub fn bundle_markdown(
+    file_name: &str,
+    sheets: &[SheetCells],
+    vba: &[VbaComponent],
+    t: &OutputTemplate,
+    date: &str,
+) -> String {
+    bundle_units(file_name, sheets, vba, t, date).concat()
+}
+
+/// O arquivo único dividido em partes de até `max_tokens` (estimados). Sem limite, uma só parte.
+pub fn bundle_parts(
+    file_name: &str,
+    sheets: &[SheetCells],
+    vba: &[VbaComponent],
+    t: &OutputTemplate,
+    date: &str,
+    max_tokens: Option<usize>,
+) -> Vec<String> {
+    let units = bundle_units(file_name, sheets, vba, t, date);
+    match max_tokens {
+        Some(n) => tokens::split_units(&units, n),
+        None => vec![units.concat()],
+    }
+}
+
+/// Tamanho aproximado do arquivo único (tokens são uma estimativa, não uma contagem exata).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct BundleEstimate {
+    pub tokens: usize,
+    pub parts: usize,
+}
+
+pub fn estimate_bundle(
+    file_name: &str,
+    sheets: &[SheetCells],
+    vba: &[VbaComponent],
+    t: &OutputTemplate,
+    date: &str,
+    max_tokens: Option<usize>,
+) -> BundleEstimate {
+    let units = bundle_units(file_name, sheets, vba, t, date);
+    BundleEstimate {
+        tokens: units.iter().map(|u| tokens::estimate(u)).sum(),
+        parts: match max_tokens {
+            Some(n) => tokens::split_units(&units, n).len(),
+            None => 1,
+        },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::{CellValue, VbaComponentKind};
+    use indexmap::IndexMap;
+
+    fn sheet(name: &str, rows: usize) -> SheetCells {
+        let mut cells = IndexMap::new();
+        for r in 1..=rows {
+            cells.insert(
+                format!("A{r}"),
+                CellContent::Plain(CellValue::String(format!("linha {r}"))),
+            );
+        }
+        cells.insert(
+            "B1".into(),
+            CellContent::Formula {
+                formula: "=SOMA(A1:A2)".into(),
+                valor: CellValue::Int(3),
+            },
+        );
+        SheetCells {
+            name: name.into(),
+            cells,
+            tables: vec![],
+            sampled: None,
+        }
+    }
+
+    fn comp(name: &str, lines: usize) -> VbaComponent {
+        VbaComponent {
+            name: name.into(),
+            kind: VbaComponentKind::Module,
+            code: (0..lines)
+                .map(|i| format!("' linha {i}"))
+                .collect::<Vec<_>>()
+                .join("\n"),
+            line_count: lines,
+        }
+    }
+
+    fn dados() -> (Vec<SheetCells>, Vec<VbaComponent>) {
+        (
+            vec![sheet("Aba1", 30), sheet("Aba2", 5)],
+            vec![comp("Module1", 20), comp("Classe1", 3)],
+        )
+    }
+
+    fn t() -> OutputTemplate {
+        OutputTemplate::default()
+    }
+
+    #[test]
+    fn arquivo_unico_tem_resumo_celulas_e_vba() {
+        let (s, v) = dados();
+        let md = bundle_markdown("a.xlsm", &s, &v, &t(), "2026-01-02");
+        assert!(md.starts_with("# Mapeamento de Estrutura: a.xlsm\n"));
+        assert!(md.contains("## Resumo"));
+        assert!(md.contains("- Aba `Aba1`: 31 célula(s), 1 fórmula(s)"));
+        assert!(md.contains("- Componentes VBA (2): Module1, Classe1"));
+        assert!(md.contains("## Aba: Aba1") && md.contains("## Aba: Aba2"));
+        assert!(md.contains("## COMPONENTE: Module1") && md.contains("## COMPONENTE: Classe1"));
+        // abas antes do VBA
+        assert!(md.find("## Aba: Aba2") < md.find("## COMPONENTE: Module1"));
+    }
+
+    #[test]
+    fn sem_vba_omite_a_secao() {
+        let (s, _) = dados();
+        let md = bundle_markdown("a.xlsx", &s, &[], &t(), "d");
+        assert!(!md.contains("COMPONENTE") && !md.contains("Componentes VBA"));
+    }
+
+    #[test]
+    fn rodape_e_intro_do_modelo() {
+        let (s, v) = dados();
+        let tpl = OutputTemplate {
+            intro: "Contexto de {arquivo}.".into(),
+            footer: "Fim.".into(),
+            ..t()
+        };
+        let md = bundle_markdown("a.xlsm", &s, &v, &tpl, "d");
+        assert!(md.contains("\nContexto de a.xlsm.\n"));
+        assert!(md.ends_with("\nFim.\n"));
+    }
+
+    #[test]
+    fn partes_juntas_reproduzem_o_arquivo_unico() {
+        let (s, v) = dados();
+        let todo = bundle_markdown("a.xlsm", &s, &v, &t(), "d");
+        for max in [1, 50, 200, 500, 100_000] {
+            let partes = bundle_parts("a.xlsm", &s, &v, &t(), "d", Some(max));
+            assert_eq!(partes.concat(), todo, "max={max}");
+        }
+        let uma = bundle_parts("a.xlsm", &s, &v, &t(), "d", None);
+        assert_eq!(uma, vec![todo]);
+    }
+
+    #[test]
+    fn nenhuma_parte_quebra_bloco_de_codigo_ou_tabela() {
+        let (s, v) = dados();
+        for max in [1, 50, 100, 200] {
+            let partes = bundle_parts("a.xlsm", &s, &v, &t(), "d", Some(max));
+            assert!(partes.len() > 1, "max={max} deveria dividir");
+            for (i, p) in partes.iter().enumerate() {
+                // cercas de código sempre em par
+                assert_eq!(p.matches("```").count() % 2, 0, "parte {i} max={max}");
+                // toda linha de tabela tem cabeçalho na mesma parte
+                if p.contains("| **") {
+                    assert!(p.contains("| Célula |"), "parte {i} sem cabeçalho");
+                }
+                // linhas de tabela inteiras (terminam em `|`)
+                for line in p.lines().filter(|l| l.starts_with("| **")) {
+                    assert!(line.ends_with(" |"), "linha cortada: {line}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn estimativa_bate_com_as_partes() {
+        let (s, v) = dados();
+        let e = estimate_bundle("a.xlsm", &s, &v, &t(), "d", Some(1));
+        assert_eq!(e.parts, 5);
+        let unico = estimate_bundle("a.xlsm", &s, &v, &t(), "d", None);
+        assert_eq!(unico.parts, 1);
+        assert!(unico.tokens > 0);
+        // a soma por bloco é a do texto inteiro, com folga de arredondamento (≤ 1 por bloco)
+        let todo = tokens::estimate(&bundle_markdown("a.xlsm", &s, &v, &t(), "d"));
+        assert!(unico.tokens >= todo && unico.tokens <= todo + 5);
+    }
+
+    #[test]
+    fn corte_so_em_limite_de_secao() {
+        let (s, v) = dados();
+        let partes = bundle_parts("a.xlsm", &s, &v, &t(), "d", Some(1));
+        // com limite mínimo: abertura, 2 abas e 2 componentes, um por parte
+        assert_eq!(partes.len(), 5);
+        assert!(partes[1].contains("## Aba: Aba1") && !partes[1].contains("Aba2"));
+        assert!(partes[3].contains("## COMPONENTE: Module1") && !partes[3].contains("Classe1"));
+    }
+}

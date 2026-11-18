@@ -7,7 +7,12 @@ export const DEFAULT_SETTINGS: Settings = {
   version: 1,
   default_out_dir: null,
   vba_options: { remove_blank_lines: true, hide_attributes: false },
-  file_names: { json: "mapeamento_planilha", cells_md: "mapeamento_planilha", vba_md: "vba_code" },
+  file_names: {
+    json: "mapeamento_planilha",
+    cells_md: "mapeamento_planilha",
+    vba_md: "vba_code",
+    bundle: "contexto_ia",
+  },
   template: {
     title: "# Mapeamento de Estrutura: {arquivo}",
     intro: "",

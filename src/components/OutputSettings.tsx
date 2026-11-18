@@ -1,196 +1,48 @@
-import { useEffect, useState } from "react";
-import { Save, Trash2 } from "lucide-react";
-
-import { getBuiltinTemplates, previewTemplate, toAppError } from "../api/commands";
 import { updateSettings } from "../store/settingsActions";
 import { DEFAULT_SETTINGS, useSettingsStore } from "../store/settingsStore";
-import type { AppError, FileNames, OutputTemplate, TemplatePreset } from "../types/models";
-import { ErrorAlert } from "./ErrorAlert";
+import type { FileNames } from "../types/models";
 import { Button } from "./ui/Button";
-import { Field, Input, Select, Textarea } from "./ui/Fields";
+import { Field, Input } from "./ui/Fields";
 
 const NAME_FIELDS: { key: keyof FileNames; label: string; ext: string }[] = [
   { key: "json", label: "Células (JSON)", ext: ".json" },
   { key: "cells_md", label: "Células (Markdown)", ext: ".md" },
   { key: "vba_md", label: "Código VBA (Markdown)", ext: ".md" },
+  { key: "bundle", label: "Arquivo único para IA (Markdown)", ext: ".md" },
 ];
 
-const TEMPLATE_FIELDS: {
-  key: keyof OutputTemplate;
-  label: string;
-  hint?: string;
-  multiline?: boolean;
-}[] = [
-  { key: "title", label: "Título", hint: "Use {arquivo} e {data}." },
-  {
-    key: "intro",
-    label: "Texto de abertura (opcional)",
-    hint: "Logo após o título. Ex.: instruções para uma IA.",
-    multiline: true,
-  },
-  { key: "sheet_heading", label: "Título de cada aba", hint: "Use {aba}." },
-  { key: "cell_header", label: "Cabeçalho da coluna de células" },
-  { key: "content_header", label: "Cabeçalho da coluna de conteúdo" },
-  { key: "formula_label", label: "Rótulo da fórmula" },
-  { key: "value_label", label: "Rótulo do valor" },
-  { key: "vba_heading", label: "Título de cada componente VBA", hint: "Use {componente}." },
-  { key: "footer", label: "Rodapé (opcional)", multiline: true },
-];
-
-const same = (a: OutputTemplate, b: OutputTemplate) =>
-  (Object.keys(a) as (keyof OutputTemplate)[]).every((k) => a[k] === b[k]);
-
-/** Aba "Saída" das configurações: nomes dos arquivos e modelo do Markdown. */
+/** Aba "Saída" das configurações: nomes dos arquivos. */
 export function OutputSettings() {
-  const { file_names: names, template, presets } = useSettingsStore((s) => s.settings);
-  const [builtin, setBuiltin] = useState<TemplatePreset[]>([]);
-  const [preview, setPreview] = useState("");
-  const [newName, setNewName] = useState("");
-  const [error, setError] = useState<AppError | null>(null);
-
-  useEffect(() => {
-    getBuiltinTemplates()
-      .then(setBuiltin)
-      .catch((e) => setError(toAppError(e)));
-  }, []);
-
-  // pré-visualização renderizada no Rust, com um pequeno atraso para não chamar a cada tecla
-  useEffect(() => {
-    let stale = false;
-    const id = setTimeout(() => {
-      previewTemplate(template)
-        .then((p) => !stale && setPreview(p))
-        .catch((e) => !stale && setError(toAppError(e)));
-    }, 250);
-    return () => {
-      stale = true;
-      clearTimeout(id);
-    };
-  }, [template]);
-
-  const all = [...builtin, ...presets];
-  const current = all.find((p) => same(p.template, template));
-  const canDelete = !!current && !builtin.some((b) => b.name === current.name);
-  const name = newName.trim();
-  const canSave = name !== "" && !builtin.some((b) => b.name === name);
+  const names = useSettingsStore((s) => s.settings.file_names);
 
   const setName = (k: keyof FileNames) => (v: string) =>
     updateSettings({ file_names: { ...names, [k]: v } });
-  const setField = (k: keyof OutputTemplate) => (v: string) =>
-    updateSettings({ template: { ...template, [k]: v } });
 
   return (
-    <div className="flex flex-col gap-6">
-      {error && <ErrorAlert error={error} />}
-
-      <section className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold">Nome dos arquivos</h3>
-          <Button
-            className="ml-auto"
-            size="sm"
-            variant="ghost"
-            onClick={() => updateSettings({ file_names: DEFAULT_SETTINGS.file_names })}
-          >
-            Restaurar nomes
-          </Button>
-        </div>
-        <p className="text-sm text-muted">
-          Use {"{arquivo}"} (nome da planilha, sem extensão) e {"{data}"} (AAAA-MM-DD). A extensão é
-          fixa e o JSON nunca muda de formato.
-        </p>
-        {NAME_FIELDS.map(({ key, label, ext }) => (
-          <Field key={key} label={label}>
-            <div className="flex items-center gap-1">
-              <Input value={names[key]} onChange={(e) => setName(key)(e.currentTarget.value)} />
-              <span className="font-mono text-sm text-muted">{ext}</span>
-            </div>
-          </Field>
-        ))}
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h3 className="text-sm font-semibold">Modelo do Markdown</h3>
-
-        <Field label="Predefinição">
-          <Select
-            value={current?.name ?? ""}
-            onChange={(e) => {
-              const p = all.find((x) => x.name === e.currentTarget.value);
-              if (p) updateSettings({ template: p.template });
-            }}
-          >
-            {!current && <option value="">Personalizado</option>}
-            {builtin.map((p) => (
-              <option key={p.name}>{p.name}</option>
-            ))}
-            {presets.length > 0 && (
-              <optgroup label="Minhas predefinições">
-                {presets.map((p) => (
-                  <option key={p.name}>{p.name}</option>
-                ))}
-              </optgroup>
-            )}
-          </Select>
+    <section className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-semibold">Nome dos arquivos</h3>
+        <Button
+          className="ml-auto"
+          size="sm"
+          variant="ghost"
+          onClick={() => updateSettings({ file_names: DEFAULT_SETTINGS.file_names })}
+        >
+          Restaurar nomes
+        </Button>
+      </div>
+      <p className="text-sm text-muted">
+        Use {"{arquivo}"} (nome da planilha, sem extensão) e {"{data}"} (AAAA-MM-DD). A extensão é
+        fixa e o JSON nunca muda de formato.
+      </p>
+      {NAME_FIELDS.map(({ key, label, ext }) => (
+        <Field key={key} label={label}>
+          <div className="flex items-center gap-1">
+            <Input value={names[key]} onChange={(e) => setName(key)(e.currentTarget.value)} />
+            <span className="font-mono text-sm text-muted">{ext}</span>
+          </div>
         </Field>
-
-        <div className="flex items-end gap-2">
-          <div className="flex-1">
-            <Field label="Salvar o modelo atual como" hint="Mesmo nome de uma sua = substitui.">
-              <Input
-                value={newName}
-                placeholder="Nome da predefinição"
-                onChange={(e) => setNewName(e.currentTarget.value)}
-              />
-            </Field>
-          </div>
-          <Button
-            size="sm"
-            icon={Save}
-            disabled={!canSave}
-            onClick={() => {
-              updateSettings({
-                presets: [...presets.filter((p) => p.name !== name), { name, template }],
-              });
-              setNewName("");
-            }}
-          >
-            Salvar
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={Trash2}
-            disabled={!canDelete}
-            onClick={() => updateSettings({ presets: presets.filter((p) => p.name !== current?.name) })}
-          >
-            Excluir
-          </Button>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="flex flex-col gap-3">
-            {TEMPLATE_FIELDS.map(({ key, label, hint, multiline }) => (
-              <Field key={key} label={label} hint={hint}>
-                {multiline ? (
-                  <Textarea value={template[key]} onChange={(e) => setField(key)(e.currentTarget.value)} />
-                ) : (
-                  <Input value={template[key]} onChange={(e) => setField(key)(e.currentTarget.value)} />
-                )}
-              </Field>
-            ))}
-          </div>
-          <div className="flex min-w-0 flex-col gap-1">
-            <h4 className="text-sm font-medium">Pré-visualização</h4>
-            <pre
-              aria-label="Pré-visualização do Markdown"
-              className="max-h-[28rem] flex-1 overflow-auto whitespace-pre-wrap rounded-sm border border-border bg-surface-muted p-2 font-mono text-xs"
-            >
-              {preview}
-            </pre>
-          </div>
-        </div>
-      </section>
-    </div>
+      ))}
+    </section>
   );
 }

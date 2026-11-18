@@ -185,6 +185,8 @@ export interface FileNames {
   json: string;
   cells_md: string;
   vba_md: string;
+  /** Arquivo único para IA; dividido vira `nome_parte_1.md`, `nome_parte_2.md`... */
+  bundle: string;
 }
 
 /** Espelho de output/template.rs. `{arquivo}` (com extensão), `{data}`, `{aba}`, `{componente}`. */
@@ -212,6 +214,14 @@ export interface ExportTargets {
   json: boolean;
   cells_md: boolean;
   vba_md: boolean;
+  /** Markdown único para IA (resumo + células + VBA). */
+  bundle: boolean;
+}
+
+/** Espelho de `BundleEstimate` (output/bundle.rs). `tokens` é uma estimativa (≈ caracteres / 4). */
+export interface BundleEstimate {
+  tokens: number;
+  parts: number;
 }
 
 export type AppErrorCode =

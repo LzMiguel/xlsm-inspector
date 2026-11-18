@@ -28,7 +28,8 @@ pub fn load(dir: &Path) -> Vec<RecentFile> {
 }
 
 fn save(dir: &Path, list: &[RecentFile]) -> Result<(), AppError> {
-    let json = serde_json::to_string_pretty(list).map_err(|e| AppError::WriteFailed(e.to_string()))?;
+    let json =
+        serde_json::to_string_pretty(list).map_err(|e| AppError::WriteFailed(e.to_string()))?;
     write_atomic(dir, FILE, &json).map_err(|e| AppError::WriteFailed(format!("recentes: {e}")))
 }
 
@@ -63,11 +64,18 @@ mod tests {
     use super::*;
 
     fn f(path: &str, at: u64) -> RecentFile {
-        RecentFile { path: path.into(), name: path.into(), opened_at: at }
+        RecentFile {
+            path: path.into(),
+            name: path.into(),
+            opened_at: at,
+        }
     }
 
     fn temp(name: &str) -> std::path::PathBuf {
-        let d = std::env::temp_dir().join(format!("xlsm-inspector-{}-recent-{name}", std::process::id()));
+        let d = std::env::temp_dir().join(format!(
+            "xlsm-inspector-{}-recent-{name}",
+            std::process::id()
+        ));
         let _ = fs::remove_dir_all(&d);
         d
     }

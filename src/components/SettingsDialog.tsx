@@ -7,15 +7,17 @@ import { useSettingsStore } from "../store/settingsStore";
 import { loadRecent } from "../store/workbookActions";
 import { ErrorAlert } from "./ErrorAlert";
 import { OutputSettings } from "./OutputSettings";
+import { TemplateSettings } from "./TemplateSettings";
 import { Button } from "./ui/Button";
 import { Checkbox } from "./ui/Checkbox";
 import { Dialog } from "./ui/Dialog";
 import { Tabs, type TabItem } from "./ui/Tabs";
 
-type Tab = "geral" | "saida";
+type Tab = "geral" | "saida" | "modelos";
 const TABS: TabItem<Tab>[] = [
   { id: "geral", label: "Geral" },
   { id: "saida", label: "Saída" },
+  { id: "modelos", label: "Modelos" },
 ];
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -49,7 +51,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
       {error && <ErrorAlert error={error} />}
       <Tabs tabs={TABS} value={tab} onChange={setTab} />
 
-      {tab === "geral" ? (
+      {tab === "saida" && <OutputSettings />}
+      {tab === "modelos" && <TemplateSettings />}
+      {tab === "geral" && (
         <>
           <section className="flex flex-col gap-2">
             <h3 className="text-sm font-semibold">Pasta de exportação</h3>
@@ -108,8 +112,6 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             />
           </section>
         </>
-      ) : (
-        <OutputSettings />
       )}
     </Dialog>
   );

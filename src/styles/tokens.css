@@ -129,6 +129,8 @@
   --color-code-comment: var(--code-comment);
   --color-code-number: var(--code-number);
   --color-code-bg: var(--code-bg);
+  /* fundo do modal: sempre escuro, nos dois temas */
+  --color-overlay: rgb(0 0 0 / 0.6);
 }
 
 /* Tipografia, raios e sombras (valores fixos). Espaçamento: a escala padrão

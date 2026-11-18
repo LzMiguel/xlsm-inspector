@@ -129,11 +129,44 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta �
 - Extrair também as conexões de `xl/connections.xml` (nome, descrição e string de conexão).
 - Arquivo sem consultas: exibir estado vazio, sem erro.
 
-### RF13 — Diagnóstico
+### RF14 — Diagnóstico
 
 - Aba **Diagnóstico** (ao lado de Células e VBA): cartões de contagem e listas de erros de fórmula (`#REF!`, `#DIV/0!`…), fórmulas com referência a outro arquivo, abas ocultas (e "muito ocultas"), nomes definidos, tabelas e tabelas dinâmicas.
 - Clicar numa célula da lista abre a aba Células nela (ou na tabela que a contém).
 - Só leitura e local; não altera os arquivos exportados. Listas de células mostram até 500 itens; o total aparece nos cartões.
+
+### RF15 — VBA em Word e PowerPoint
+
+- Aceitar `.docm` e `.pptm`.
+- Extrair o código VBA com a mesma lógica e saída do RF04 (`vba_code.md`).
+- Projeto VBA lido de `word/vbaProject.bin` ou `ppt/vbaProject.bin`.
+
+### RF16 — Extração de Word
+
+- Aceitar `.docx` e `.docm`.
+- Extrair, na ordem do documento:
+  - títulos (pelo estilo `Título 1`, `Título 2`... / `Heading 1`...), convertidos em `#`, `##`...;
+  - parágrafos e listas (numeradas e com marcadores);
+  - tabelas, convertidas em tabelas Markdown;
+  - cabeçalhos e rodapés;
+  - comentários, com autor e trecho comentado;
+  - campos de formulário (controles de conteúdo).
+- Alterações controladas: exportar o texto final e, opcionalmente, listar inserções e exclusões.
+
+### RF17 — Extração de PowerPoint
+
+- Aceitar `.pptx` e `.pptm`.
+- Uma seção por slide, na ordem da apresentação (não pela numeração dos arquivos internos).
+- Por slide: título, texto de cada forma, tabelas e notas do apresentador.
+- Opcional: tipo, posição e tamanho de cada forma (convertidos de EMU para centímetros).
+- Indicar slides ocultos.
+
+### RF18 — Extração de PDF
+
+- Aceitar `.pdf` com texto selecionável.
+- Extrair o texto por página.
+- Extrair metadados (título, autor, datas) e campos de formulário (nome e valor).
+- PDF sem texto (escaneado): exibir aviso, sem erro.
 
 ## 7. Requisitos não-funcionais
 

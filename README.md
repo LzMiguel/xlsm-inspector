@@ -47,11 +47,11 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por um único app co
 
 ## 🧰 Tecnologias
 
-| Camada       | Tecnologias                                                          |
-| ------------ | -------------------------------------------------------------------- |
-| **Backend**  | Tauri v2, Rust, `calamine`, `serde_json`, `thiserror`                |
+| Camada       | Tecnologias                                                                  |
+| ------------ | ---------------------------------------------------------------------------- |
+| **Backend**  | Tauri v2, Rust, `calamine`, `serde_json`, `thiserror`                        |
 | **Frontend** | React 19, TypeScript, Vite, Tailwind CSS 4, Zustand, TanStack Virtual, Shiki |
-| **Testes**   | `cargo test` (Rust) e Vitest (frontend)                              |
+| **Testes**   | `cargo test` (Rust) e Vitest (frontend)                                      |
 
 ## 🚀 Como rodar
 
@@ -80,7 +80,7 @@ cd src-tauri && cargo test   # testes do backend
 
 ## 🗂️ Estrutura
 
-```
+```text
 src/             Frontend React (UI, store, api/commands.ts, types/)
 src-tauri/src/   Backend Rust (commands.rs, excel/, output/, error.rs)
 src-tauri/tests/ Testes e fixtures sintéticas

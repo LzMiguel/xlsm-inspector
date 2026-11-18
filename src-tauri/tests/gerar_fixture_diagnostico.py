@@ -1,8 +1,3 @@
-"""Gera tests/fixtures/diagnostico.xlsx: erro, nome definido, abas oculta/muito oculta, tabela e
-referência externa (sintético; o Excel pode reclamar da ligação externa, o calamine não).
-
-Uso: python src-tauri/tests/gerar_fixture_diagnostico.py   (precisa de openpyxl >= 3.1)
-"""
 import pathlib
 
 import openpyxl

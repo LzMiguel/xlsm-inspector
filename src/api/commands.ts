@@ -7,6 +7,7 @@ import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import type {
   AppError,
   AppErrorCode,
+  BundleEstimate,
   Diagnostics,
   ExportTargets,
   ExtractionResult,
@@ -87,11 +88,22 @@ export interface ExportParams {
   template?: OutputTemplate;
   onExists?: OnExists;
   scope?: ExtractScope;
+  /** Divide o arquivo único em partes de até N tokens (estimados); omitido = uma só parte. */
+  splitTokens?: number;
 }
 
 /** Devolve os caminhos dos arquivos gerados. */
 export const exportOutputs = (p: ExportParams) =>
   call<string[]>("export_outputs", { ...p });
+
+export type EstimateParams = Pick<
+  ExportParams,
+  "path" | "sheets" | "scope" | "vbaOptions" | "template" | "splitTokens"
+>;
+
+/** Tokens (estimativa aproximada) e nº de partes do arquivo único. */
+export const estimateBundle = (p: EstimateParams) =>
+  call<BundleEstimate>("estimate_bundle", { ...p });
 
 /** Diálogo nativo; `null` se cancelado. */
 export async function pickWorkbook(): Promise<string | null> {

@@ -32,7 +32,7 @@ export function Dialog({ open, onClose, title, children, wide = false }: DialogP
       onClose={onClose}
       onClick={(e) => e.target === e.currentTarget && onClose()}
       className={cn(
-        "m-auto max-h-[90vh] w-full overflow-y-auto rounded-lg border border-border bg-surface p-0 text-text shadow-md backdrop:bg-text/40",
+        "m-auto max-h-[90vh] w-full overflow-y-auto rounded-lg border border-border bg-surface p-0 text-text shadow-md backdrop:bg-overlay",
         wide ? "max-w-3xl" : "max-w-lg",
       )}
     >
