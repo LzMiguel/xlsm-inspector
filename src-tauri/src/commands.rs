@@ -11,7 +11,7 @@ use crate::excel::{diagnostics, vba, vba::VbaOptions};
 use crate::model::{Diagnostics, ExtractScope, ExtractionResult, Progress, VbaComponent};
 use crate::output::bundle::{BundleEstimate, estimate_bundle as estimate_bundle_of};
 use crate::output::export::{self, ExportTargets, OutputConfig};
-use crate::output::markdown;
+use crate::output::{markdown, vba_files};
 use crate::output::naming::{FileNames, OnExists};
 use crate::output::template::{self, OutputTemplate, TemplatePreset};
 use crate::store::cache::{self, OpenResult, RecentStatus};
@@ -131,6 +131,28 @@ pub async fn extract_vba(
     options: Option<VbaOptions>,
 ) -> Result<Vec<VbaComponent>, AppError> {
     blocking(move || vba::extract_file(Path::new(&path), &options.unwrap_or_default())).await
+}
+
+/// Grava `.bas`/`.cls`/`.frm` (ANSI, como o VBE importa) em `out_dir`; `names` omitido = todos.
+/// Lê o código bruto (com `Attribute`), ignorando as opções de limpeza da exibição.
+#[tauri::command]
+pub async fn export_vba_files(
+    path: String,
+    out_dir: String,
+    names: Option<Vec<String>>,
+) -> Result<Vec<String>, AppError> {
+    blocking(move || {
+        let raw = VbaOptions {
+            remove_blank_lines: false,
+            hide_attributes: false,
+        };
+        let comps: Vec<VbaComponent> = vba::extract_file(Path::new(&path), &raw)?
+            .into_iter()
+            .filter(|c| names.as_ref().is_none_or(|n| n.contains(&c.name)))
+            .collect();
+        vba_files::export_files(&comps, Path::new(&out_dir))
+    })
+    .await
 }
 
 /// Grava os arquivos (reaproveita o cache se ele tiver as mesmas abas, escopo e opções);

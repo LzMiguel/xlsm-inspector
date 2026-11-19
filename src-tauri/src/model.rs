@@ -96,6 +96,21 @@ pub struct VbaComponent {
     pub kind: VbaComponentKind,
     pub code: String,
     pub line_count: usize,
+    /// Procedimentos, com linhas relativas a `code` (já limpo). Vazio em caches antigos.
+    #[serde(default)]
+    pub procedures: Vec<VbaProcedure>,
+}
+
+/// `Sub`, `Function` ou `Property Get/Let/Set`; linhas começam em 1.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct VbaProcedure {
+    pub name: String,
+    /// "Sub", "Function", "Property Get", "Property Let" ou "Property Set".
+    pub kind: String,
+    /// "Public" (padrão do VBA), "Private" ou "Friend".
+    pub visibility: String,
+    pub start_line: usize,
+    pub end_line: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

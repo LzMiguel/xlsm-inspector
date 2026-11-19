@@ -265,3 +265,9 @@ Escala base de **4px**.
 - Navegação completa por teclado na tabela e na lista de componentes.
 - Atalhos: `Ctrl+O` abrir, `Ctrl+E` exportar, `Ctrl+F` buscar.
 - Ícones sem texto têm `aria-label`.
+
+
+### Índice de procedimentos e Busca (RF20)
+
+- `ComponentList`: o componente selecionado expande seus procedimentos (texto `text-xs text-muted`); clicar leva à linha no `VbaViewer`. Botão secundário "Exportar como arquivos" no fim da lista.
+- Aba **Busca** (`SearchView`): campo de busca + lista de resultados (selo Célula/VBA, local em `font-mono text-accent`, trecho). Clicar abre a célula ou a linha de VBA.

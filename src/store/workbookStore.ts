@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create } from 'zustand'
 
 import type {
   AppError,
@@ -12,62 +12,55 @@ import type {
   VbaComponent,
   Warning,
   WorkbookSummary,
-} from "../types/models";
+} from '../types/models'
 
-export type Status = "idle" | "loading" | "extracting" | "ready" | "error";
-export type PreviewTab = "cells" | "vba" | "diagnostics";
+export type Status = 'idle' | 'loading' | 'extracting' | 'ready' | 'error'
+export type PreviewTab = 'cells' | 'vba' | 'diagnostics' | 'search'
 
-/** Célula para a aba Células abrir já filtrada (vem do Diagnóstico). */
 export interface CellFocus {
-  sheet: string;
-  cell: string;
+  sheet: string
+  cell: string
 }
 
 interface WorkbookState {
-  filePath: string | null;
-  summary: WorkbookSummary | null;
-  selectedSheets: string[];
-  result: ExtractionResult | null;
-  progress: Progress | null;
-  warnings: Warning[];
-  status: Status;
-  error: AppError | null;
+  filePath: string | null
+  summary: WorkbookSummary | null
+  selectedSheets: string[]
+  result: ExtractionResult | null
+  progress: Progress | null
+  warnings: Warning[]
+  status: Status
+  error: AppError | null
 
-  // Pré-visualização / opções (não resetam ao trocar de arquivo, exceto a seleção)
-  tab: PreviewTab;
-  selectedComponent: string | null;
-  /** Diagnóstico do arquivo aberto (carregado ao abrir a aba). */
-  diagnostics: Diagnostics | null;
-  focus: CellFocus | null;
-  /** Escopo da extração (tudo / primeiras N / amostra de N). Vale para o próximo "Extrair". */
-  scope: ExtractScope;
-  /** Veio do cache em disco (sem reler o arquivo). */
-  fromCache: boolean;
-  /** Histórico de arquivos abertos (guardado no Rust; não é zerado por `reset`). */
-  recent: RecentFile[];
-  /** Situação de cada recente, por caminho (verificada em segundo plano). */
-  recentStatus: Record<string, PathStatus>;
+  tab: PreviewTab
+  selectedComponent: string | null
+  diagnostics: Diagnostics | null
+  focus: CellFocus | null
+  vbaLine: number | null
+  scope: ExtractScope
+  fromCache: boolean
+  recent: RecentFile[]
+  recentStatus: Record<string, PathStatus>
 
-  setRecent: (list: RecentFile[]) => void;
-  setRecentStatus: (status: Record<string, PathStatus>) => void;
-  /** Restaura a última extração guardada: abas, escopo e resultado. */
-  loadCached: (c: CachedExtraction) => void;
-  startLoading: (path: string) => void;
-  setSummary: (summary: WorkbookSummary) => void;
-  toggleSheet: (name: string) => void;
-  setAllSheets: (selected: boolean) => void;
-  startExtracting: () => void;
-  setProgress: (p: Progress | null) => void;
-  setResult: (r: ExtractionResult) => void;
-  setVba: (vba: VbaComponent[]) => void;
-  setError: (e: AppError) => void;
-  setTab: (tab: PreviewTab) => void;
-  setDiagnostics: (d: Diagnostics) => void;
-  /** Abre a aba Células na célula indicada. */
-  goToCell: (focus: CellFocus) => void;
-  setScope: (scope: ExtractScope) => void;
-  selectComponent: (name: string) => void;
-  reset: () => void;
+  setRecent: (list: RecentFile[]) => void
+  setRecentStatus: (status: Record<string, PathStatus>) => void
+  loadCached: (c: CachedExtraction) => void
+  startLoading: (path: string) => void
+  setSummary: (summary: WorkbookSummary) => void
+  toggleSheet: (name: string) => void
+  setAllSheets: (selected: boolean) => void
+  startExtracting: () => void
+  setProgress: (p: Progress | null) => void
+  setResult: (r: ExtractionResult) => void
+  setVba: (vba: VbaComponent[]) => void
+  setError: (e: AppError) => void
+  setTab: (tab: PreviewTab) => void
+  setDiagnostics: (d: Diagnostics) => void
+  goToCell: (focus: CellFocus) => void
+  setScope: (scope: ExtractScope) => void
+  selectComponent: (name: string) => void
+  goToVba: (name: string, line: number) => void
+  reset: () => void
 }
 
 const initial = {
@@ -77,31 +70,31 @@ const initial = {
   result: null,
   progress: null,
   warnings: [],
-  status: "idle" as Status,
+  status: 'idle' as Status,
   error: null,
-  tab: "cells" as PreviewTab,
+  tab: 'cells' as PreviewTab,
   selectedComponent: null,
   diagnostics: null,
   focus: null,
+  vbaLine: null as number | null,
   fromCache: false,
-};
+}
 
-/** Mantém a seleção atual se o componente ainda existir; senão, o primeiro. */
 const pickComponent = (vba: VbaComponent[], current: string | null) =>
-  vba.some((c) => c.name === current) ? current : (vba[0]?.name ?? null);
+  vba.some((c) => c.name === current) ? current : (vba[0]?.name ?? null)
 
 export const useWorkbookStore = create<WorkbookState>((set, get) => ({
   ...initial,
   recent: [],
   recentStatus: {},
-  scope: { kind: "full" },
+  scope: { kind: 'full' },
 
   setRecent: (recent) => set({ recent }),
 
   setRecentStatus: (recentStatus) => set({ recentStatus }),
 
   loadCached: (c) => {
-    const names = get().summary?.sheets.map((s) => s.name) ?? [];
+    const names = get().summary?.sheets.map((s) => s.name) ?? []
     set({
       selectedSheets: names.filter((n) => c.sheets.includes(n)),
       scope: c.scope,
@@ -109,35 +102,46 @@ export const useWorkbookStore = create<WorkbookState>((set, get) => ({
       warnings: c.result.warnings,
       selectedComponent: pickComponent(c.result.vba, null),
       progress: null,
-      status: "ready",
+      status: 'ready',
       fromCache: true,
-    });
+    })
   },
 
-  // Novo arquivo: descarta qualquer resultado anterior.
-  startLoading: (path) => set({ ...initial, filePath: path, status: "loading" }),
+  startLoading: (path) =>
+    set({ ...initial, filePath: path, status: 'loading' }),
 
-  // Todas as abas marcadas por padrão (RF02).
   setSummary: (summary) =>
     set({
       summary,
       selectedSheets: summary.sheets.map((s) => s.name),
-      status: "ready",
+      status: 'ready',
       error: null,
     }),
 
   toggleSheet: (name) => {
-    const cur = get().selectedSheets;
+    const cur = get().selectedSheets
     set({
-      selectedSheets: cur.includes(name) ? cur.filter((n) => n !== name) : [...cur, name],
-    });
+      selectedSheets: cur.includes(name)
+        ? cur.filter((n) => n !== name)
+        : [...cur, name],
+    })
   },
 
   setAllSheets: (selected) =>
-    set({ selectedSheets: selected ? (get().summary?.sheets.map((s) => s.name) ?? []) : [] }),
+    set({
+      selectedSheets: selected
+        ? (get().summary?.sheets.map((s) => s.name) ?? [])
+        : [],
+    }),
 
   startExtracting: () =>
-    set({ status: "extracting", progress: null, result: null, error: null, fromCache: false }),
+    set({
+      status: 'extracting',
+      progress: null,
+      result: null,
+      error: null,
+      fromCache: false,
+    }),
 
   setProgress: (progress) => set({ progress }),
 
@@ -146,27 +150,34 @@ export const useWorkbookStore = create<WorkbookState>((set, get) => ({
       result,
       warnings: result.warnings,
       progress: null,
-      status: "ready",
+      status: 'ready',
       selectedComponent: pickComponent(result.vba, get().selectedComponent),
     }),
 
   setVba: (vba) => {
-    const { result, selectedComponent } = get();
-    if (!result) return;
-    set({ result: { ...result, vba }, selectedComponent: pickComponent(vba, selectedComponent) });
+    const { result, selectedComponent } = get()
+    if (!result) return
+    set({
+      result: { ...result, vba },
+      selectedComponent: pickComponent(vba, selectedComponent),
+    })
   },
 
-  setError: (error) => set({ error, progress: null, status: "error" }),
+  setError: (error) => set({ error, progress: null, status: 'error' }),
 
   setTab: (tab) => set({ tab, focus: null }),
 
   setDiagnostics: (diagnostics) => set({ diagnostics }),
 
-  goToCell: (focus) => set({ tab: "cells", focus }),
+  goToCell: (focus) => set({ tab: 'cells', focus }),
 
   setScope: (scope) => set({ scope }),
 
-  selectComponent: (selectedComponent) => set({ selectedComponent }),
+  selectComponent: (selectedComponent) =>
+    set({ selectedComponent, vbaLine: null }),
+
+  goToVba: (selectedComponent, vbaLine) =>
+    set({ tab: 'vba', selectedComponent, vbaLine }),
 
   reset: () => set({ ...initial }),
-}));
+}))

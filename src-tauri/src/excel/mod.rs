@@ -4,4 +4,5 @@ pub mod coords;
 pub mod diagnostics;
 pub mod tables;
 pub mod vba;
+pub mod vba_index;
 pub mod workbook;

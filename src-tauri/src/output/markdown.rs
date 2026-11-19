@@ -174,6 +174,7 @@ pub fn preview(t: &OutputTemplate, date: &str) -> String {
         kind: VbaComponentKind::Module,
         code: code.into(),
         line_count: 3,
+        procedures: vec![],
     }];
     format!(
         "{}\n<!-- vba_code.md -->\n\n{}",
@@ -221,6 +222,7 @@ mod tests {
             kind: VbaComponentKind::Module,
             code: code.into(),
             line_count: 1,
+            procedures: vec![],
         }
     }
 

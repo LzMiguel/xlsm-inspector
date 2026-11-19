@@ -6,3 +6,4 @@ pub mod markdown;
 pub mod naming;
 pub mod template;
 pub mod tokens;
+pub mod vba_files;

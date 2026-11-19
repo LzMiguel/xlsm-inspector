@@ -17,7 +17,7 @@ use crate::excel::vba::{self, VbaOptions};
 use crate::excel::workbook::{inspect, io_err};
 use crate::model::{ExtractScope, ExtractionResult, Progress, SheetInfo, WorkbookSummary};
 
-pub const CACHE_VERSION: u32 = 1;
+pub const CACHE_VERSION: u32 = 2; // 2: VbaComponent.procedures
 pub const MAX_ENTRIES: usize = 5;
 /// Planilhas maiores que isso não entram no cache (o JSON ficaria enorme).
 pub const MAX_FILE_BYTES: u64 = 50 * 1024 * 1024;

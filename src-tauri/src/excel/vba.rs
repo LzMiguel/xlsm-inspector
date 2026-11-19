@@ -44,6 +44,7 @@ pub fn extract(book: &mut Book, opts: &VbaOptions) -> Result<Vec<VbaComponent>, 
             name: name.to_string(),
             kind: classify(name, &raw), // sobre o código bruto: precisa dos Attribute
             line_count: code.lines().count(),
+            procedures: super::vba_index::index(&code),
             code,
         });
     }

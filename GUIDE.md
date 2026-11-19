@@ -221,7 +221,7 @@ Esta fase prepara o app para receber `.docx`, `.pptx` e `.pdf` (Fases 11-13). Ho
 | RF12  | Cache e verificação dos recentes      | 4    | [ ] |
 | RF14  | Diagnóstico da planilha               | 5    | [ ] |
 | RF19  | Saída otimizada para IA               | 6    | [ ] |
-| RF20  | VBA avançado                          | 7    | [ ] |
+| RF20  | VBA avançado                          | 7    | [x] |
 | RF21  | Comparar versões                      | 8    | [ ] |
 | RF13  | Extração de Power Query               | 9    | [ ] |
 | RF15  | VBA em Word e PowerPoint              | 10   | [ ] |
@@ -230,7 +230,7 @@ Esta fase prepara o app para receber `.docx`, `.pptx` e `.pdf` (Fases 11-13). Ho
 | RF18  | Extração de PDF                       | 13   | [ ] |
 | RNF08 | Cache local e desligável              | 4    | [ ] |
 | RNF09 | Exportação para IA                    | 6    | [ ] |
-| RNF10 | VBA avançado                          | 7    | [ ] |
+| RNF10 | VBA avançado                          | 7    | [x] |
 | RNF11 | Comparar versões                      | 8    | [ ] |
 
 ---

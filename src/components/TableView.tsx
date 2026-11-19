@@ -13,8 +13,8 @@ const CHAR_PX = 7.5
 const MIN_COL = 72
 const MAX_COL_TRUNCATED = 280
 const MAX_COL_FULL = 520
-const GAP = 12 // gap-3
-const PAD = 12 // px-3
+const GAP = 12
+const PAD = 12
 
 interface Cell {
   formula: string
@@ -45,7 +45,6 @@ export function TableView({
   const [truncate, setTruncate] = useState(true)
   const rowHeight = hasFormula ? ROW_HEIGHT_FORMULA : ROW_HEIGHT
 
-  // Largura de cada coluna pelo maior conteúdo (valor, fórmula ou cabeçalho).
   const widths = useMemo(() => {
     const max = truncate ? MAX_COL_TRUNCATED : MAX_COL_FULL
     return table.columns.map((name, i) => {
@@ -74,7 +73,6 @@ export function TableView({
     count: filtered.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => (truncate ? rowHeight : ROW_HEIGHT),
-    // Troca de modo/filtro invalida as alturas medidas.
     getItemKey: (i) => `${truncate}:${deferred}:${i}`,
     overscan: 12,
   })

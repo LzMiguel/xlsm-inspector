@@ -670,3 +670,16 @@ fn arquivo_unico_para_ia() {
 
     fs::remove_dir_all(&base).ok();
 }
+
+#[test]
+fn indice_de_procedimentos_na_fixture() {
+    let comps = extract_file(&fx("com_vba.xlsm"), &VbaOptions::default()).unwrap();
+    let procs: Vec<_> = comps.iter().flat_map(|c| &c.procedures).collect();
+    assert!(!procs.is_empty());
+    for c in &comps {
+        for p in &c.procedures {
+            assert!(1 <= p.start_line && p.start_line <= p.end_line && p.end_line <= c.line_count);
+            assert!(c.code.lines().nth(p.start_line - 1).unwrap().contains(&p.name));
+        }
+    }
+}

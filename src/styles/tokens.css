@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* ==========================================================================
    Tokens do Design-System.md. Único lugar com valores de cor (hex).
@@ -34,7 +34,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme='light']) {
     color-scheme: dark;
 
     --bg: #111318;
@@ -62,7 +62,7 @@
   }
 }
 
-:root[data-theme="dark"] {
+:root[data-theme='dark'] {
   color-scheme: dark;
 
   --bg: #111318;
@@ -136,8 +136,8 @@
 /* Tipografia, raios e sombras (valores fixos). Espaçamento: a escala padrão
    do Tailwind já é de 4px (p-1 = 4px … p-12 = 48px). */
 @theme {
-  --font-sans: "Inter Variable", system-ui, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono Variable", "Cascadia Code", Consolas, monospace;
+  --font-sans: 'Inter Variable', system-ui, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'Cascadia Code', Consolas, monospace;
 
   --text-xs: 11px;
   --text-xs--line-height: 16px;
@@ -174,7 +174,6 @@
     font-size: 14px;
     line-height: 22px;
   }
-  /* Número de tabelas alinhados. */
   table {
     font-variant-numeric: tabular-nums;
   }

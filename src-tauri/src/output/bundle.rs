@@ -149,6 +149,7 @@ mod tests {
                 .collect::<Vec<_>>()
                 .join("\n"),
             line_count: lines,
+            procedures: vec![],
         }
     }
 

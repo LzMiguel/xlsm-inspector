@@ -3,34 +3,58 @@ import type {
   ReactNode,
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
-} from "react";
+} from 'react'
 
-import { cn } from "./cn";
+import { cn } from './cn'
 
 const BASE =
-  "w-full rounded-sm border border-border bg-surface px-2 py-1.5 text-sm text-text placeholder:text-muted disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent";
+  'w-full rounded-sm border border-border bg-surface px-2 py-1.5 text-sm text-text placeholder:text-muted disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent'
 
-export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn(BASE, className)} {...rest} />;
+export function Input({
+  className,
+  ...rest
+}: InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      className={cn(BASE, className)}
+      {...rest}
+    />
+  )
 }
 
-export function Textarea({ className, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea rows={3} className={cn(BASE, "resize-y font-mono", className)} {...rest} />;
+export function Textarea({
+  className,
+  ...rest
+}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return (
+    <textarea
+      rows={3}
+      className={cn(BASE, 'resize-y font-mono', className)}
+      {...rest}
+    />
+  )
 }
 
-export function Select({ className, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select className={cn(BASE, className)} {...rest} />;
+export function Select({
+  className,
+  ...rest
+}: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select
+      className={cn(BASE, className)}
+      {...rest}
+    />
+  )
 }
 
-/** Rótulo + controle + dica. O `<label>` associa o rótulo ao controle. */
 export function Field({
   label,
   hint,
   children,
 }: {
-  label: string;
-  hint?: string;
-  children: ReactNode;
+  label: string
+  hint?: string
+  children: ReactNode
 }) {
   return (
     <label className="flex flex-col gap-1">
@@ -38,5 +62,5 @@ export function Field({
       {children}
       {hint && <span className="text-xs text-muted">{hint}</span>}
     </label>
-  );
+  )
 }
