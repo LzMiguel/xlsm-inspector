@@ -8,7 +8,9 @@ use super::template::{OutputTemplate, today};
 use super::{bundle::bundle_parts, json::cells_to_json, markdown};
 use crate::error::AppError;
 use crate::excel::{cells::extract_with_scope, power_query, vba, vba::VbaOptions};
-use crate::model::{ExtractScope, ExtractionResult, Progress, SheetCells, VbaComponent};
+use crate::model::{
+    ExtractScope, ExtractionResult, PowerQuery, Progress, SheetCells, VbaComponent,
+};
 
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(default)]
@@ -156,7 +158,8 @@ pub fn export_outputs(
         )));
     }
     let date = today();
-    let [json_name, md_name, vba_name, pq_name, bundle_name] = plan(path, out_dir, targets, cfg, &date)?;
+    let [json_name, md_name, vba_name, pq_name, bundle_name] =
+        plan(path, out_dir, targets, cfg, &date)?;
     let mut written = Vec::new();
 
     let file_name = path
@@ -197,6 +200,15 @@ pub fn export_outputs(
         None
     };
 
+    let pq: PowerQuery = if pq_name.is_some() || bundle_name.is_some() {
+        match &cfg.cached {
+            Some(c) => c.power_query.clone(),
+            None => power_query::extract_file(path)?,
+        }
+    } else {
+        PowerQuery::default()
+    };
+
     // as partes do arquivo único e seus nomes são decididos antes de gravar qualquer coisa
     let bundle_files: Vec<(String, String)> = match &bundle_name {
         Some(base) => {
@@ -204,6 +216,7 @@ pub fn export_outputs(
                 &file_name,
                 cells,
                 components.as_deref().unwrap_or_default(),
+                &pq,
                 &cfg.template,
                 &date,
                 cfg.split_tokens,
@@ -226,10 +239,13 @@ pub fn export_outputs(
         write(out_dir, name, &md, &mut written)?;
     }
     if let Some(name) = &pq_name {
-        let pq = power_query::extract_file(path)?;
-        // sem consultas nem conexões, o arquivo é omitido (como o VBA sem projeto)
         if !pq.queries.is_empty() || !pq.connections.is_empty() {
-            write(out_dir, name, &markdown::power_query_to_markdown(&pq, &file_name), &mut written)?;
+            write(
+                out_dir,
+                name,
+                &markdown::power_query_to_markdown(&pq, &file_name),
+                &mut written,
+            )?;
         }
     }
     for (name, part) in &bundle_files {

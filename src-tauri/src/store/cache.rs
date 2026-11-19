@@ -13,11 +13,12 @@ use serde::{Deserialize, Serialize};
 use super::write_atomic;
 use crate::error::AppError;
 use crate::excel::cells::extract_with_scope;
+use crate::excel::power_query;
 use crate::excel::vba::{self, VbaOptions};
 use crate::excel::workbook::{inspect, io_err};
 use crate::model::{ExtractScope, ExtractionResult, Progress, SheetInfo, WorkbookSummary};
 
-pub const CACHE_VERSION: u32 = 2; // 2: VbaComponent.procedures
+pub const CACHE_VERSION: u32 = 3; // 3: ExtractionResult.power_query (2: VbaComponent.procedures)
 pub const MAX_ENTRIES: usize = 5;
 /// Planilhas maiores que isso não entram no cache (o JSON ficaria enorme).
 pub const MAX_FILE_BYTES: u64 = 50 * 1024 * 1024;
@@ -320,10 +321,13 @@ pub fn extract(
         Err(AppError::NoVbaProject) => Vec::new(),
         Err(e) => return Err(e),
     };
+    // shortcut: Power Query ilegível vira vazio para não derrubar a extração das células; avisar na UI se virar problema
+    let power_query = power_query::extract_file(path).unwrap_or_default();
     let result = ExtractionResult {
         sheets: cells,
         vba,
         warnings,
+        power_query,
     };
     if use_cache {
         let _ = store_extraction(
@@ -392,6 +396,7 @@ mod tests {
             sheets: vec![],
             vba: vec![],
             warnings: vec![],
+            power_query: Default::default(),
         }
     }
 

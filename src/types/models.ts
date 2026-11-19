@@ -136,6 +136,7 @@ export interface ExtractionResult {
   sheets: SheetCells[]
   vba: VbaComponent[]
   warnings: Warning[]
+  power_query: PowerQuery
 }
 
 export interface Progress {

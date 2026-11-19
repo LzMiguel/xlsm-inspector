@@ -366,6 +366,7 @@ fn exporta_do_cache_sem_reler_o_arquivo() {
         }],
         vba: vec![],
         warnings: vec![],
+        power_query: Default::default(),
     };
     let cfg = OutputConfig {
         cached: Some(cached),
@@ -375,11 +376,7 @@ fn exporta_do_cache_sem_reler_o_arquivo() {
     let written = export_outputs(
         &dir.join("nao_existe.xlsx"),
         &dir,
-        // o Power Query não vem do cache: lê o arquivo, que aqui não existe
-        ExportTargets {
-            power_query: false,
-            ..ExportTargets::default()
-        },
+        ExportTargets::default(),
         None,
         &VbaOptions::default(),
         &cfg,
@@ -693,4 +690,60 @@ fn indice_de_procedimentos_na_fixture() {
             );
         }
     }
+}
+
+/// RF13: arquivo sem Power Query devolve listas vazias, sem erro.
+#[test]
+fn power_query_vazio_nas_fixtures_sem_consultas() {
+    for f in ["simples.xlsx", "com_vba.xlsm"] {
+        let pq = xlsm_inspector_lib::excel::power_query::extract_file(&fx(f)).unwrap();
+        assert!(pq.queries.is_empty() && pq.connections.is_empty(), "{f}");
+    }
+}
+
+/// RF13: fixture `power_query.xlsx` (a ser adicionada): duas consultas (uma com espaço e acento no
+/// nome) e uma conexão. Enquanto o arquivo não existir, o teste é ignorado.
+#[test]
+fn power_query_fixture_real() {
+    let path = fx("power_query.xlsx");
+    if !path.exists() {
+        eprintln!("fixture power_query.xlsx ausente: teste ignorado");
+        return;
+    }
+    let pq = xlsm_inspector_lib::excel::power_query::extract_file(&path).unwrap();
+    assert_eq!(pq.queries.len(), 2, "consultas: {:?}", pq.queries);
+    assert!(
+        pq.queries
+            .iter()
+            .any(|q| q.name.contains(' ') && !q.name.is_ascii()),
+        "esperava uma consulta com espaço e acento no nome"
+    );
+    assert!(pq.queries.iter().all(|q| !q.code.is_empty()));
+    assert_eq!(pq.connections.len(), 1, "conexões: {:?}", pq.connections);
+
+    // sai separado na exportação e no arquivo único
+    let dir = std::env::temp_dir().join(format!("xlsm_inspector_pq_{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let targets = ExportTargets {
+        json: false,
+        cells_md: false,
+        vba_md: false,
+        power_query: true,
+        bundle: true,
+    };
+    export_outputs(
+        &path,
+        &dir,
+        targets,
+        None,
+        &VbaOptions::default(),
+        &OutputConfig::default(),
+        &mut |_| {},
+    )
+    .unwrap();
+    let md = fs::read_to_string(dir.join("power_query.md")).unwrap();
+    assert!(md.contains("## Consulta: ") && md.contains("## Conexões"));
+    let bundle = fs::read_to_string(dir.join("contexto_ia.md")).unwrap();
+    assert!(bundle.contains("Consultas Power Query (2)"));
+    fs::remove_dir_all(&dir).ok();
 }

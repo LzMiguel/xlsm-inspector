@@ -21,7 +21,7 @@ Se uma tarefa conflitar com esses documentos, pare e pergunte em vez de improvis
 
 ## Comandos
 
-**Camandos devem ser executados apenas de for extritamente solicitados.**
+**Comandos só devem ser executados quando forem estritamente solicitados.**
 Testes e correções de erros eu mesmo irei fazer, então não execute nada sem minha autorização.
 
 ```bash
@@ -41,7 +41,7 @@ npm run test
 
 # backend (rodar dentro de src-tauri/)
 cargo fmt
-cargo clippy -- -D warnings
+cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 

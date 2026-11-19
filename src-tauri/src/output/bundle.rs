@@ -3,12 +3,15 @@
 
 use serde::Serialize;
 
-use super::markdown::{SHEET_SEPARATOR, footer_block, header_block, sheet_block, vba_block};
+use super::markdown::{
+    SHEET_SEPARATOR, footer_block, header_block, pq_connections_block, pq_query_block, sheet_block,
+    vba_block,
+};
 use super::template::OutputTemplate;
 use super::tokens;
-use crate::model::{CellContent, SheetCells, VbaComponent};
+use crate::model::{CellContent, PowerQuery, SheetCells, VbaComponent};
 
-fn summary_block(sheets: &[SheetCells], vba: &[VbaComponent]) -> String {
+fn summary_block(sheets: &[SheetCells], vba: &[VbaComponent], pq: &PowerQuery) -> String {
     let mut out = String::from("\n## Resumo\n\n");
     for s in sheets {
         let formulas = s
@@ -31,6 +34,15 @@ fn summary_block(sheets: &[SheetCells], vba: &[VbaComponent]) -> String {
             names.join(", ")
         ));
     }
+    if !pq.queries.is_empty() {
+        let names: Vec<&str> = pq.queries.iter().map(|q| q.name.as_str()).collect();
+        out.push_str(&format!(
+            "- Consultas Power Query ({}): {}
+",
+            pq.queries.len(),
+            names.join(", ")
+        ));
+    }
     out
 }
 
@@ -41,10 +53,11 @@ pub fn bundle_units(
     file_name: &str,
     sheets: &[SheetCells],
     vba: &[VbaComponent],
+    pq: &PowerQuery,
     t: &OutputTemplate,
     date: &str,
 ) -> Vec<String> {
-    let mut units = vec![header_block(file_name, t, date) + &summary_block(sheets, vba)];
+    let mut units = vec![header_block(file_name, t, date) + &summary_block(sheets, vba, pq)];
     for (i, sheet) in sheets.iter().enumerate() {
         let sep = if i > 0 { SHEET_SEPARATOR } else { "" };
         units.push(format!("{sep}{}", sheet_block(sheet, file_name, t, date)));
@@ -52,6 +65,25 @@ pub fn bundle_units(
     for (i, c) in vba.iter().enumerate() {
         let sep = if i == 0 { "\n---\n\n" } else { "\n" };
         units.push(format!("{sep}{}", vba_block(c, file_name, t, date)));
+    }
+    for (i, q) in pq.queries.iter().enumerate() {
+        let sep = if i == 0 {
+            "
+---
+
+"
+        } else {
+            "
+"
+        };
+        units.push(format!("{sep}{}", pq_query_block(q)));
+    }
+    if !pq.connections.is_empty() {
+        units.push(format!(
+            "
+{}",
+            pq_connections_block(&pq.connections)
+        ));
     }
     if !t.footer.is_empty() {
         units.push(footer_block(file_name, t, date));
@@ -64,10 +96,11 @@ pub fn bundle_markdown(
     file_name: &str,
     sheets: &[SheetCells],
     vba: &[VbaComponent],
+    pq: &PowerQuery,
     t: &OutputTemplate,
     date: &str,
 ) -> String {
-    bundle_units(file_name, sheets, vba, t, date).concat()
+    bundle_units(file_name, sheets, vba, pq, t, date).concat()
 }
 
 /// O arquivo único dividido em partes de até `max_tokens` (estimados). Sem limite, uma só parte.
@@ -75,11 +108,12 @@ pub fn bundle_parts(
     file_name: &str,
     sheets: &[SheetCells],
     vba: &[VbaComponent],
+    pq: &PowerQuery,
     t: &OutputTemplate,
     date: &str,
     max_tokens: Option<usize>,
 ) -> Vec<String> {
-    let units = bundle_units(file_name, sheets, vba, t, date);
+    let units = bundle_units(file_name, sheets, vba, pq, t, date);
     match max_tokens {
         Some(n) => tokens::split_units(&units, n),
         None => vec![units.concat()],
@@ -97,11 +131,12 @@ pub fn estimate_bundle(
     file_name: &str,
     sheets: &[SheetCells],
     vba: &[VbaComponent],
+    pq: &PowerQuery,
     t: &OutputTemplate,
     date: &str,
     max_tokens: Option<usize>,
 ) -> BundleEstimate {
-    let units = bundle_units(file_name, sheets, vba, t, date);
+    let units = bundle_units(file_name, sheets, vba, pq, t, date);
     BundleEstimate {
         tokens: units.iter().map(|u| tokens::estimate(u)).sum(),
         parts: match max_tokens {
@@ -167,7 +202,7 @@ mod tests {
     #[test]
     fn arquivo_unico_tem_resumo_celulas_e_vba() {
         let (s, v) = dados();
-        let md = bundle_markdown("a.xlsm", &s, &v, &t(), "2026-01-02");
+        let md = bundle_markdown("a.xlsm", &s, &v, &PowerQuery::default(), &t(), "2026-01-02");
         assert!(md.starts_with("# Mapeamento de Estrutura: a.xlsm\n"));
         assert!(md.contains("## Resumo"));
         assert!(md.contains("- Aba `Aba1`: 31 célula(s), 1 fórmula(s)"));
@@ -181,8 +216,47 @@ mod tests {
     #[test]
     fn sem_vba_omite_a_secao() {
         let (s, _) = dados();
-        let md = bundle_markdown("a.xlsx", &s, &[], &t(), "d");
+        let md = bundle_markdown("a.xlsx", &s, &[], &PowerQuery::default(), &t(), "d");
         assert!(!md.contains("COMPONENTE") && !md.contains("Componentes VBA"));
+    }
+
+    #[test]
+    fn power_query_no_arquivo_unico() {
+        use crate::model::{ConnectionInfo, PowerQueryItem};
+        let (s, v) = dados();
+        let pq = PowerQuery {
+            queries: vec![PowerQueryItem {
+                name: "Relatório Mensal".into(),
+                code: "let x = 1 in x".into(),
+            }],
+            connections: vec![ConnectionInfo {
+                name: "Consulta - Vendas".into(),
+                description: String::new(),
+                connection: "Location=Vendas".into(),
+            }],
+        };
+        let md = bundle_markdown("a.xlsm", &s, &v, &pq, &t(), "d");
+        assert!(md.contains(
+            "- Consultas Power Query (1): Relatório Mensal
+"
+        ));
+        assert!(md.contains(
+            "## Consulta: Relatório Mensal
+
+```m
+let x = 1 in x
+```
+"
+        ));
+        assert!(md.contains(
+            "## Conexões
+
+### Consulta - Vendas"
+        ));
+        // dividido, a junção das partes continua igual ao arquivo único
+        let partes = bundle_parts("a.xlsm", &s, &v, &pq, &t(), "d", Some(1));
+        assert!(partes.len() > 1);
+        assert_eq!(partes.concat(), md);
     }
 
     #[test]
@@ -193,7 +267,7 @@ mod tests {
             footer: "Fim.".into(),
             ..t()
         };
-        let md = bundle_markdown("a.xlsm", &s, &v, &tpl, "d");
+        let md = bundle_markdown("a.xlsm", &s, &v, &PowerQuery::default(), &tpl, "d");
         assert!(md.contains("\nContexto de a.xlsm.\n"));
         assert!(md.ends_with("\nFim.\n"));
     }
@@ -201,12 +275,20 @@ mod tests {
     #[test]
     fn partes_juntas_reproduzem_o_arquivo_unico() {
         let (s, v) = dados();
-        let todo = bundle_markdown("a.xlsm", &s, &v, &t(), "d");
+        let todo = bundle_markdown("a.xlsm", &s, &v, &PowerQuery::default(), &t(), "d");
         for max in [1, 50, 200, 500, 100_000] {
-            let partes = bundle_parts("a.xlsm", &s, &v, &t(), "d", Some(max));
+            let partes = bundle_parts(
+                "a.xlsm",
+                &s,
+                &v,
+                &PowerQuery::default(),
+                &t(),
+                "d",
+                Some(max),
+            );
             assert_eq!(partes.concat(), todo, "max={max}");
         }
-        let uma = bundle_parts("a.xlsm", &s, &v, &t(), "d", None);
+        let uma = bundle_parts("a.xlsm", &s, &v, &PowerQuery::default(), &t(), "d", None);
         assert_eq!(uma, vec![todo]);
     }
 
@@ -214,7 +296,15 @@ mod tests {
     fn nenhuma_parte_quebra_bloco_de_codigo_ou_tabela() {
         let (s, v) = dados();
         for max in [1, 50, 100, 200] {
-            let partes = bundle_parts("a.xlsm", &s, &v, &t(), "d", Some(max));
+            let partes = bundle_parts(
+                "a.xlsm",
+                &s,
+                &v,
+                &PowerQuery::default(),
+                &t(),
+                "d",
+                Some(max),
+            );
             assert!(partes.len() > 1, "max={max} deveria dividir");
             for (i, p) in partes.iter().enumerate() {
                 // cercas de código sempre em par
@@ -234,20 +324,27 @@ mod tests {
     #[test]
     fn estimativa_bate_com_as_partes() {
         let (s, v) = dados();
-        let e = estimate_bundle("a.xlsm", &s, &v, &t(), "d", Some(1));
+        let e = estimate_bundle("a.xlsm", &s, &v, &PowerQuery::default(), &t(), "d", Some(1));
         assert_eq!(e.parts, 5);
-        let unico = estimate_bundle("a.xlsm", &s, &v, &t(), "d", None);
+        let unico = estimate_bundle("a.xlsm", &s, &v, &PowerQuery::default(), &t(), "d", None);
         assert_eq!(unico.parts, 1);
         assert!(unico.tokens > 0);
         // a soma por bloco é a do texto inteiro, com folga de arredondamento (≤ 1 por bloco)
-        let todo = tokens::estimate(&bundle_markdown("a.xlsm", &s, &v, &t(), "d"));
+        let todo = tokens::estimate(&bundle_markdown(
+            "a.xlsm",
+            &s,
+            &v,
+            &PowerQuery::default(),
+            &t(),
+            "d",
+        ));
         assert!(unico.tokens >= todo && unico.tokens <= todo + 5);
     }
 
     #[test]
     fn corte_so_em_limite_de_secao() {
         let (s, v) = dados();
-        let partes = bundle_parts("a.xlsm", &s, &v, &t(), "d", Some(1));
+        let partes = bundle_parts("a.xlsm", &s, &v, &PowerQuery::default(), &t(), "d", Some(1));
         // com limite mínimo: abertura, 2 abas e 2 componentes, um por parte
         assert_eq!(partes.len(), 5);
         assert!(partes[1].contains("## Aba: Aba1") && !partes[1].contains("Aba2"));

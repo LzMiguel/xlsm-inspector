@@ -195,6 +195,13 @@ Escala base de **4px**.
 - Grade de cartões (`--surface-muted`, `radius-md`) com a contagem em `text-lg` e o rótulo em `text-xs`; contagem em `--danger` quando há erros ou referências externas.
 - Abaixo, uma seção por categoria (`text-sm` semibold) com lista em linhas divididas por `--border`. Células são botões `--accent` sublinhados (`Aba!A1`) que abrem a aba Células. "muito oculta" usa `Badge` `warning`. Ícone da aba: `Stethoscope`.
 
+### Power Query (`PowerQueryView`)
+
+- Aba **Power Query** (ícone `Database`), entre Diagnóstico e Busca. Enquanto lê: "Lendo Power Query…" em `text-sm` `--text-muted`.
+- Seção "Consultas (N)": um `<details>` por consulta (`--surface-muted`, borda `--border`, `radius-md`); o título é o nome e, aberto, mostra o código M em `font-mono text-xs` com rolagem.
+- Seção "Conexões (N)": cartão por conexão com o nome em `text-sm` medium, a descrição em `text-xs text-muted` e a string de conexão em `font-mono text-xs` com quebra (`break-all`). Só exibe; nunca testa a conexão.
+- Sem consultas nem conexões: `EmptyState` "Sem Power Query". No diálogo Exportar, "Power Query (Markdown)" é uma linha como as outras (checkbox + nome editável) e é omitido na gravação se o arquivo não tiver nada.
+
 ### ScopeSelector
 
 - `Select` (Todas / Primeiras N / Amostra de N) + `Input` numérico (mín. 1, padrão 100) quando não é "Todas". Aparece no `ExtractPanel` e no `ExportPanel`.
@@ -263,9 +270,8 @@ Escala base de **4px**.
 - Contraste mínimo AA (4.5:1 para texto).
 - Foco sempre visível.
 - Navegação completa por teclado na tabela e na lista de componentes.
-- Atalhos: `Ctrl+O` abrir, `Ctrl+E` exportar, `Ctrl+F` buscar.
+- Atalhos: `Ctrl+O` abrir, `Ctrl+E` exportar, `Ctrl+,` configurações, `Ctrl+F` buscar (na aba Células foca o filtro da tabela; nas demais abas abre a aba Busca).
 - Ícones sem texto têm `aria-label`.
-
 
 ### Índice de procedimentos e Busca (RF20)
 

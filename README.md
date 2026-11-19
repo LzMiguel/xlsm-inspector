@@ -29,19 +29,21 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por um único app co
 - 📝 **Modelos de saída:** personalize nomes de arquivo e o Markdown gerado.
 - ⚡ **Cache e recentes:** reabrir uma planilha que não mudou é instantâneo.
 - 🤖 **Saída para IA:** arquivo único, estimativa de tokens e divisão em partes sem quebrar tabelas nem código.
-- 🔎 **Diagnóstico e Power Query** das planilhas, e extração de **Word, PowerPoint e PDF** (em desenvolvimento, ver `GUIDE.md`).
+- 🔎 **Diagnóstico e Power Query** das planilhas (consultas M e conexões, só leitura).
+- 🚧 Extração de **Word, PowerPoint e PDF** (em desenvolvimento, ver `GUIDE.md`).
 - 🌗 **Tema claro e escuro.**
 
 ## 📦 O que ele gera
 
-| Arquivo                    | Conteúdo                             |
-| -------------------------- | ------------------------------------ |
-| `mapeamento_planilha.json` | Células com `valor` e `formula`      |
-| `mapeamento_planilha.md`   | Mesmo conteúdo em Markdown           |
-| `vba_code.md`              | Código VBA organizado por componente |
-| `contexto_ia.md`           | Arquivo único para IA (opcional; pode sair em partes `_parte_N`) |
+| Arquivo                    | Conteúdo                                                                    |
+| -------------------------- | --------------------------------------------------------------------------- |
+| `mapeamento_planilha.json` | Células com `valor` e `formula`                                             |
+| `mapeamento_planilha.md`   | Mesmo conteúdo em Markdown                                                  |
+| `vba_code.md`              | Código VBA organizado por componente                                        |
+| `power_query.md`           | Consultas Power Query (código M) e conexões; omitido se o arquivo não tiver |
+| `contexto_ia.md`           | Arquivo único para IA (opcional; pode sair em partes `_parte_N`)            |
 
-Word, PowerPoint, PDF e Power Query terão saídas próprias (`documento.md`, `apresentacao.md`, `pdf.md`, `power_query.md`), conforme o `GUIDE.md`.
+Word, PowerPoint e PDF terão saídas próprias (`documento.md`, `apresentacao.md`, `pdf.md`), conforme o `GUIDE.md`.
 
 ## 🔒 Privacidade e segurança
 
@@ -54,7 +56,7 @@ Word, PowerPoint, PDF e Power Query terão saídas próprias (`documento.md`, `a
 
 | Camada       | Tecnologias                                                                  |
 | ------------ | ---------------------------------------------------------------------------- |
-| **Backend**  | Tauri v2, Rust, `calamine`, `serde_json`, `thiserror`                        |
+| **Backend**  | Tauri v2, Rust, `calamine`, `zip`, `quick-xml`, `serde_json`, `thiserror`    |
 | **Frontend** | React 19, TypeScript, Vite, Tailwind CSS 4, Zustand, TanStack Virtual, Shiki |
 | **Testes**   | `cargo test` (Rust) e Vitest (frontend)                                      |
 
@@ -81,13 +83,14 @@ npm run lint                 # ESLint
 npm run typecheck            # tsc --noEmit
 npm test                     # Vitest
 cd src-tauri && cargo test   # testes do backend
+cd src-tauri && cargo clippy --all-targets -- -D warnings
 ```
 
 ## 🗂️ Estrutura
 
 ```text
 src/             Frontend React (UI, store, api/commands.ts, types/)
-src-tauri/src/   Backend Rust (commands.rs, excel/, output/, error.rs)
+src-tauri/src/   Backend Rust (commands.rs, excel/, output/, store/, error.rs)
 src-tauri/tests/ Testes e fixtures sintéticas
 ```
 

@@ -267,6 +267,7 @@ pub async fn estimate_bundle(
             &file_name,
             &result.sheets,
             &result.vba,
+            &result.power_query,
             &template.unwrap_or_default(),
             &template::today(),
             split_tokens,

@@ -2,7 +2,8 @@ use indexmap::IndexMap;
 
 use super::template::{OutputTemplate, fill};
 use crate::model::{
-    CellContent, CellValue, PowerQuery, SheetCells, VbaComponent, VbaComponentKind,
+    CellContent, CellValue, ConnectionInfo, PowerQuery, PowerQueryItem, SheetCells, VbaComponent,
+    VbaComponentKind,
 };
 
 fn value_text(v: &CellValue) -> String {
@@ -149,39 +150,81 @@ pub fn vba_to_markdown(
         .join("\n")
 }
 
-/// `power_query.md`: uma seção por consulta (código `m`) e a lista de conexões.
-pub fn power_query_to_markdown(pq: &PowerQuery, file_name: &str) -> String {
-    let mut out = format!("# Power Query: {file_name}\n");
-    for q in &pq.queries {
-        let fence = fence_for(&q.code);
+/// Uma consulta: título e código `m`.
+pub fn pq_query_block(q: &PowerQueryItem) -> String {
+    let fence = fence_for(&q.code);
+    format!(
+        "## Consulta: {}
+
+{fence}m
+{}
+{fence}
+",
+        q.name, q.code
+    )
+}
+
+/// Seção "Conexões": nome, descrição e string de conexão de cada uma.
+pub fn pq_connections_block(connections: &[ConnectionInfo]) -> String {
+    let mut out = String::from(
+        "## Conexões
+",
+    );
+    for c in connections {
         out.push_str(&format!(
-            "\n## Consulta: {}\n\n{fence}m\n{}\n{fence}\n",
-            q.name, q.code
+            "
+### {}
+",
+            c.name
         ));
-    }
-    if !pq.connections.is_empty() {
-        out.push_str("\n## Conexões\n");
-    }
-    for c in &pq.connections {
-        out.push_str(&format!("\n### {}\n", c.name));
         if !c.description.is_empty() {
-            out.push_str(&format!("\n{}\n", c.description));
+            out.push_str(&format!(
+                "
+{}
+",
+                c.description
+            ));
         }
         if !c.connection.is_empty() {
             let fence = fence_for(&c.connection);
-            out.push_str(&format!("\n{fence}\n{}\n{fence}\n", c.connection));
+            out.push_str(&format!(
+                "
+{fence}
+{}
+{fence}
+",
+                c.connection
+            ));
         }
+    }
+    out
+}
+
+pub fn power_query_to_markdown(pq: &PowerQuery, file_name: &str) -> String {
+    let mut out = format!(
+        "# Power Query: {file_name}
+"
+    );
+    for q in &pq.queries {
+        out.push_str(&format!(
+            "
+{}",
+            pq_query_block(q)
+        ));
+    }
+    if !pq.connections.is_empty() {
+        out.push_str(&format!(
+            "
+{}",
+            pq_connections_block(&pq.connections)
+        ));
     }
     out
 }
 
 /// Cerca de crases maior que qualquer sequência de crases dentro do texto.
 fn fence_for(text: &str) -> String {
-    let longest = text
-        .split(|c| c != '`')
-        .map(str::len)
-        .max()
-        .unwrap_or(0);
+    let longest = text.split(|c| c != '`').map(str::len).max().unwrap_or(0);
     "`".repeat((longest + 1).max(3))
 }
 
@@ -224,7 +267,6 @@ pub fn preview(t: &OutputTemplate, date: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{ConnectionInfo, PowerQueryItem};
 
     #[test]
     fn power_query_markdown() {

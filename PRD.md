@@ -139,6 +139,8 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 - Separar uma seção por consulta, preservando nomes com espaço ou acento (`#"Relatório Mensal"`).
 - Extrair também as conexões de `xl/connections.xml` (nome, descrição e string de conexão).
 - Arquivo sem consultas: exibir estado vazio, sem erro.
+- A string de conexão só é exibida; o app nunca testa a conexão (RNF01).
+- O resultado entra no cache (RF12), na exportação `power_query.md` (omitido se vazio) e no arquivo único para IA (RF19).
 
 ### RF14 — Diagnóstico
 
@@ -181,7 +183,7 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 
 ### RF19 — Saída otimizada para IA
 
-- Opção "Arquivo único para IA": um só `.md` com resumo, conteúdo (células, documento, slides ou páginas) e VBA, usando o modelo escolhido.
+- Opção "Arquivo único para IA": um só `.md` com resumo, conteúdo (células, documento, slides ou páginas), VBA e Power Query, usando o modelo escolhido.
 - Estimativa de tokens (≈ caracteres ÷ 4), sempre rotulada como estimativa, mostrada no diálogo Exportar.
 - Opção "Dividir em partes de N tokens": corta só entre seções (aba, tabela, componente VBA, slide, página), nunca no meio de um bloco de código ou de uma linha de tabela. A junção das partes reproduz o arquivo único. Uma seção maior que N fica sozinha na parte e passa do limite.
 
@@ -262,7 +264,7 @@ End Sub
 
 ## 10. Métricas de sucesso
 
-- Saída equivalente à dos scripts Python atuais para os mesmos arquivos de teste.
+- Saída do modelo Padrão estável: idêntica, byte a byte, à da v1.0 (testes de integração).
 - Zero dependência de Python na máquina do usuário.
 - Tempo total do fluxo (abrir → exportar) abaixo de 30 s para arquivos típicos.
 

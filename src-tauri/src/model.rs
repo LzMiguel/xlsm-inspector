@@ -198,6 +198,9 @@ pub struct ExtractionResult {
     pub sheets: Vec<SheetCells>,
     pub vba: Vec<VbaComponent>,
     pub warnings: Vec<Warning>,
+    /// Consultas M e conexões; vazio quando o arquivo não tem Power Query.
+    #[serde(default)]
+    pub power_query: PowerQuery,
 }
 
 /// Consulta do Power Query (uma `shared` do `Section1.m`).

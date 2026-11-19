@@ -25,21 +25,22 @@ App desktop com **Tauri v2**: o frontend roda em uma WebView (React) e o backend
 
 ## 2. Stack
 
-| Camada              | Tecnologia                                                     |
-| ------------------- | -------------------------------------------------------------- |
-| Shell desktop       | Tauri v2                                                       |
-| Frontend            | React 18+, TypeScript, Vite                                    |
-| Estilo              | Tailwind CSS + tokens do `Design-System.md`                    |
-| Componentes base    | Próprios, em `components/ui/` (Tailwind + tokens; sem shadcn)  |
-| Fontes              | `@fontsource-variable/inter` e `jetbrains-mono` (no bundle)    |
-| Estado              | Zustand (estado global leve)                                   |
-| Tabelas grandes     | `@tanstack/react-virtual`                                      |
-| Destaque de código  | Shiki (motor JS, gramática `vb`, tema por variáveis CSS)       |
-| Leitura Excel + VBA | `calamine`                                                     |
-| Serialização        | `serde`, `serde_json` (com `preserve_order`)                   |
-| Ordem estável       | `indexmap`                                                     |
-| Erros               | `thiserror`                                                    |
-| Plugins Tauri       | `dialog` (abrir pasta/arquivo), `opener` (revelar no Explorer) |
+| Camada              | Tecnologia                                                                                            |
+| ------------------- | ----------------------------------------------------------------------------------------------------- |
+| Shell desktop       | Tauri v2                                                                                              |
+| Frontend            | React 18+, TypeScript, Vite                                                                           |
+| Estilo              | Tailwind CSS + tokens do `Design-System.md`                                                           |
+| Componentes base    | Próprios, em `components/ui/` (Tailwind + tokens; sem shadcn)                                         |
+| Fontes              | `@fontsource-variable/inter` e `jetbrains-mono` (no bundle)                                           |
+| Estado              | Zustand (estado global leve)                                                                          |
+| Tabelas grandes     | `@tanstack/react-virtual`                                                                             |
+| Destaque de código  | Shiki (motor JS, gramática `vb`, tema por variáveis CSS)                                              |
+| Leitura Excel + VBA | `calamine`                                                                                            |
+| Power Query (RF13)  | `zip`, `quick-xml`, `base64` (o `calamine` os usa por dentro, mas não os reexporta; nenhum puxa rede) |
+| Serialização        | `serde`, `serde_json` (com `preserve_order`)                                                          |
+| Ordem estável       | `indexmap`                                                                                            |
+| Erros               | `thiserror`                                                                                           |
+| Plugins Tauri       | `dialog` (abrir pasta/arquivo), `opener` (revelar no Explorer)                                        |
 
 ## 3. Estrutura de pastas
 
@@ -50,16 +51,20 @@ xlsm-inspector/
 │   │   ├── commands.ts          # wrappers tipados de invoke()
 │   │   └── events.ts            # listeners de progresso
 │   ├── components/
-│   │   ├── ui/                  # Button, Tabs, Alert... (design system)
-│   │   ├── DropZone.tsx
-│   │   ├── FileCard.tsx
-│   │   ├── SheetList.tsx
-│   │   ├── CellTable.tsx
-│   │   ├── VbaViewer.tsx
-│   │   └── ExportPanel.tsx
-│   ├── hooks/
+│   │   ├── ui/                  # Alert, Badge, Button, Checkbox, Dialog, EmptyState, Fields, ProgressBar, Tabs, Toast...
+│   │   ├── DropZone.tsx, RecentFiles.tsx, FileCard.tsx   # tela inicial e arquivo aberto
+│   │   ├── SheetList.tsx, ScopeSelector.tsx, ExtractPanel.tsx
+│   │   ├── Preview.tsx          # abas: Células, VBA, Diagnóstico, Power Query, Busca
+│   │   ├── CellTable.tsx, TableView.tsx
+│   │   ├── VbaViewer.tsx, ComponentList.tsx (índice de procedimentos)
+│   │   ├── DiagnosticsView.tsx, PowerQueryView.tsx, SearchView.tsx (+ searchAll.ts)
+│   │   ├── ExportPanel.tsx      # diálogo Exportar
+│   │   ├── SettingsDialog.tsx, OutputSettings.tsx, TemplateSettings.tsx
+│   │   └── ErrorAlert.tsx, ThemeToggle.tsx
+│   ├── hooks/                   # useFileDrop, useHotkey, useTheme
 │   ├── store/
-│   │   └── workbookStore.ts
+│   │   ├── workbookStore.ts, workbookActions.ts
+│   │   └── settingsStore.ts, settingsActions.ts
 │   ├── types/
 │   │   └── models.ts            # espelha os structs do Rust
 │   ├── styles/
@@ -78,7 +83,10 @@ xlsm-inspector/
 │   │   │   ├── workbook.rs      # abrir arquivo, resumo
 │   │   │   ├── cells.rs         # valores + fórmulas
 │   │   │   ├── diagnostics.rs   # erros, nomes, abas ocultas, tabelas, refs. externas (RF14)
+│   │   │   ├── tables.rs        # tabelas do Excel (ListObjects)
 │   │   │   ├── vba.rs           # módulos VBA
+│   │   │   ├── vba_index.rs     # índice de procedimentos (RF20)
+│   │   │   ├── power_query.rs   # consultas M + conexões (RF13)
 │   │   │   └── coords.rs        # (linha, coluna) → "A1"
 │   │   ├── output/
 │   │   │   ├── mod.rs
@@ -88,6 +96,7 @@ xlsm-inspector/
 │   │   │   ├── naming.rs        # nomes de arquivo: validação, colisão
 │   │   │   ├── bundle.rs        # Markdown único para IA: resumo + células + VBA (RF19)
 │   │   │   ├── tokens.rs        # estimativa de tokens e divisão em partes (RF19)
+│   │   │   ├── vba_files.rs     # .bas/.cls/.frm em Windows-1252 (RF20)
 │   │   │   └── export.rs        # grava os arquivos
 │   │   └── store/
 │   │       ├── mod.rs
@@ -95,7 +104,8 @@ xlsm-inspector/
 │   │       ├── recent.rs        # histórico de arquivos (recent.json)
 │   │       └── cache.rs         # cache em disco das últimas 5 extrações
 │   ├── tests/
-│   │   └── fixtures/            # planilhas de teste
+│   │   ├── integration.rs
+│   │   └── fixtures/            # planilhas sintéticas (inclui `power_query.xlsx`, a ser adicionada)
 │   ├── capabilities/
 │   │   └── default.json
 │   ├── Cargo.toml
@@ -162,7 +172,17 @@ pub struct ExtractionResult {
     pub sheets: Vec<SheetCells>,
     pub vba: Vec<VbaComponent>,
     pub warnings: Vec<Warning>,
+    pub power_query: PowerQuery,       // vazio sem Power Query; entra no cache (cache_version 3)
 }
+
+pub enum WarningKind { MissingCache, Sampled }
+pub struct Warning { pub kind: WarningKind, pub sheet: String, pub count: usize, pub message: String }
+
+pub struct PowerQuery { pub queries: Vec<PowerQueryItem>, pub connections: Vec<ConnectionInfo> }
+pub struct PowerQueryItem { pub name: String, pub code: String }            // code = M, sem o `;` final
+pub struct ConnectionInfo { pub name: String, pub description: String, pub connection: String } // só exibida, nunca testada
+
+pub struct Diagnostics { /* errors, external_refs, names, hidden_sheets, tables, pivots + contagens (RF14) */ }
 ```
 
 Os mesmos tipos ficam em `src/types/models.ts`. Mantê-los sincronizados manualmente ou gerar com `ts-rs` / `specta`.
@@ -171,23 +191,23 @@ Os campos `formula` e `valor` mantêm os nomes do script Python para que o JSON 
 
 ## 5. Comandos IPC
 
-| Comando                                         | Entrada                                                                                       | Saída                         | Observação                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `open_workbook`                                 | `path`, `reload?`, `vba_options?`                                                             | `{ summary, cached }`         | Resumo + (cache válido e mesmas opções de VBA) a última extração `{sheets, scope, result}`, sem reler o arquivo. `reload: true` ignora o cache. Atualiza os recentes; `FileNotFound` remove o item.                                                                                                                                                                                                                                                                                                                                                                                          |
-| `extract_workbook`                              | `path`, `sheets?`, `scope?`, `vba_options?`                                                   | `ExtractionResult`            | Células + VBA em um passo; emite eventos de progresso. Sem `sheets` = todas. `scope`: `full` (padrão), `head` ou `sample` com `rows`; corta por linha com conteúdo, mantém cabeçalhos de tabela e gera aviso `Sampled`. Guarda no cache (se ligado). O arquivo ainda é lido inteiro.                                                                                                                                                                                                                                                                                                         |
-| `get_recent` / `remove_recent` / `clear_recent` | —, `path`, —                                                                                  | `RecentFile[]`                | Histórico (até 10) em `recent.json`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `check_recent`                                  | —                                                                                             | `{path, status}[]`            | `status`: `Cached`, `Modified`, `NotCached`, `Missing`, `Locked`. Só `metadata` + JSON do cache; não abre as planilhas.                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `clear_cache`                                   | —                                                                                             | —                             | Apaga `cache/`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `diagnose_workbook`                             | `path`                                                                                        | `Diagnostics`                 | Lê o arquivo (somente leitura) e devolve erros de fórmula, referências externas (`[n]` na fórmula), nomes definidos, abas ocultas/muito ocultas, tabelas e tabelas dinâmicas. Listas de células cortadas em 500; `error_count`/`external_count` têm o total. Independe da extração e do cache.                                                                                                                                                                                                                                                                                               |
-| `export_vba_files`                              | `path`, `out_dir`, `names?`                                                                   | `string[]`                    | Grava `.bas`/`.cls`/`.frm` em Windows-1252 (CRLF) a partir do código bruto (com `Attribute`); nunca sobrescreve (`Nome_2.bas`). `.frm` sai sem controles e sem `.frx`. |
-| `extract_vba`                                   | `path`, `options?`                                                                            | `VbaComponent[]`              | `options`: `remove_blank_lines`, `hide_attributes`. Sem VBA → erro `NoVbaProject`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `export_outputs`                                | `path`, `out_dir`, `targets?`, `sheets?`, `vba_options?`, `names?`, `template?`, `on_exists?` | `string[]` (arquivos gerados) | Re-extrai no Rust e escreve. `targets`: `{json, cells_md, vba_md, bundle}` (padrão: os três primeiros; `bundle` desligado). Sem VBA, omite `vba_code.md`. `bundle` grava o arquivo único para IA (`contexto_ia.md`); com `split_tokens` vira `contexto_ia_parte_N.md`. `names`: padrões de nome (`{arquivo}`, `{data}`); `template`: textos do Markdown; `scope`: igual ao de `extract_cells` (a exportação é independente da extração); `on_exists`: `fail` (padrão, erro `FileExists`), `overwrite` ou `suffix` (`_2`). Nomes e colisões são checados antes de extrair. O JSON nunca muda. |
-| `estimate_bundle`                               | `path`, `sheets?`, `scope?`, `vba_options?`, `template?`, `split_tokens?`                     | `{ tokens, parts }`           | Tamanho **aproximado** (≈ caracteres ÷ 4) do arquivo único e nº de partes. Usa o cache; sem ele, extrai e guarda.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `builtin_templates`                             | —                                                                                             | `TemplatePreset[]`            | Predefinições embutidas ("Padrão" = formato da v1.0, "Contexto para IA").                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `preview_template`                              | `template`                                                                                    | `string`                      | Markdown de exemplo com dados fictícios.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-
-| `get_settings` | — | `Settings` | Lê `settings.json` em `app_config_dir`. Ausente ou corrompido → padrões. |
-| `save_settings` | `settings` | — | Grava via arquivo temporário + rename. Campos: `version`, `default_out_dir`, `vba_options`, `file_names`, `template`, `presets` (do usuário). |
+| Comando                                         | Entrada                                                                                                                  | Saída                         | Observação                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `open_workbook`                                 | `path`, `reload?`, `vba_options?`                                                                                        | `{ summary, cached }`         | Resumo + (cache válido e mesmas opções de VBA) a última extração `{sheets, scope, result}`, sem reler o arquivo. `reload: true` ignora o cache. Atualiza os recentes; `FileNotFound` remove o item.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `extract_workbook`                              | `path`, `sheets?`, `scope?`, `vba_options?`                                                                              | `ExtractionResult`            | Células + VBA + Power Query em um passo; emite eventos de progresso. Sem `sheets` = todas. `scope`: `full` (padrão), `head` ou `sample` com `rows`; corta por linha com conteúdo, mantém cabeçalhos de tabela e gera aviso `Sampled`. Guarda no cache (se ligado). O arquivo ainda é lido inteiro. Power Query ilegível vira vazio (não derruba a extração).                                                                                                                                                                                                                                                                                                                                                                              |
+| `get_recent` / `remove_recent` / `clear_recent` | —, `path`, —                                                                                                             | `RecentFile[]`                | Histórico (até 10) em `recent.json`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `check_recent`                                  | —                                                                                                                        | `{path, status}[]`            | `status`: `Cached`, `Modified`, `NotCached`, `Missing`, `Locked`. Só `metadata` + JSON do cache; não abre as planilhas.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `clear_cache`                                   | —                                                                                                                        | —                             | Apaga `cache/`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `diagnose_workbook`                             | `path`                                                                                                                   | `Diagnostics`                 | Lê o arquivo (somente leitura) e devolve erros de fórmula, referências externas (`[n]` na fórmula), nomes definidos, abas ocultas/muito ocultas, tabelas e tabelas dinâmicas. Listas de células cortadas em 500; `error_count`/`external_count` têm o total. Independe da extração e do cache.                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `extract_power_query`                           | `path`                                                                                                                   | `PowerQuery`                  | Consultas M (`DataMashup`) e conexões (`xl/connections.xml`). Sem Power Query → listas vazias, sem erro. A aba usa este comando antes de haver extração; depois, usa o que veio no `ExtractionResult`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `extract_vba`                                   | `path`, `options?`                                                                                                       | `VbaComponent[]`              | `options`: `remove_blank_lines`, `hide_attributes`. Sem VBA → erro `NoVbaProject`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `export_vba_files`                              | `path`, `out_dir`, `names?`                                                                                              | `string[]`                    | Grava `.bas`/`.cls`/`.frm` em Windows-1252 (CRLF) a partir do código bruto (com `Attribute`); nunca sobrescreve (`Nome_2.bas`). `.frm` sai sem controles e sem `.frx`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `export_outputs`                                | `path`, `out_dir`, `targets?`, `sheets?`, `vba_options?`, `names?`, `template?`, `on_exists?`, `scope?`, `split_tokens?` | `string[]` (arquivos gerados) | Grava os alvos escolhidos, reaproveitando o cache quando abas, escopo e opções de VBA são iguais (senão re-extrai). `targets`: `{json, cells_md, vba_md, power_query, bundle}` (padrão: os quatro primeiros; `bundle` desligado). Sem VBA, omite `vba_code.md`; sem Power Query, omite `power_query.md`. `bundle` grava o arquivo único para IA (`contexto_ia.md`, com resumo, células, VBA e Power Query); com `split_tokens` vira `contexto_ia_parte_N.md`. `names`: padrões de nome (`{arquivo}`, `{data}`); `template`: textos do Markdown; `scope`: independente do da extração; `on_exists`: `fail` (padrão, erro `FileExists`), `overwrite` ou `suffix` (`_2`). Nomes e colisões são checados antes de extrair. O JSON nunca muda. |
+| `estimate_bundle`                               | `path`, `sheets?`, `scope?`, `vba_options?`, `template?`, `split_tokens?`                                                | `{ tokens, parts }`           | Tamanho **aproximado** (≈ caracteres ÷ 4) do arquivo único e nº de partes. Usa o cache; sem ele, extrai e guarda.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `builtin_templates`                             | —                                                                                                                        | `TemplatePreset[]`            | Predefinições embutidas ("Padrão" = formato da v1.0, "Contexto para IA").                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `preview_template`                              | `template`                                                                                                               | `string`                      | Markdown de exemplo com dados fictícios.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `get_settings`                                  | —                                                                                                                        | `Settings`                    | Lê `settings.json` em `app_config_dir`. Ausente ou corrompido → padrões.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `save_settings`                                 | `settings`                                                                                                               | —                             | Grava via arquivo temporário + rename. Campos: `version`, `default_out_dir`, `vba_options`, `file_names` (inclui `power_query`), `template`, `presets` (do usuário), `use_cache`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 > Argumentos do `invoke` em camelCase no JS (`outDir`, `vbaOptions`); campos dos structs em snake_case.
 
@@ -201,7 +221,7 @@ Os campos `formula` e `valor` mantêm os nomes do script Python para que o JSON 
 
 Todos os comandos retornam `Result<T, AppError>`. `AppError` é um enum serializável com `code` e `message`:
 
-- `FileNotFound`, `FileLocked`, `UnsupportedFormat`, `CorruptedFile`, `NoVbaProject`, `WriteFailed`.
+- `FileNotFound`, `FileLocked`, `UnsupportedFormat`, `CorruptedFile`, `NoVbaProject`, `WriteFailed`, `InvalidName`, `FileExists`, `Internal`.
 
 O frontend mapeia `code` para a mensagem e o componente `Alert` corretos.
 
@@ -224,15 +244,17 @@ Botão "Extrair" ─► invoke("extract_workbook", path, abas, escopo)
                     │    une por posição absoluta, converte para "A1"
                     │    emit("extraction://progress")
                     └─ SheetCells[] ─► store ─► CellTable
-               ─► invoke("extract_vba", path, opções)
-                    └─ vba_project() ─► módulos ─► limpeza ─► VbaComponent[]
+                    ├─ vba_project() ─► módulos ─► limpeza ─► VbaComponent[]
+                    └─ power_query::extract_file ─► PowerQuery (vazio se não houver)
+                    ExtractionResult { sheets, vba, warnings, power_query } ─► cache
 ```
 
 ### Exportar
 
 ```text
 Botão "Exportar" ─► diálogo de pasta ─► invoke("export_outputs")
-                 ─► output::json + output::markdown ─► escreve arquivos
+                 ─► resultado do cache (mesmas abas/escopo/VBA) ou re-extração
+                 ─► output::json + markdown (células, VBA, Power Query) + bundle ─► escreve arquivos
                  ─► Toast "Concluído" + ação "Abrir pasta" (plugin opener)
 ```
 
@@ -254,7 +276,8 @@ Botão "Exportar" ─► diálogo de pasta ─► invoke("export_outputs")
 - Obter o projeto com `vba_project()` do `calamine` (conferir a assinatura exata na versão usada; ela mudou entre versões).
 - Listar nomes e pegar o código de cada módulo.
 - Inferir o tipo pelas linhas `Attribute VB_...` e pelo nome (`ThisWorkbook`, `Sheet*`/`Planilha*`, `UserForm*`). Default: `Unknown`.
-- Se o calamine falhar em algum caso, plano B: `zip` + `cfb` + descompressão MS-OVBA, isolado em `excel/vba.rs`.
+- O `calamine` resolveu a leitura do projeto; o plano B (`zip` + `cfb` + descompressão MS-OVBA, isolado em `excel/vba.rs`) fica de reserva se algum arquivo falhar.
+- `vba_index.rs` indexa `Sub`/`Function`/`Property` com linhas relativas ao código já limpo; `vba_files.rs` exporta `.bas`/`.cls`/`.frm` em Windows-1252.
 
 ### Markdown
 
@@ -268,16 +291,25 @@ Botão "Exportar" ─► diálogo de pasta ─► invoke("export_outputs")
 - Referência externa: `[n]` solto na fórmula (não conta `Tabela[Col]`). Limite conhecido: um texto literal `"[1]"` dentro da fórmula também conta.
 - Fora do cache de propósito: o resultado é recalculado ao abrir a aba.
 
+### Power Query (RF13)
+
+- `excel/power_query.rs` abre o arquivo como ZIP (`zip`), só leitura. O `DataMashup` está em `customXml/item*.xml`, normalmente em **UTF-16 com BOM**; o texto é base64.
+- Layout do `DataMashup`: 4 bytes de versão, 4 bytes (little-endian) com o tamanho do pacote e então um ZIP (OPC) com `Formulas/Section1.m`. Bytes depois do pacote (permissões, metadados) são ignorados. Truncado → `CorruptedFile`.
+- Uma consulta por `shared <nome> = ...;` no início da linha; `#"Relatório Mensal"` vira o nome sem o `#""`. Limite conhecido: um `shared` no começo de linha dentro de texto multilinha vira consulta falsa.
+- Conexões: `xl/connections.xml` (`name`, `description` e o `connection`/`url`/`sourceFile` do `dbPr`/`webPr`/`textPr`). A string pode ter caminho de servidor ou usuário: **só exibir, nunca testar a conexão** (RNF01).
+- Entra no `ExtractionResult` (e no cache, `cache_version` 3), em `power_query.md`, no resumo e nos blocos do arquivo único (uma consulta = um bloco indivisível; as conexões formam outro).
+- Fixture real: `tests/fixtures/power_query.xlsx` (duas consultas, uma com espaço e acento no nome, e uma conexão). `power_query_fixture_real`, em `tests/integration.rs`, roda assim que o arquivo existir; enquanto isso, os testes unitários montam o ZIP em memória.
+
 ### Saída para IA (RF19)
 
-- `bundle.rs` monta o `.md` único com o modelo ativo: abertura (título + texto de abertura) + `## Resumo` (células/fórmulas por aba, componentes VBA) + abas + componentes VBA + rodapé. O "Contexto para IA" é uma predefinição do modelo; o arquivo único usa o modelo ativo.
-- Blocos indivisíveis: abertura+resumo, cada aba, cada componente VBA, rodapé. `tokens::split_units` agrupa blocos até N tokens e só corta entre eles, então nenhuma parte quebra bloco de código ou linha de tabela, e a junção das partes é idêntica ao arquivo único. Um bloco maior que N fica sozinho na parte (passa do limite).
+- `bundle.rs` monta o `.md` único com o modelo ativo: abertura (título + texto de abertura) + `## Resumo` (células/fórmulas por aba, componentes VBA, consultas Power Query) + abas + componentes VBA + consultas Power Query + conexões + rodapé. O "Contexto para IA" é uma predefinição do modelo; o arquivo único usa o modelo ativo.
+- Blocos indivisíveis: abertura+resumo, cada aba, cada componente VBA, cada consulta Power Query, conexões, rodapé. `tokens::split_units` agrupa blocos até N tokens e só corta entre eles, então nenhuma parte quebra bloco de código ou linha de tabela, e a junção das partes é idêntica ao arquivo único. Um bloco maior que N fica sozinho na parte (passa do limite).
 - Tokens são estimativa (≈ caracteres ÷ 4), sempre rotulada como tal na UI.
 
 ### Cache e recentes (RF12, RNF08)
 
 - Dados só locais, em disco: `settings.json` e `recent.json` em `app_config_dir`; `cache/<hash>.json` em `app_data_dir`. Nenhuma rede (RNF01); a planilha nunca é escrita (RNF07).
-- Entrada do cache = resumo + última extração (`abas`, `escopo`, opções de VBA, `ExtractionResult`). Vale enquanto **tamanho + data de modificação** do arquivo forem os mesmos e `cache_version` bater; JSON corrompido ou de outra versão é ignorado.
+- Entrada do cache = resumo + última extração (`abas`, `escopo`, opções de VBA, `ExtractionResult` com `power_query`). Vale enquanto **tamanho + data de modificação** do arquivo forem os mesmos e `cache_version` bater; JSON corrompido ou de outra versão é ignorado.
 - Impressão digital lida **antes** de abrir o arquivo; uma extração só é guardada se o arquivo ainda for o mesmo.
 - LRU de 5 arquivos (o uso renova a data do JSON). Planilha acima de 50 MB não entra. `use_cache` desliga tudo; `clear_cache` apaga a pasta.
 - Reabrir com cache válido restaura abas, escopo e resultado; se as opções de VBA mudaram, só o resumo vem do cache. `export_outputs` reaproveita o resultado se abas, escopo e opções forem as mesmas.
@@ -308,13 +340,12 @@ Botão "Exportar" ─► diálogo de pasta ─► invoke("export_outputs")
 
 ## 9. Testes
 
-| Tipo            | Ferramenta                       | Escopo                                                                       |
-| --------------- | -------------------------------- | ---------------------------------------------------------------------------- |
-| Unitário Rust   | `cargo test`                     | `coords`, limpeza de VBA, geração de Markdown/JSON                           |
-| Integração Rust | `cargo test` + `tests/fixtures/` | Planilhas reais: fórmulas, acentos, VBA de todos os tipos, arquivo sem cache |
-| Paridade        | script de comparação             | Saída do Rust vs. saída dos scripts Python para os mesmos arquivos           |
-| Frontend        | Vitest + Testing Library         | Componentes e store                                                          |
-| E2E (opcional)  | WebdriverIO + tauri-driver       | Fluxo abrir → extrair → exportar                                             |
+| Tipo            | Ferramenta                       | Escopo                                                                                                               |
+| --------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Unitário Rust   | `cargo test`                     | `coords`, limpeza de VBA, geração de Markdown/JSON                                                                   |
+| Integração Rust | `cargo test` + `tests/fixtures/` | Planilhas sintéticas: fórmulas, acentos, VBA de todos os tipos, arquivo sem cache, Power Query (fixture a adicionar) |
+| Frontend        | Vitest + Testing Library         | Componentes e store                                                                                                  |
+| E2E (opcional)  | WebdriverIO + tauri-driver       | Fluxo abrir → extrair → exportar                                                                                     |
 
 ## 10. Build e distribuição
 

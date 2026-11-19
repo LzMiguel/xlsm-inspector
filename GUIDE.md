@@ -69,7 +69,7 @@ Referências: `PRD.md` (o quê), `Architecture.md` (como), `Design-System.md` (v
    - Arquivos acima de um limite (ex.: 50 MB) não entram no cache, com aviso.
    - `use_cache` desligável e `clear_cache`.
 2. Migrar os recentes para `store/recent.rs` (estado do Rust); o `localStorage` deixa de ser a fonte.
-3. `commands.rs`: `check_recent(paths) -> [{ path, status: Unchanged | Modified | Missing | Locked }]` em `spawn_blocking`, **só com `metadata`** (não abre a planilha). Disparado ao montar a tela inicial, sem bloquear a UI.
+3. `commands.rs`: `check_recent() -> [{ path, status: Cached | NotCached | Modified | Missing | Locked }]` em `spawn_blocking`, **só com `metadata`** (não abre a planilha). Disparado ao montar a tela inicial, sem bloquear a UI.
 4. `open_workbook`: se `Unchanged` e o cache for válido, devolve o resultado do cache; senão re-extrai e atualiza o cache. `export_outputs` reutiliza o cache válido.
 5. UI: `RecentFiles` com selo "em cache" / "modificado" / "não encontrado"; botão "Recarregar" (ignora o cache); "Limpar cache" nas configurações.
 6. Documentar em `Architecture.md` e `PRD.md`: dados em disco, só local, entrada nunca modificada (RNF07), nenhuma rede (RNF01).
@@ -134,8 +134,11 @@ Referências: `PRD.md` (o quê), `Architecture.md` (como), `Design-System.md` (v
 3. Dependências novas (`zip`, `quick-xml`): o `calamine` as usa por dentro, mas não as reexporta. Justificar no PR; sem plugin de rede.
 4. `model.rs` e `models.ts`: `PowerQuery { queries: [{ name, code }], connections: [...] }`; comando `extract_power_query`; sem consultas → lista vazia (não é erro).
 5. UI: aba "Power Query" (lista de consultas + código `m` com destaque simples). Saída: `power_query.md` como novo alvo da exportação, com nome configurável (RF09).
+6. O Power Query entra no `ExtractionResult` (portanto no cache, `cache_version` 3), no resumo e nos blocos do arquivo único (RF19). Sem consultas nem conexões, o `power_query.md` é omitido.
 
 **Pronto quando:** uma fixture sintética com duas consultas (uma com nome com espaço e acento) e uma conexão sai separada e correta; arquivo sem consultas mostra o estado vazio.
+
+**Status:** feito (backend, aba, exportação, cache e arquivo único). **Pendente:** a fixture real `src-tauri/tests/fixtures/power_query.xlsx`, criada no Excel (duas consultas, uma com espaço e acento no nome, e uma conexão). O teste `power_query_fixture_real` já está pronto e roda sozinho quando o arquivo existir; confirmar nele o layout do `DataMashup` (passo 1).
 
 ---
 
@@ -214,22 +217,22 @@ Esta fase prepara o app para receber `.docx`, `.pptx` e `.pdf` (Fases 11-13). Ho
 
 | Req   | Descrição                             | Fase | OK  |
 | ----- | ------------------------------------- | ---- | --- |
-| RF08  | Configurações persistentes            | 1    | [ ] |
-| RF09  | Nome dos arquivos de saída            | 2    | [ ] |
-| RF10  | Modelos de saída (Markdown)           | 2    | [ ] |
-| RF11  | Amostra / head (leitura e exportação) | 3    | [ ] |
-| RF12  | Cache e verificação dos recentes      | 4    | [ ] |
-| RF14  | Diagnóstico da planilha               | 5    | [ ] |
-| RF19  | Saída otimizada para IA               | 6    | [ ] |
+| RF08  | Configurações persistentes            | 1    | [x] |
+| RF09  | Nome dos arquivos de saída            | 2    | [x] |
+| RF10  | Modelos de saída (Markdown)           | 2    | [x] |
+| RF11  | Amostra / head (leitura e exportação) | 3    | [x] |
+| RF12  | Cache e verificação dos recentes      | 4    | [x] |
+| RF14  | Diagnóstico da planilha               | 5    | [x] |
+| RF19  | Saída otimizada para IA               | 6    | [x] |
 | RF20  | VBA avançado                          | 7    | [x] |
 | RF21  | Comparar versões                      | 8    | [ ] |
-| RF13  | Extração de Power Query               | 9    | [ ] |
+| RF13  | Extração de Power Query               | 9    | [x] |
 | RF15  | VBA em Word e PowerPoint              | 10   | [ ] |
 | RF16  | Extração de Word                      | 11   | [ ] |
 | RF17  | Extração de PowerPoint                | 12   | [ ] |
 | RF18  | Extração de PDF                       | 13   | [ ] |
-| RNF08 | Cache local e desligável              | 4    | [ ] |
-| RNF09 | Exportação para IA                    | 6    | [ ] |
+| RNF08 | Cache local e desligável              | 4    | [x] |
+| RNF09 | Exportação para IA                    | 6    | [x] |
 | RNF10 | VBA avançado                          | 7    | [x] |
 | RNF11 | Comparar versões                      | 8    | [ ] |
 
@@ -250,6 +253,7 @@ Esta fase prepara o app para receber `.docx`, `.pptx` e `.pdf` (Fases 11-13). Ho
 - **Estilos do Word dependem do idioma**: `Heading1` x `Título1`; resolver pelo nome do estilo em `styles.xml`.
 - **Dependências novas** (`zip`, `quick-xml`, biblioteca de PDF): justificar cada uma (CLAUDE.md) e conferir que não puxam rede.
 - **Fixtures sintéticas** para cada formato (CLAUDE.md): nada de documento real.
+- **Power Query**: o `DataMashup` costuma vir em UTF-16 com BOM; a string de conexão só é exibida, nunca testada.
 
 ---
 

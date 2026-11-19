@@ -104,6 +104,7 @@ export const useWorkbookStore = create<WorkbookState>((set, get) => ({
       scope: c.scope,
       result: c.result,
       warnings: c.result.warnings,
+      powerQuery: c.result.power_query,
       selectedComponent: pickComponent(c.result.vba, null),
       progress: null,
       status: 'ready',
@@ -153,6 +154,7 @@ export const useWorkbookStore = create<WorkbookState>((set, get) => ({
     set({
       result,
       warnings: result.warnings,
+      powerQuery: result.power_query,
       progress: null,
       status: 'ready',
       selectedComponent: pickComponent(result.vba, get().selectedComponent),

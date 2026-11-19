@@ -34,6 +34,9 @@ function App() {
   useHotkey(',', () => setSettingsOpen((o) => !o))
 
   const busy = status === 'loading' || status === 'extracting'
+  useHotkey('f', () => {
+    if (summary && tab !== 'cells') useWorkbookStore.getState().setTab('search')
+  })
   useHotkey('o', () => {
     if (!busy) chooseAndOpenWorkbook()
   })

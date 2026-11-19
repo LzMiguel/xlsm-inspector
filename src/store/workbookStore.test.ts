@@ -29,6 +29,7 @@ const result = (names: string[]): ExtractionResult => ({
   sheets: [],
   vba: names.map(comp),
   warnings: [],
+  power_query: { queries: [], connections: [] },
 })
 
 const s = () => useWorkbookStore.getState()
