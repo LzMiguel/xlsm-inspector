@@ -116,6 +116,22 @@ export interface Diagnostics {
   pivots: SheetObject[]
 }
 
+export interface PowerQueryItem {
+  name: string
+  code: string
+}
+
+export interface ConnectionInfo {
+  name: string
+  description: string
+  connection: string
+}
+
+export interface PowerQuery {
+  queries: PowerQueryItem[]
+  connections: ConnectionInfo[]
+}
+
 export interface ExtractionResult {
   sheets: SheetCells[]
   vba: VbaComponent[]
@@ -177,6 +193,7 @@ export interface FileNames {
   json: string
   cells_md: string
   vba_md: string
+  power_query: string
   bundle: string
 }
 
@@ -203,6 +220,7 @@ export interface ExportTargets {
   json: boolean
   cells_md: boolean
   vba_md: boolean
+  power_query: boolean
   bundle: boolean
 }
 

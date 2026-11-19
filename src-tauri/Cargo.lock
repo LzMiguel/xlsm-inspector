@@ -4945,9 +4945,11 @@ dependencies = [
 name = "xlsm-inspector"
 version = "1.0.0"
 dependencies = [
+ "base64 0.23.1",
  "calamine",
  "chrono",
  "indexmap 2.14.2",
+ "quick-xml",
  "serde",
  "serde_json",
  "tauri",
@@ -4955,6 +4957,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
  "thiserror 1.0.69",
+ "zip",
 ]
 
 [[package]]

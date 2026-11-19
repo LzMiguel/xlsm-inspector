@@ -7,6 +7,7 @@ import type {
   CachedExtraction,
   Diagnostics,
   PathStatus,
+  PowerQuery,
   Progress,
   RecentFile,
   VbaComponent,
@@ -15,7 +16,7 @@ import type {
 } from '../types/models'
 
 export type Status = 'idle' | 'loading' | 'extracting' | 'ready' | 'error'
-export type PreviewTab = 'cells' | 'vba' | 'diagnostics' | 'search'
+export type PreviewTab = 'cells' | 'vba' | 'diagnostics' | 'powerquery' | 'search'
 
 export interface CellFocus {
   sheet: string
@@ -35,6 +36,7 @@ interface WorkbookState {
   tab: PreviewTab
   selectedComponent: string | null
   diagnostics: Diagnostics | null
+  powerQuery: PowerQuery | null
   focus: CellFocus | null
   vbaLine: number | null
   scope: ExtractScope
@@ -56,6 +58,7 @@ interface WorkbookState {
   setError: (e: AppError) => void
   setTab: (tab: PreviewTab) => void
   setDiagnostics: (d: Diagnostics) => void
+  setPowerQuery: (p: PowerQuery) => void
   goToCell: (focus: CellFocus) => void
   setScope: (scope: ExtractScope) => void
   selectComponent: (name: string) => void
@@ -75,6 +78,7 @@ const initial = {
   tab: 'cells' as PreviewTab,
   selectedComponent: null,
   diagnostics: null,
+  powerQuery: null,
   focus: null,
   vbaLine: null as number | null,
   fromCache: false,
@@ -168,6 +172,8 @@ export const useWorkbookStore = create<WorkbookState>((set, get) => ({
   setTab: (tab) => set({ tab, focus: null }),
 
   setDiagnostics: (diagnostics) => set({ diagnostics }),
+
+  setPowerQuery: (powerQuery) => set({ powerQuery }),
 
   goToCell: (focus) => set({ tab: 'cells', focus }),
 

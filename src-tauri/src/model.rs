@@ -200,6 +200,27 @@ pub struct ExtractionResult {
     pub warnings: Vec<Warning>,
 }
 
+/// Consulta do Power Query (uma `shared` do `Section1.m`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PowerQueryItem {
+    pub name: String,
+    pub code: String,
+}
+
+/// Conexão de `xl/connections.xml`. A string de conexão só é exibida, nunca testada.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ConnectionInfo {
+    pub name: String,
+    pub description: String,
+    pub connection: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct PowerQuery {
+    pub queries: Vec<PowerQueryItem>,
+    pub connections: Vec<ConnectionInfo>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

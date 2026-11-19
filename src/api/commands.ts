@@ -14,6 +14,7 @@ import type {
   OnExists,
   OpenResult,
   OutputTemplate,
+  PowerQuery,
   RecentFile,
   RecentStatus,
   Settings,
@@ -79,6 +80,9 @@ export const extractWorkbook = (
 
 export const diagnoseWorkbook = (path: string) =>
   call<Diagnostics>('diagnose_workbook', { path })
+
+export const extractPowerQuery = (path: string) =>
+  call<PowerQuery>('extract_power_query', { path })
 
 export const getRecent = () => call<RecentFile[]>('get_recent')
 export const removeRecentFile = (path: string) =>

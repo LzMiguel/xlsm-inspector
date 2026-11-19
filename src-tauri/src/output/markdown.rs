@@ -1,7 +1,9 @@
 use indexmap::IndexMap;
 
 use super::template::{OutputTemplate, fill};
-use crate::model::{CellContent, CellValue, SheetCells, VbaComponent, VbaComponentKind};
+use crate::model::{
+    CellContent, CellValue, PowerQuery, SheetCells, VbaComponent, VbaComponentKind,
+};
 
 fn value_text(v: &CellValue) -> String {
     match v {
@@ -147,6 +149,42 @@ pub fn vba_to_markdown(
         .join("\n")
 }
 
+/// `power_query.md`: uma seção por consulta (código `m`) e a lista de conexões.
+pub fn power_query_to_markdown(pq: &PowerQuery, file_name: &str) -> String {
+    let mut out = format!("# Power Query: {file_name}\n");
+    for q in &pq.queries {
+        let fence = fence_for(&q.code);
+        out.push_str(&format!(
+            "\n## Consulta: {}\n\n{fence}m\n{}\n{fence}\n",
+            q.name, q.code
+        ));
+    }
+    if !pq.connections.is_empty() {
+        out.push_str("\n## Conexões\n");
+    }
+    for c in &pq.connections {
+        out.push_str(&format!("\n### {}\n", c.name));
+        if !c.description.is_empty() {
+            out.push_str(&format!("\n{}\n", c.description));
+        }
+        if !c.connection.is_empty() {
+            let fence = fence_for(&c.connection);
+            out.push_str(&format!("\n{fence}\n{}\n{fence}\n", c.connection));
+        }
+    }
+    out
+}
+
+/// Cerca de crases maior que qualquer sequência de crases dentro do texto.
+fn fence_for(text: &str) -> String {
+    let longest = text
+        .split(|c| c != '`')
+        .map(str::len)
+        .max()
+        .unwrap_or(0);
+    "`".repeat((longest + 1).max(3))
+}
+
 /// Pré-visualização do modelo com dados fictícios (mapeamento + VBA).
 pub fn preview(t: &OutputTemplate, date: &str) -> String {
     let file = "exemplo.xlsm";
@@ -186,6 +224,26 @@ pub fn preview(t: &OutputTemplate, date: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::{ConnectionInfo, PowerQueryItem};
+
+    #[test]
+    fn power_query_markdown() {
+        let pq = PowerQuery {
+            queries: vec![PowerQueryItem {
+                name: "Relatório Mensal".into(),
+                code: "let x = \"```\" in x".into(),
+            }],
+            connections: vec![ConnectionInfo {
+                name: "Consulta - Vendas".into(),
+                description: String::new(),
+                connection: "Location=Vendas".into(),
+            }],
+        };
+        let md = power_query_to_markdown(&pq, "a.xlsx");
+        assert!(md.starts_with("# Power Query: a.xlsx\n"));
+        assert!(md.contains("## Consulta: Relatório Mensal\n\n````m\nlet x"));
+        assert!(md.contains("## Conexões\n\n### Consulta - Vendas\n\n```\nLocation=Vendas\n```\n"));
+    }
 
     fn sheets() -> Vec<SheetCells> {
         let mut cells = IndexMap::new();

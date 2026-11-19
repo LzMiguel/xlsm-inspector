@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: Settings = {
     json: 'mapeamento_planilha',
     cells_md: 'mapeamento_planilha',
     vba_md: 'vba_code',
+    power_query: 'power_query',
     bundle: 'contexto_ia',
   },
   template: {

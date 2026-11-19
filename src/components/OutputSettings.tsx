@@ -8,6 +8,7 @@ const NAME_FIELDS: { key: keyof FileNames; label: string; ext: string }[] = [
   { key: 'json', label: 'Células (JSON)', ext: '.json' },
   { key: 'cells_md', label: 'Células (Markdown)', ext: '.md' },
   { key: 'vba_md', label: 'Código VBA (Markdown)', ext: '.md' },
+  { key: 'power_query', label: 'Power Query (Markdown)', ext: '.md' },
   { key: 'bundle', label: 'Arquivo único para IA (Markdown)', ext: '.md' },
 ]
 

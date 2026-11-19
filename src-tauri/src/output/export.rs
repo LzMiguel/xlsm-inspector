@@ -7,7 +7,7 @@ use super::naming::{FileNames, OnExists, free_name, resolve};
 use super::template::{OutputTemplate, today};
 use super::{bundle::bundle_parts, json::cells_to_json, markdown};
 use crate::error::AppError;
-use crate::excel::{cells::extract_with_scope, vba, vba::VbaOptions};
+use crate::excel::{cells::extract_with_scope, power_query, vba, vba::VbaOptions};
 use crate::model::{ExtractScope, ExtractionResult, Progress, SheetCells, VbaComponent};
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -16,6 +16,8 @@ pub struct ExportTargets {
     pub json: bool,
     pub cells_md: bool,
     pub vba_md: bool,
+    /// Consultas M e conexões; omitido quando o arquivo não tem Power Query.
+    pub power_query: bool,
     /// Markdown único para IA (resumo + células + VBA). Desligado por padrão.
     pub bundle: bool,
 }
@@ -26,6 +28,7 @@ impl Default for ExportTargets {
             json: true,
             cells_md: true,
             vba_md: true,
+            power_query: true,
             bundle: false,
         }
     }
@@ -59,7 +62,7 @@ fn plan(
     targets: ExportTargets,
     cfg: &OutputConfig,
     date: &str,
-) -> Result<[Option<String>; 4], AppError> {
+) -> Result<[Option<String>; 5], AppError> {
     let stem = path
         .file_stem()
         .map(|s| s.to_string_lossy().into_owned())
@@ -71,6 +74,7 @@ fn plan(
         name(targets.json, &cfg.names.json, "json")?,
         name(targets.cells_md, &cfg.names.cells_md, "md")?,
         name(targets.vba_md, &cfg.names.vba_md, "md")?,
+        name(targets.power_query, &cfg.names.power_query, "md")?,
         name(targets.bundle, &cfg.names.bundle, "md")?,
     ];
 
@@ -88,7 +92,7 @@ fn plan(
     }
 
     // o arquivo único é conferido à parte: dividido, o nome-base nem chega a ser gravado
-    let chosen: Vec<usize> = (0..3).filter(|&i| names[i].is_some()).collect();
+    let chosen: Vec<usize> = (0..4).filter(|&i| names[i].is_some()).collect();
     let plain: Vec<String> = chosen.iter().filter_map(|&i| names[i].clone()).collect();
     for (i, n) in chosen
         .into_iter()
@@ -152,7 +156,7 @@ pub fn export_outputs(
         )));
     }
     let date = today();
-    let [json_name, md_name, vba_name, bundle_name] = plan(path, out_dir, targets, cfg, &date)?;
+    let [json_name, md_name, vba_name, pq_name, bundle_name] = plan(path, out_dir, targets, cfg, &date)?;
     let mut written = Vec::new();
 
     let file_name = path
@@ -220,6 +224,13 @@ pub fn export_outputs(
     if let (Some(name), Some(components)) = (&vba_name, &components) {
         let md = markdown::vba_to_markdown(components, &file_name, &cfg.template, &date);
         write(out_dir, name, &md, &mut written)?;
+    }
+    if let Some(name) = &pq_name {
+        let pq = power_query::extract_file(path)?;
+        // sem consultas nem conexões, o arquivo é omitido (como o VBA sem projeto)
+        if !pq.queries.is_empty() || !pq.connections.is_empty() {
+            write(out_dir, name, &markdown::power_query_to_markdown(&pq, &file_name), &mut written)?;
+        }
     }
     for (name, part) in &bundle_files {
         write(out_dir, name, part, &mut written)?;

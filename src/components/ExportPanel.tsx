@@ -45,6 +45,12 @@ const ROWS: {
   },
   { key: 'vba_md', name: 'vba_md', ext: '.md', label: 'Código VBA (Markdown)' },
   {
+    key: 'power_query',
+    name: 'power_query',
+    ext: '.md',
+    label: 'Power Query (Markdown)',
+  },
+  {
     key: 'bundle',
     name: 'bundle',
     ext: '.md',
@@ -68,6 +74,7 @@ export function ExportPanel() {
     json: true,
     cells_md: true,
     vba_md: true,
+    power_query: true,
     bundle: false,
   })
   const [open, setOpen] = useState(false)
@@ -87,11 +94,12 @@ export function ExportPanel() {
 
   const scope = exportScope ?? extractScope
   const suffix = scope.kind === 'full' ? '' : '_amostra'
-  const { json, cells_md, vba_md, bundle } = settings.file_names
+  const { json, cells_md, vba_md, power_query, bundle } = settings.file_names
   const names: FileNames = {
     json: json + suffix,
     cells_md: cells_md + suffix,
     vba_md,
+    power_query,
     bundle: bundle + suffix,
     ...nameEdits,
   }

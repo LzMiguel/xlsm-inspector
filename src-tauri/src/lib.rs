@@ -14,6 +14,7 @@ pub fn run() {
             commands::open_workbook,
             commands::extract_workbook,
             commands::diagnose_workbook,
+            commands::extract_power_query,
             commands::extract_vba,
             commands::export_vba_files,
             commands::get_recent,

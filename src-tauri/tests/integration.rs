@@ -375,7 +375,11 @@ fn exporta_do_cache_sem_reler_o_arquivo() {
     let written = export_outputs(
         &dir.join("nao_existe.xlsx"),
         &dir,
-        ExportTargets::default(),
+        // o Power Query não vem do cache: lê o arquivo, que aqui não existe
+        ExportTargets {
+            power_query: false,
+            ..ExportTargets::default()
+        },
         None,
         &VbaOptions::default(),
         &cfg,
@@ -623,6 +627,7 @@ fn arquivo_unico_para_ia() {
         json: false,
         cells_md: false,
         vba_md: false,
+        power_query: false,
         bundle: true,
     };
     let run = |dir: &Path, file: &str, split_tokens: Option<usize>| {
@@ -679,7 +684,13 @@ fn indice_de_procedimentos_na_fixture() {
     for c in &comps {
         for p in &c.procedures {
             assert!(1 <= p.start_line && p.start_line <= p.end_line && p.end_line <= c.line_count);
-            assert!(c.code.lines().nth(p.start_line - 1).unwrap().contains(&p.name));
+            assert!(
+                c.code
+                    .lines()
+                    .nth(p.start_line - 1)
+                    .unwrap()
+                    .contains(&p.name)
+            );
         }
     }
 }

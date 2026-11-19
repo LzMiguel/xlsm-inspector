@@ -1,8 +1,9 @@
-import { Code2, Search, Stethoscope, Table2 } from "lucide-react";
+import { Code2, Database, Search, Stethoscope, Table2 } from "lucide-react";
 
 import { useWorkbookStore, type PreviewTab } from "../store/workbookStore";
 import { CellTable } from "./CellTable";
 import { DiagnosticsView } from "./DiagnosticsView";
+import { PowerQueryView } from "./PowerQueryView";
 import { SearchView } from "./SearchView";
 import { Tabs, type TabItem } from "./ui/Tabs";
 import { VbaViewer } from "./VbaViewer";
@@ -11,6 +12,7 @@ const TABS: TabItem<PreviewTab>[] = [
   { id: "cells", label: "Células", icon: Table2 },
   { id: "vba", label: "VBA", icon: Code2 },
   { id: "diagnostics", label: "Diagnóstico", icon: Stethoscope },
+  { id: "powerquery", label: "Power Query", icon: Database },
   { id: "search", label: "Busca", icon: Search },
 ];
 
@@ -28,6 +30,7 @@ export function Preview() {
       {tab === "cells" && <CellTable sheets={sheets} />}
       {tab === "vba" && <VbaViewer />}
       {tab === "diagnostics" && <DiagnosticsView />}
+      {tab === "powerquery" && <PowerQueryView />}
       {tab === "search" && <SearchView />}
     </section>
   );

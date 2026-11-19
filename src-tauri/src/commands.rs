@@ -7,13 +7,15 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::error::AppError;
-use crate::excel::{diagnostics, vba, vba::VbaOptions};
-use crate::model::{Diagnostics, ExtractScope, ExtractionResult, Progress, VbaComponent};
+use crate::excel::{diagnostics, power_query, vba, vba::VbaOptions};
+use crate::model::{
+    Diagnostics, ExtractScope, ExtractionResult, PowerQuery, Progress, VbaComponent,
+};
 use crate::output::bundle::{BundleEstimate, estimate_bundle as estimate_bundle_of};
 use crate::output::export::{self, ExportTargets, OutputConfig};
-use crate::output::{markdown, vba_files};
 use crate::output::naming::{FileNames, OnExists};
 use crate::output::template::{self, OutputTemplate, TemplatePreset};
+use crate::output::{markdown, vba_files};
 use crate::store::cache::{self, OpenResult, RecentStatus};
 use crate::store::recent::{self, RecentFile};
 use crate::store::settings::{self, Settings};
@@ -123,6 +125,12 @@ pub async fn extract_workbook(
 #[tauri::command]
 pub async fn diagnose_workbook(path: String) -> Result<Diagnostics, AppError> {
     blocking(move || diagnostics::diagnose(Path::new(&path))).await
+}
+
+/// Consultas M e conexões da planilha. Sem Power Query → listas vazias. Só leitura.
+#[tauri::command]
+pub async fn extract_power_query(path: String) -> Result<PowerQuery, AppError> {
+    blocking(move || power_query::extract_file(Path::new(&path))).await
 }
 
 #[tauri::command]

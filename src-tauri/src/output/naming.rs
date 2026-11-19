@@ -15,6 +15,7 @@ pub struct FileNames {
     pub json: String,
     pub cells_md: String,
     pub vba_md: String,
+    pub power_query: String,
     /// Arquivo único para IA; dividido, vira `nome_parte_1.md`, `nome_parte_2.md`...
     pub bundle: String,
 }
@@ -25,6 +26,7 @@ impl Default for FileNames {
             json: "mapeamento_planilha".into(),
             cells_md: "mapeamento_planilha".into(),
             vba_md: "vba_code".into(),
+            power_query: "power_query".into(),
             bundle: "contexto_ia".into(),
         }
     }
