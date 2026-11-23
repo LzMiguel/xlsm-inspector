@@ -154,8 +154,22 @@ export function ExportPanel() {
   const canExport =
     !busy &&
     !busyElsewhere &&
-    (needsCells || vbaOn) &&
+    (needsCells || vbaOn || targets.power_query) &&
     !(needsCells && selectedSheets.length === 0)
+  // nomes finais mostrados antes de gravar (o Rust resolve {arquivo} e {data} do mesmo jeito)
+  const stem =
+    filePath
+      ?.split(/[\\/]/)
+      .pop()
+      ?.replace(/\.[^.]+$/, '') ?? ''
+  const today = new Date().toLocaleDateString('sv-SE')
+  const chosen = ROWS.filter(({ key }) =>
+    key === 'vba_md' ? vbaOn : targets[key],
+  ).map(
+    ({ name, ext }) =>
+      names[name].replaceAll('{arquivo}', stem).replaceAll('{data}', today) +
+      ext,
+  )
   const set = (k: keyof ExportTargets) => (v: boolean) =>
     setTargets((t) => ({ ...t, [k]: v }))
 
@@ -218,7 +232,7 @@ export function ExportPanel() {
       />
 
       <Field
-        label="Modelo do Markdown"
+        label="Modelo do texto (Markdown)"
         hint="Vale só para esta exportação (não altera as configurações)."
       >
         <Select
@@ -226,12 +240,12 @@ export function ExportPanel() {
           disabled={busy}
           onChange={(e) => setTemplateName(e.currentTarget.value)}
         >
-          <option value="">Modelo das configurações</option>
+          <option value="">Modelo ativo nas configurações</option>
           {builtin.map((p) => (
             <option key={p.name}>{p.name}</option>
           ))}
           {presets.length > 0 && (
-            <optgroup label="Minhas predefinições">
+            <optgroup label="Meus modelos">
               {presets.map((p) => (
                 <option key={p.name}>{p.name}</option>
               ))}
@@ -272,20 +286,21 @@ export function ExportPanel() {
               {key === 'bundle' && checked && (
                 <div className="flex flex-col gap-2 pl-6">
                   <Checkbox
-                    label="Dividir em partes de N tokens"
+                    label="Dividir em partes"
                     checked={splitOn}
                     onChange={setSplitOn}
                   />
                   {splitOn && (
-                    <Input
-                      type="number"
-                      min={1}
-                      step={1000}
-                      aria-label="Tokens por parte (estimativa)"
-                      className="py-1 font-mono text-xs"
-                      value={splitText}
-                      onChange={(e) => setSplitText(e.currentTarget.value)}
-                    />
+                    <Field label="Tokens por parte (aproximado)">
+                      <Input
+                        type="number"
+                        min={1}
+                        step={1000}
+                        className="py-1 font-mono text-xs"
+                        value={splitText}
+                        onChange={(e) => setSplitText(e.currentTarget.value)}
+                      />
+                    </Field>
                   )}
                   <p
                     className="text-xs text-muted"
@@ -304,6 +319,12 @@ export function ExportPanel() {
           )
         })}
       </div>
+
+      <p className="text-xs text-muted">
+        {chosen.length === 0
+          ? 'Nenhum arquivo selecionado.'
+          : `Serão gravados: ${chosen.join(', ')}. VBA e Power Query só saem se o arquivo tiver.`}
+      </p>
 
       {error && <ErrorAlert error={error} />}
 
@@ -372,6 +393,11 @@ export function ExportPanel() {
       >
         Exportar…
       </Button>
+      {!result && canOpen && (
+        <p className="text-xs text-muted">
+          Sem leitura prévia, o arquivo será lido ao exportar.
+        </p>
+      )}
 
       <Dialog
         open={open}

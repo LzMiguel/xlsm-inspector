@@ -18,7 +18,7 @@ const BADGES: Partial<
     { label: string; variant: 'primary' | 'warning' | 'danger' }
   >
 > = {
-  Cached: { label: 'em cache', variant: 'primary' },
+  Cached: { label: 'salvo', variant: 'primary' },
   Modified: { label: 'modificado', variant: 'warning' },
   Missing: { label: 'não encontrado', variant: 'danger' },
   Locked: { label: 'bloqueado', variant: 'warning' },
@@ -102,7 +102,7 @@ export function RecentFiles({ disabled }: { disabled: boolean }) {
                   type="button"
                   disabled={disabled}
                   aria-label={`Recarregar ${r.name} do arquivo`}
-                  title="Recarregar do arquivo (ignora o cache)"
+                  title="Recarregar do arquivo (ignora o resultado salvo)"
                   onClick={() => openWorkbook(r.path, true)}
                   className="rounded-sm p-1 text-subtle hover:bg-surface-muted hover:text-text focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
                 >

@@ -43,6 +43,10 @@ export function DropZone({ dragging, loading, invalid }: DropZoneProps) {
       >
         Selecionar arquivo
       </Button>
+      <p className="max-w-md text-xs text-muted">
+        Gera Markdown e JSON com células, fórmulas, VBA, Power Query e
+        diagnóstico. Tudo é feito no seu computador: nada é enviado para fora.
+      </p>
     </div>
   )
 }

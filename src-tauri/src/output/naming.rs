@@ -23,11 +23,11 @@ pub struct FileNames {
 impl Default for FileNames {
     fn default() -> Self {
         Self {
-            json: "mapeamento_planilha".into(),
-            cells_md: "mapeamento_planilha".into(),
-            vba_md: "vba_code".into(),
-            power_query: "power_query".into(),
-            bundle: "contexto_ia".into(),
+            json: "{arquivo}_celulas".into(),
+            cells_md: "{arquivo}_celulas".into(),
+            vba_md: "{arquivo}_codigo_vba".into(),
+            power_query: "{arquivo}_power_query".into(),
+            bundle: "{arquivo}_contexto_ia".into(),
         }
     }
 }

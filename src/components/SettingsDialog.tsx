@@ -102,14 +102,13 @@ export function SettingsDialog({
           </section>
 
           <section className="flex flex-col gap-2">
-            <h3 className="text-sm font-semibold">Cache</h3>
+            <h3 className="text-sm font-semibold">Resultados salvos</h3>
             <p className="text-sm text-muted">
-              Guarda no disco, só neste computador, a última extração das 5
-              planilhas mais recentes. Reabrir uma planilha que não mudou não
-              relê o arquivo.
+              Guarda no disco, só neste computador, a última leitura dos 5 arquivos
+              mais recentes. Reabrir um arquivo que não mudou não o relê.
             </p>
             <Checkbox
-              label="Guardar resultados em cache"
+              label="Guardar resultados para abrir mais rápido"
               checked={settings.use_cache}
               onChange={(v) => updateSettings({ use_cache: v })}
             />
@@ -118,10 +117,10 @@ export function SettingsDialog({
                 size="sm"
                 onClick={emptyCache}
               >
-                Limpar cache
+                Apagar resultados salvos
               </Button>
               {cacheCleared && (
-                <span className="text-sm text-muted">Cache limpo.</span>
+                <span className="text-sm text-muted">Resultados apagados.</span>
               )}
             </div>
           </section>

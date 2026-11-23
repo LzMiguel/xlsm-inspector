@@ -37,11 +37,11 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por um único app co
 
 | Arquivo                    | Conteúdo                                                                    |
 | -------------------------- | --------------------------------------------------------------------------- |
-| `mapeamento_planilha.json` | Células com `valor` e `formula`                                             |
-| `mapeamento_planilha.md`   | Mesmo conteúdo em Markdown                                                  |
-| `vba_code.md`              | Código VBA organizado por componente                                        |
-| `power_query.md`           | Consultas Power Query (código M) e conexões; omitido se o arquivo não tiver |
-| `contexto_ia.md`           | Arquivo único para IA (opcional; pode sair em partes `_parte_N`)            |
+| `{arquivo}_celulas.json`   | Células com `valor` e `formula`                                             |
+| `{arquivo}_celulas.md`     | Mesmo conteúdo em Markdown                                                  |
+| `{arquivo}_codigo_vba.md`  | Código VBA organizado por componente                                        |
+| `{arquivo}_power_query.md` | Consultas Power Query (código M) e conexões; omitido se o arquivo não tiver |
+| `{arquivo}_contexto_ia.md` | Arquivo único para IA (opcional; pode sair em partes `_parte_N`)            |
 
 Word, PowerPoint e PDF terão saídas próprias (`documento.md`, `apresentacao.md`, `pdf.md`), conforme o `GUIDE.md`.
 

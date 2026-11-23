@@ -6,23 +6,23 @@ Contexto para o Claude (e outros agentes) neste repositório. As regras completa
 
 **XLSM Inspector**: app desktop (Tauri v2 + React + TypeScript) que lê planilhas (`.xlsx`/`.xlsm`), Word (`.docx`/`.docm`), PowerPoint (`.pptx`/`.pptm`) e PDF, e exporta:
 
-- `mapeamento_planilha.json` (células: valor + fórmula);
-- `mapeamento_planilha.md` (mesmo conteúdo em Markdown);
-- `vba_code.md` (código VBA por componente);
-- `contexto_ia.md` (arquivo único para IA, opcionalmente em partes);
+- `{arquivo}_celulas.json` (células: valor + fórmula);
+- `{arquivo}_celulas.md` (mesmo conteúdo em Markdown);
+- `{arquivo}_codigo_vba.md` (código VBA por componente);
+- `{arquivo}_contexto_ia.md` (arquivo único para IA, opcionalmente em partes);
 - conforme o `GUIDE.md`: Power Query, diagnóstico, Word, PowerPoint e PDF.
 
 Substitui dois scripts Python (`openpyxl` + `oletools`). 100% offline.
 
 ## Documentos (ler antes de mudanças relevantes)
 
-| Arquivo            | Conteúdo                                              |
-| ------------------ | ----------------------------------------------------- |
-| `PRD.md`           | Escopo, requisitos RF/RNF, formato de saída, roadmap  |
-| `Architecture.md`  | Pastas, modelo de dados, comandos IPC, fluxos         |
-| `Design-System.md` | Tokens, tipografia, componentes de UI                 |
-| `GUIDE.md`         | Passo a passo de desenvolvimento (ordem das etapas)   |
-| `AGENTS.md`        | Regras para agentes                                   |
+| Arquivo            | Conteúdo                                             |
+| ------------------ | ---------------------------------------------------- |
+| `PRD.md`           | Escopo, requisitos RF/RNF, formato de saída, roadmap |
+| `Architecture.md`  | Pastas, modelo de dados, comandos IPC, fluxos        |
+| `Design-System.md` | Tokens, tipografia, componentes de UI                |
+| `GUIDE.md`         | Passo a passo de desenvolvimento (ordem das etapas)  |
+| `AGENTS.md`        | Regras para agentes                                  |
 
 Se uma tarefa conflitar com esses documentos, **pare e pergunte**.
 
@@ -81,4 +81,3 @@ Conventional Commits (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`),
 ## Plano de condução
 
 O desenvolvimento segue as fases do `GUIDE.md` (backend testável primeiro, UI depois). Ao receber uma tarefa, identifique a fase/etapa correspondente, faça só ela e indique ao usuário qual comando rodar para validar.
-

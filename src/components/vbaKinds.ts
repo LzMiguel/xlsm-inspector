@@ -12,7 +12,7 @@ export const KIND_ORDER: VbaComponentKind[] = [
 export const KIND_GROUP_LABEL: Record<VbaComponentKind, string> = {
   Module: 'Módulos',
   Class: 'Classes',
-  Document: 'Planilhas',
+  Document: 'Código das planilhas',
   Workbook: 'Pasta de trabalho',
   UserForm: 'UserForms',
   Unknown: 'Outros',

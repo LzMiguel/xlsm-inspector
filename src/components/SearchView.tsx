@@ -22,8 +22,8 @@ export function SearchView() {
     return (
       <EmptyState
         icon={Search}
-        title="Extraia o arquivo para buscar"
-        description="A busca vale para as células e o código VBA já extraídos."
+        title="Leia o arquivo para buscar"
+        description="A busca vale para as células e o código VBA já lidos."
       />
     )
   }

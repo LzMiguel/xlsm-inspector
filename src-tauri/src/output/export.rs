@@ -238,15 +238,16 @@ pub fn export_outputs(
         let md = markdown::vba_to_markdown(components, &file_name, &cfg.template, &date);
         write(out_dir, name, &md, &mut written)?;
     }
-    if let Some(name) = &pq_name {
-        if !pq.queries.is_empty() || !pq.connections.is_empty() {
-            write(
-                out_dir,
-                name,
-                &markdown::power_query_to_markdown(&pq, &file_name),
-                &mut written,
-            )?;
-        }
+    // sem consultas nem conexões, o arquivo é omitido (como o VBA sem projeto)
+    if let Some(name) = &pq_name
+        && (!pq.queries.is_empty() || !pq.connections.is_empty())
+    {
+        write(
+            out_dir,
+            name,
+            &markdown::power_query_to_markdown(&pq, &file_name),
+            &mut written,
+        )?;
     }
     for (name, part) in &bundle_files {
         write(out_dir, name, part, &mut written)?;

@@ -100,8 +100,8 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
     return (
       <EmptyState
         icon={Table2}
-        title="Nenhuma aba extraída"
-        description="Marque ao menos uma aba na barra lateral e extraia de novo."
+        title="Nenhuma planilha lida"
+        description="Marque ao menos uma planilha na barra lateral e leia o arquivo de novo."
       />
     )
   }
@@ -110,7 +110,7 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-3 p-3">
         <select
-          aria-label="Aba"
+          aria-label="Planilha"
           value={sheet.name}
           onChange={(e) => {
             setSheetName(e.target.value)
@@ -148,7 +148,7 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
 
         {sheet.sampled && (
           <span
-            title="A extração usou só parte das linhas desta aba"
+            title="A leitura usou só parte das linhas desta planilha"
             className="shrink-0 rounded-sm bg-warning-soft px-2 py-0.5 text-xs font-medium"
           >
             amostra: {sheet.sampled.kept_rows.toLocaleString('pt-BR')} de{' '}
@@ -164,7 +164,7 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
 
       <div
         role="table"
-        aria-label={`Células da aba ${sheet.name}`}
+        aria-label={`Células da planilha ${sheet.name}`}
         aria-rowcount={filtered.length + 1}
         className="flex min-h-0 flex-1 flex-col border-t border-border"
       >

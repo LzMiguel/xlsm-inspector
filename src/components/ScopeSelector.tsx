@@ -13,7 +13,7 @@ export function ScopeSelector({ value, onChange, disabled }: Props) {
   return (
     <div className="flex items-center gap-2">
       <Select
-        aria-label="Linhas a extrair"
+        aria-label="Linhas a ler"
         className="w-auto"
         value={value.kind}
         disabled={disabled}
@@ -30,14 +30,15 @@ export function ScopeSelector({ value, onChange, disabled }: Props) {
         }}
       >
         <option value="full">Todas as linhas</option>
-        <option value="head">Primeiras N linhas</option>
-        <option value="sample">Amostra de N linhas</option>
+        <option value="head">Só as primeiras linhas</option>
+        <option value="sample">Amostra espaçada</option>
       </Select>
       {value.kind !== 'full' && (
         <Input
           type="number"
           min={1}
-          aria-label="Número de linhas"
+          aria-label="Quantas linhas"
+          title="Quantas linhas"
           className="w-24"
           disabled={disabled}
           value={value.rows}

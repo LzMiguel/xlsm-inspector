@@ -70,7 +70,7 @@ pub fn apply_scope(sheet: &mut SheetCells, scope: ExtractScope) -> Option<Warnin
         sheet: sheet.name.clone(),
         count: kept,
         message: format!(
-            "Aba \"{}\": {kept} de {total} linhas (escopo parcial).",
+            "Planilha \"{}\": {kept} de {total} linhas (escopo parcial).",
             sheet.name
         ),
     })
@@ -184,7 +184,7 @@ pub fn extract_sheet(
         sheet: name.to_string(),
         count: missing,
         message: format!(
-            "{missing} fórmula(s) sem valor em cache na aba \"{name}\". \
+            "{missing} fórmula(s) sem valor em cache na planilha \"{name}\". \
              Abra o arquivo no Excel, salve e feche para gerar os valores."
         ),
     });

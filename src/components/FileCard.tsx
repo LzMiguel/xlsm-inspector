@@ -23,14 +23,14 @@ export function FileCard({ summary, disabled }: { summary: WorkbookSummary; disa
           {summary.file_name}
         </p>
         <p className="text-sm text-muted">
-          {formatBytes(summary.size_bytes)} · {n} {n === 1 ? "aba" : "abas"}
+          {formatBytes(summary.size_bytes)} · {n} {n === 1 ? "planilha" : "planilhas"}
         </p>
       </div>
       {summary.has_vba && <Badge variant="primary">VBA</Badge>}
-      <Button variant="secondary" size="sm" disabled={disabled} onClick={reset}>
+      <Button variant="ghost" size="sm" disabled={disabled} onClick={reset}>
         <House size={16} strokeWidth={1.75} aria-hidden /> Início
       </Button>
-      <Button size="sm" disabled={disabled} onClick={chooseAndOpenWorkbook}>
+      <Button variant="secondary" size="sm" disabled={disabled} onClick={chooseAndOpenWorkbook}>
         Trocar arquivo
       </Button>
     </section>

@@ -26,7 +26,7 @@ const TEMPLATE_FIELDS: {
     hint: 'Logo após o título. Ex.: instruções para uma IA.',
     multiline: true,
   },
-  { key: 'sheet_heading', label: 'Título de cada aba', hint: 'Use {aba}.' },
+  { key: 'sheet_heading', label: 'Título de cada planilha', hint: 'Use {aba}.' },
   { key: 'cell_header', label: 'Cabeçalho da coluna de células' },
   { key: 'content_header', label: 'Cabeçalho da coluna de conteúdo' },
   { key: 'formula_label', label: 'Rótulo da fórmula' },
@@ -81,7 +81,7 @@ export function TemplateSettings() {
     <div className="flex flex-col gap-3">
       {error && <ErrorAlert error={error} />}
 
-      <Field label="Predefinição">
+      <Field label="Modelo">
         <Select
           value={current?.name ?? ''}
           onChange={(e) => {
@@ -94,7 +94,7 @@ export function TemplateSettings() {
             <option key={p.name}>{p.name}</option>
           ))}
           {presets.length > 0 && (
-            <optgroup label="Minhas predefinições">
+            <optgroup label="Meus modelos">
               {presets.map((p) => (
                 <option key={p.name}>{p.name}</option>
               ))}
@@ -111,7 +111,7 @@ export function TemplateSettings() {
           >
             <Input
               value={newName}
-              placeholder="Nome da predefinição"
+              placeholder="Nome do modelo"
               onChange={(e) => setNewName(e.currentTarget.value)}
             />
           </Field>

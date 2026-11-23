@@ -1,25 +1,18 @@
 import { RefreshCw, Table2 } from 'lucide-react'
 
-import {
-  openWorkbook,
-  refreshVba,
-  runExtraction,
-} from '../store/workbookActions'
-import { updateVbaOptions } from '../store/settingsActions'
-import { useSettingsStore } from '../store/settingsStore'
+import { openWorkbook, runExtraction } from '../store/workbookActions'
 import { useWorkbookStore } from '../store/workbookStore'
-import type { Progress, VbaOptions } from '../types/models'
+import type { Progress } from '../types/models'
 import { Alert } from './ui/Alert'
 import { Button } from './ui/Button'
-import { Checkbox } from './ui/Checkbox'
 import { ScopeSelector } from './ScopeSelector'
 import { ProgressBar } from './ui/ProgressBar'
 
 function progressLabel(p: Progress | null): string {
   if (!p) return 'Iniciando…'
-  if (p.stage === 'vba') return 'Extraindo código VBA…'
+  if (p.stage === 'vba') return 'Lendo código VBA…'
   if (!p.label) return 'Finalizando…'
-  return `Processando aba ${p.current + 1} de ${p.total}: ${p.label}`
+  return `Lendo planilha ${p.current + 1} de ${p.total}: ${p.label}`
 }
 
 export function ExtractPanel() {
@@ -27,19 +20,12 @@ export function ExtractPanel() {
   const progress = useWorkbookStore((s) => s.progress)
   const result = useWorkbookStore((s) => s.result)
   const warnings = useWorkbookStore((s) => s.warnings)
-  const hasVba = useWorkbookStore((s) => s.summary?.has_vba ?? false)
   const noSheets = useWorkbookStore((s) => s.selectedSheets.length === 0)
-  const vbaOptions = useSettingsStore((s) => s.settings.vba_options)
   const filePath = useWorkbookStore((s) => s.filePath)
   const fromCache = useWorkbookStore((s) => s.fromCache)
   const scope = useWorkbookStore((s) => s.scope)
   const setScope = useWorkbookStore((s) => s.setScope)
   const extracting = status === 'extracting'
-
-  const changeOption = (o: Partial<VbaOptions>) => {
-    updateVbaOptions(o)
-    if (result) refreshVba()
-  }
 
   const cellCount =
     result?.sheets.reduce((n, s) => n + Object.keys(s.cells).length, 0) ?? 0
@@ -54,7 +40,7 @@ export function ExtractPanel() {
           disabled={status === 'loading' || noSheets}
           onClick={runExtraction}
         >
-          {result ? 'Extrair novamente' : 'Extrair'}
+          {result ? 'Ler de novo' : 'Ler arquivo'}
         </Button>
         <ScopeSelector
           value={scope}
@@ -64,19 +50,19 @@ export function ExtractPanel() {
         {result && !extracting && (
           <p className="text-sm text-muted">
             {cellCount.toLocaleString('pt-BR')} células em{' '}
-            {result.sheets.length} {result.sheets.length === 1 ? 'aba' : 'abas'}{' '}
+            {result.sheets.length} {result.sheets.length === 1 ? 'planilha' : 'planilhas'}{' '}
             · {result.vba.length} componente(s) VBA
           </p>
         )}
         {noSheets && (
-          <p className="text-sm text-warning">Marque ao menos uma aba.</p>
+          <p className="text-sm text-warning">Marque ao menos uma planilha.</p>
         )}
       </div>
 
       {fromCache && !extracting && (
         <Alert
           variant="info"
-          title="Resultado do cache"
+          title="Resultado salvo"
           action={
             <Button
               size="sm"
@@ -88,26 +74,9 @@ export function ExtractPanel() {
             </Button>
           }
         >
-          O arquivo não foi relido: é a última extração, com o arquivo igual ao
-          de então.
+          O arquivo não foi relido: é a última leitura, com o arquivo igual ao de
+          então.
         </Alert>
-      )}
-
-      {hasVba && (
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <Checkbox
-            label="Remover linhas em branco do VBA"
-            checked={vbaOptions.remove_blank_lines}
-            disabled={extracting}
-            onChange={(v) => changeOption({ remove_blank_lines: v })}
-          />
-          <Checkbox
-            label="Ocultar linhas Attribute VB_"
-            checked={vbaOptions.hide_attributes}
-            disabled={extracting}
-            onChange={(v) => changeOption({ hide_attributes: v })}
-          />
-        </div>
       )}
 
       {extracting && (
@@ -123,7 +92,7 @@ export function ExtractPanel() {
           <Alert
             key={`${w.kind}:${w.sheet}`}
             variant={w.kind === 'Sampled' ? 'info' : 'warning'}
-            title={`Aba "${w.sheet}"`}
+            title={`Planilha "${w.sheet}"`}
           >
             {w.message}
           </Alert>

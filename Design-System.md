@@ -19,24 +19,24 @@ Todas as cores são tokens. Componentes nunca usam valores hexadecimais diretame
 
 ### Tema claro
 
-| Token             | Valor     | Uso                                    |
-| ----------------- | --------- | -------------------------------------- |
-| `--bg`            | `#F7F8FA` | Fundo da janela                        |
-| `--surface`       | `#FFFFFF` | Cards, painéis, tabelas                |
-| `--surface-muted` | `#F0F2F5` | Cabeçalho de tabela, áreas secundárias |
-| `--border`        | `#E1E4EA` | Bordas e divisores                     |
-| `--text`          | `#1A1D23` | Texto principal                        |
-| `--text-muted`    | `#5F6672` | Texto secundário, legendas             |
-| `--text-subtle`   | `#8A919C` | Placeholders, desabilitado             |
-| `--primary`       | `#1F7A55` | Ações principais (verde planilha)      |
-| `--primary-hover` | `#186446` | Hover da ação principal                |
-| `--primary-soft`  | `#E3F2EB` | Fundo de seleção, badges               |
-| `--accent`        | `#4B5BD6` | Links, foco, destaque de VBA           |
-| `--success`       | `#1F8A4C` | Exportação concluída                   |
-| `--warning`       | `#B7791F` | Valores em cache ausentes              |
-| `--warning-soft`  | `#FDF4E3` | Fundo de alerta                        |
-| `--danger`        | `#C53030` | Erros                                  |
-| `--danger-soft`   | `#FDECEC` | Fundo de erro                          |
+| Token             | Valor     | Uso                                                         |
+| ----------------- | --------- | ----------------------------------------------------------- |
+| `--bg`            | `#F7F8FA` | Fundo da janela                                             |
+| `--surface`       | `#FFFFFF` | Cards, painéis, tabelas                                     |
+| `--surface-muted` | `#F0F2F5` | Cabeçalho de tabela, áreas secundárias                      |
+| `--border`        | `#E1E4EA` | Bordas e divisores                                          |
+| `--text`          | `#1A1D23` | Texto principal                                             |
+| `--text-muted`    | `#5F6672` | Texto secundário, legendas                                  |
+| `--text-subtle`   | `#666D79` | Ícones, desabilitado (contraste AA)                         |
+| `--primary`       | `#1F7A55` | Ações principais (verde planilha)                           |
+| `--primary-hover` | `#186446` | Hover da ação principal                                     |
+| `--primary-soft`  | `#E3F2EB` | Fundo de seleção, badges                                    |
+| `--accent`        | `#4B5BD6` | Links, foco, destaque de VBA                                |
+| `--success`       | `#3F8212` | Exportação concluída (verde-limão, distinto do `--primary`) |
+| `--warning`       | `#8F5D0F` | Valores em cache ausentes (texto AA)                        |
+| `--warning-soft`  | `#FDF4E3` | Fundo de alerta                                             |
+| `--danger`        | `#C53030` | Erros                                                       |
+| `--danger-soft`   | `#FDECEC` | Fundo de erro                                               |
 
 ### Tema escuro
 
@@ -48,12 +48,12 @@ Todas as cores são tokens. Componentes nunca usam valores hexadecimais diretame
 | `--border`        | `#2C313A` |
 | `--text`          | `#E7E9ED` |
 | `--text-muted`    | `#A0A7B2` |
-| `--text-subtle`   | `#6B727D` |
+| `--text-subtle`   | `#8A919C` |
 | `--primary`       | `#3DB884` |
 | `--primary-hover` | `#52C894` |
 | `--primary-soft`  | `#173326` |
 | `--accent`        | `#8592F0` |
-| `--success`       | `#4CC27F` |
+| `--success`       | `#93D155` |
 | `--warning`       | `#E0A84A` |
 | `--warning-soft`  | `#33280F` |
 | `--danger`        | `#F06A6A` |
@@ -126,7 +126,7 @@ Escala base de **4px**.
 - Janela mínima: **960 × 640**.
 - Barra superior fixa: 48px (nome do arquivo, ações principais).
 - Barra lateral (abas ou componentes VBA, com a exportação no rodapé): 240px, fixa.
-- Área de conteúdo: preenche o restante, com scroll próprio.
+- Área de conteúdo: preenche o restante, com scroll próprio. A pré-visualização ocupa a altura que sobra (mínimo 384px); em janelas baixas a página rola.
 
 ---
 
@@ -160,16 +160,17 @@ Escala base de **4px**.
 - Área tracejada (`--border`, 2px, `radius-lg`) com ícone, texto "Arraste um arquivo (.xlsx, .xlsm, .docx, .docm, .pptx, .pptm ou .pdf)" e botão "Selecionar arquivo".
 - Ao arrastar por cima: borda `--primary`, fundo `--primary-soft`.
 - Arquivo inválido: borda `--danger` e mensagem curta.
+- Abaixo do botão, uma linha `text-xs` `--text-muted` explica o que o app gera e que tudo é local.
 
 ### FileCard
 
 - Mostra ícone, nome, tamanho, nº de abas e badge "VBA" (se houver).
-- Ação para trocar de arquivo.
+- "Início" (`ghost`) volta à tela inicial; "Trocar arquivo" (`secondary`) abre o seletor.
 
 ### SheetList
 
 - Lista com checkbox por aba, contador de células e ícone de fórmula se houver.
-- Ações "Marcar todas" / "Desmarcar todas".
+- Ações "Marcar todas" / "Desmarcar todas". Título "Planilhas". Texto de ajuda: "Marque as planilhas que serão lidas e exportadas." Com mais de 8 planilhas, aparece um campo "Filtrar planilhas…" (só filtra a lista; "Marcar todas" vale para todas).
 
 ### Dialog / SettingsDialog
 
@@ -182,13 +183,13 @@ Escala base de **4px**.
 
 ### ExportPanel (diálogo Exportar)
 
-- Na barra lateral há só o botão "Exportar…" (`Ctrl+E`), que abre um `Dialog`. As opções ficam no diálogo: `ScopeSelector`, `Select` "Modelo do Markdown" (só para aquela exportação), um `Checkbox` por arquivo (com o campo de nome e a extensão) e, no arquivo único para IA, "Dividir em partes de N tokens" (`Input` numérico) e a estimativa de tokens em `text-xs` `--text-muted`, sempre rotulada "estimativa".
+- Na barra lateral há só o botão "Exportar…" (`Ctrl+E`), que abre um `Dialog`. As opções ficam no diálogo: `ScopeSelector`, `Select` "Modelo do texto (Markdown)" (só para aquela exportação), um `Checkbox` por arquivo (com o campo de nome e a extensão) e, no arquivo único para IA, "Dividir em partes de N tokens" (`Input` numérico) e a estimativa de tokens em `text-xs` `--text-muted`, sempre rotulada "estimativa".
 - Rodapé do diálogo: "Cancelar" (`ghost`) e "Exportar" (`primary`, com `loading`). Conflito de nome e erros aparecem como `Alert` dentro do diálogo; o resultado vira `Toast` "Abrir pasta" depois que o diálogo fecha.
 
 ### Recentes e cache
 
-- Cada recente mostra um `Badge`: "em cache" (`primary`), "modificado" e "bloqueado" (`warning`), "não encontrado" (`danger`). Com cache ou modificado, um botão ícone (recarregar) ignora o cache.
-- Resultado vindo do cache: `Alert` `info` "Resultado do cache" com botão "Recarregar" no `ExtractPanel`.
+- Cada recente mostra um `Badge`: "salvo" (`primary`), "modificado" e "bloqueado" (`warning`), "não encontrado" (`danger`). Com cache ou modificado, um botão ícone (recarregar) ignora o cache.
+- Resultado vindo do cache: `Alert` `info` "Resultado salvo" com botão "Recarregar" no `ExtractPanel` (o botão principal do painel é "Ler arquivo" / "Ler de novo").
 
 ### Diagnóstico (`DiagnosticsView`)
 
@@ -200,11 +201,17 @@ Escala base de **4px**.
 - Aba **Power Query** (ícone `Database`), entre Diagnóstico e Busca. Enquanto lê: "Lendo Power Query…" em `text-sm` `--text-muted`.
 - Seção "Consultas (N)": um `<details>` por consulta (`--surface-muted`, borda `--border`, `radius-md`); o título é o nome e, aberto, mostra o código M em `font-mono text-xs` com rolagem.
 - Seção "Conexões (N)": cartão por conexão com o nome em `text-sm` medium, a descrição em `text-xs text-muted` e a string de conexão em `font-mono text-xs` com quebra (`break-all`). Só exibe; nunca testa a conexão.
-- Sem consultas nem conexões: `EmptyState` "Sem Power Query". No diálogo Exportar, "Power Query (Markdown)" é uma linha como as outras (checkbox + nome editável) e é omitido na gravação se o arquivo não tiver nada.
+- Aberta, a consulta mostra o código M com destaque (Shiki, `powerquery`) e o botão "Copiar". Erro de leitura aparece dentro da aba, com "Tentar de novo". Sem consultas nem conexões: `EmptyState` "Sem Power Query". No diálogo Exportar, "Power Query (Markdown)" é uma linha como as outras (checkbox + nome editável) e é omitido na gravação se o arquivo não tiver nada.
+
+### Pré-visualização antes da leitura
+
+- A pré-visualização aparece assim que o arquivo abre. As guias Células, VBA e Busca mostram `EmptyState` "Nada lido ainda" até o "Ler arquivo"; Diagnóstico e Power Query funcionam sem ler.
+- As opções do VBA ("Remover linhas em branco", "Ocultar linhas Attribute VB\_") ficam no topo da `ComponentList` (barra lateral da guia VBA); também estão em Configurações → Geral.
+- O diálogo Exportar termina com uma linha `text-xs` `--text-muted` com os nomes finais dos arquivos marcados.
 
 ### ScopeSelector
 
-- `Select` (Todas / Primeiras N / Amostra de N) + `Input` numérico (mín. 1, padrão 100) quando não é "Todas". Aparece no `ExtractPanel` e no `ExportPanel`.
+- `Select` (Todas as linhas / Só as primeiras linhas / Amostra espaçada) + `Input` numérico "Quantas linhas" (mín. 1, padrão 100) quando não é "Todas". Aparece no `ExtractPanel` e no `ExportPanel`.
 - Selo "amostra: X de Y linhas" no `CellTable`: `radius-sm`, fundo `--warning-soft`, `text-xs`. Aviso `Sampled` usa `Alert` variante `info`.
 
 ### Fields (`ui/Fields.tsx`)
@@ -249,7 +256,7 @@ Escala base de **4px**.
 
 ### Toast
 
-- Canto inferior direito, some em 4 s.
+- Canto inferior direito, some em 8 s; fica parado enquanto o mouse ou o foco estão sobre ele.
 - Usado para "Exportação concluída" com ação "Abrir pasta".
 
 ### EmptyState
@@ -258,6 +265,17 @@ Escala base de **4px**.
 - Usado antes de carregar arquivo e quando o arquivo não tem VBA.
 
 ---
+
+## Vocabulário da interface
+
+| Use                                              | Evite                     | Observação                                                                                                                                                               |
+| ------------------------------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Planilha**                                     | aba                       | Cada folha do arquivo. "Guia" é a seção da pré-visualização (Células, VBA…). Nos modelos Markdown o título "Aba" e o placeholder `{aba}` continuam (formato Padrão fixo) |
+| **Ler arquivo** / **Exportar**                   | extrair                   | Ler = trazer o conteúdo para a tela; Exportar = gravar os arquivos                                                                                                       |
+| **Modelo**                                       | predefinição, template    | "Padrão", "Contexto para IA" e "Meus modelos"                                                                                                                            |
+| **salvo** / **resultados salvos**                | cache                     | Só a documentação técnica usa "cache"                                                                                                                                    |
+| **Vínculos externos**                            | refs. externas            |                                                                                                                                                                          |
+| **Amostra espaçada**, **só as primeiras linhas** | amostra de N, primeiras N | Sem "N" nem outras variáveis                                                                                                                                             |
 
 ## 6. Movimento
 

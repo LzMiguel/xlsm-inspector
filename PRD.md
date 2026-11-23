@@ -56,10 +56,10 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 - Exibir nome, tamanho, tipo e um resumo do conteúdo (abas, slides, páginas...) e se contém VBA.
 - Tela inicial com histórico dos 10 últimos arquivos abertos (guardado localmente; clicar reabre, `X` remove, "Limpar histórico" apaga). Botão **Início** volta à tela inicial a partir de um arquivo aberto.
 
-### RF02 — Seleção de abas
+### RF02 — Seleção de planilhas
 
-- Listar todas as abas com checkbox (todas marcadas por padrão).
-- Permitir processar uma aba específica ou um subconjunto.
+- Listar todas as planilhas com checkbox (todas marcadas por padrão).
+- Permitir processar uma planilha específica ou um subconjunto.
 
 ### RF03 — Extração de células
 
@@ -80,16 +80,16 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 
 - Aba **Células:** tabela com coordenada, fórmula e valor, filtrável por aba e por texto. Cada tabela do Excel (ListObject) vira uma linha com o intervalo na coluna Célula e o nome clicável em Valor (`A1:Z300 | tblProdutos`); ao clicar, abre a tabela com colunas nomeadas e botão Voltar. Os arquivos exportados não mudam.
 - Aba **VBA:** lista de componentes à esquerda e código com destaque de sintaxe à direita.
-- Abas por tipo de arquivo: **Diagnóstico** (RF14) e **Power Query** (RF13) nas planilhas; **Documento** (Word, RF16), **Slides** (PowerPoint, RF17) e **PDF** (RF18). Listas grandes são virtualizadas.
+- Guias por tipo de arquivo: **Diagnóstico** (RF14) e **Power Query** (RF13) nas planilhas; **Documento** (Word, RF16), **Slides** (PowerPoint, RF17) e **PDF** (RF18). Listas grandes são virtualizadas.
 
 ### RF06 — Exportação
 
 - O botão **Exportar…** (ou `Ctrl+E`) abre um diálogo com as opções da exportação; o botão **Exportar** do diálogo pede a pasta de saída e grava os arquivos.
 - Opções no diálogo: escopo de linhas (RF11), modelo do Markdown (RF10, só para aquela exportação), quais arquivos gerar e o nome de cada um (RF09), arquivo único para IA (RF19).
 - Arquivos que podem ser gerados:
-  - Planilhas: `mapeamento_planilha.json`, `mapeamento_planilha.md`, `vba_code.md`, `power_query.md`.
-  - Word: `documento.md`. PowerPoint: `apresentacao.md`. PDF: `pdf.md`. Documentos com macro também geram `vba_code.md`.
-  - Qualquer tipo: arquivo único para IA (`contexto_ia.md`, ou `contexto_ia_parte_N.md`).
+  - Planilhas: `{arquivo}_celulas.json`, `{arquivo}_celulas.md`, `{arquivo}_codigo_vba.md`, `{arquivo}_power_query.md`.
+  - Word: `documento.md`. PowerPoint: `apresentacao.md`. PDF: `pdf.md`. Documentos com macro também geram `{arquivo}_codigo_vba.md`.
+  - Qualquer tipo: arquivo único para IA (`{arquivo}_contexto_ia.md`, ou `{arquivo}_contexto_ia_parte_N.md`).
 - Botão para abrir a pasta de saída após exportar.
 
 ### RF07 — Avisos
@@ -113,7 +113,7 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 
 - Os textos do Markdown de células e VBA são personalizáveis: título, texto de abertura, título de aba, cabeçalhos da tabela, rótulos de fórmula/valor, título de componente VBA e rodapé. Placeholders: `{arquivo}` (com extensão), `{data}`, `{aba}`, `{componente}`.
 - O modelo **Padrão** reproduz byte a byte o formato da seção 8. O JSON nunca é personalizável.
-- Predefinições: "Padrão", "Contexto para IA" (com texto de abertura) e as do usuário (salvar, substituir, excluir; duplicar = salvar com outro nome).
+- Modelos: "Padrão", "Contexto para IA" (com texto de abertura) e as do usuário (salvar, substituir, excluir; duplicar = salvar com outro nome).
 - Configurações → **Modelos** (aba própria): predefinição ativa, editor e pré-visualização ao vivo, renderizada pelo Rust com dados fictícios. No diálogo Exportar, o modelo pode ser trocado só para aquela exportação.
 - Os modelos de Word, PowerPoint e PDF são próprios de cada formato (a predefinição de planilha não se aplica).
 
@@ -122,15 +122,15 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 - Seletor "Todas as linhas / Primeiras N linhas / Amostra de N linhas" na extração e, de forma independente, na exportação (que começa igual à extração).
 - Conta linhas com conteúdo, por aba. **Primeiras N**: as N primeiras. **Amostra**: N linhas espaçadas por igual, sempre incluindo a primeira (mesma entrada, mesma amostra).
 - Tabelas do Excel: o cabeçalho é mantido e o corpo segue a mesma seleção. O VBA não é cortado.
-- Avisos: selo "amostra: X de Y linhas" na aba, alerta informativo e, no `mapeamento_planilha.md`, `> Amostra: X de Y linhas.` sob o título da aba. O JSON mantém o formato (só tem menos células). Os nomes sugeridos ganham `_amostra`.
+- Avisos: selo "amostra: X de Y linhas" na planilha, alerta informativo e, no `{arquivo}_celulas.md`, `> Amostra: X de Y linhas.` sob o título da aba. O JSON mantém o formato (só tem menos células). Os nomes sugeridos ganham `_amostra`.
 - Limite conhecido: reduz saída e renderização, não o tempo de leitura (o arquivo é lido por inteiro).
 
 ### RF12 — Cache e recentes
 
-- O histórico (até 10 arquivos) fica no app, em `recent.json`. Cada item mostra um selo: "em cache", "modificado", "não encontrado" ou "bloqueado", verificado em segundo plano (só metadados; não abre as planilhas) quando a tela inicial aparece.
+- O histórico (até 10 arquivos) fica no app, em `recent.json`. Cada item mostra um selo: "salvo", "modificado", "não encontrado" ou "bloqueado", verificado em segundo plano (só metadados; não abre as planilhas) quando a tela inicial aparece.
 - O app guarda em disco a última extração das 5 planilhas mais recentes. Reabrir uma planilha **que não mudou** (mesmo tamanho e data de modificação) restaura abas, escopo e resultado sem reler o arquivo; modificada, relê. "Recarregar" ignora o cache.
 - A exportação reaproveita o resultado guardado quando abas, escopo e opções de VBA são iguais.
-- Configurações → Geral: ligar/desligar o cache e "Limpar cache". Planilhas acima de 50 MB não entram no cache.
+- Configurações → Geral: ligar/desligar o cache ("Guardar resultados para abrir mais rápido") e "Apagar resultados salvos". Planilhas acima de 50 MB não entram no cache.
 
 ### RF13 — Extração de Power Query
 
@@ -140,7 +140,7 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 - Extrair também as conexões de `xl/connections.xml` (nome, descrição e string de conexão).
 - Arquivo sem consultas: exibir estado vazio, sem erro.
 - A string de conexão só é exibida; o app nunca testa a conexão (RNF01).
-- O resultado entra no cache (RF12), na exportação `power_query.md` (omitido se vazio) e no arquivo único para IA (RF19).
+- O resultado entra no cache (RF12), na exportação `{arquivo}_power_query.md` (omitido se vazio) e no arquivo único para IA (RF19).
 
 ### RF14 — Diagnóstico
 
@@ -151,7 +151,7 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 ### RF15 — VBA em Word e PowerPoint
 
 - Aceitar `.docm` e `.pptm`.
-- Extrair o código VBA com a mesma lógica e saída do RF04 (`vba_code.md`).
+- Extrair o código VBA com a mesma lógica e saída do RF04 (`{arquivo}_codigo_vba.md`).
 - Projeto VBA lido de `word/vbaProject.bin` ou `ppt/vbaProject.bin`.
 
 ### RF16 — Extração de Word
@@ -258,7 +258,7 @@ End Sub
 2. Arrasta o `.xlsm` para a janela.
 3. App mostra resumo (abas, VBA detectado).
 4. Usuário confere/ajusta as abas selecionadas.
-5. Clica em **Extrair**; acompanha o progresso.
+5. Clica em **Ler arquivo**; acompanha o progresso.
 6. Confere a pré-visualização.
 7. Clica em **Exportar**, escolhe a pasta e abre o resultado.
 

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Textos do Markdown. O padrão reproduz byte a byte o formato da v1.0 (PRD §8).
-/// `title`, `intro` e `footer` valem para `mapeamento_planilha.md`; o VBA usa `vba_heading`.
+/// `title`, `intro` e `footer` valem para `{arquivo}_celulas.md`; o VBA usa `vba_heading`.
 /// Placeholders: `{arquivo}` (com extensão), `{data}`, `{aba}`, `{componente}`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]

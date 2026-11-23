@@ -240,9 +240,9 @@ fn exporta_tres_arquivos() {
     .unwrap();
     assert_eq!(written.len(), 3);
     for name in [
-        "mapeamento_planilha.json",
-        "mapeamento_planilha.md",
-        "vba_code.md",
+        "com_vba_celulas.json",
+        "com_vba_celulas.md",
+        "com_vba_codigo_vba.md",
     ] {
         assert!(
             fs::metadata(out.join(name)).unwrap().len() > 0,
@@ -250,12 +250,12 @@ fn exporta_tres_arquivos() {
         );
     }
     assert!(
-        fs::read_to_string(out.join("vba_code.md"))
+        fs::read_to_string(out.join("com_vba_codigo_vba.md"))
             .unwrap()
             .contains("## COMPONENTE: modUtilitarios")
     );
 
-    // sem VBA: vba_code.md é omitido, sem erro (sobrescreve os da rodada anterior)
+    // sem VBA: o código VBA em .md é omitido, sem erro (sobrescreve os da rodada anterior)
     let cfg = OutputConfig {
         on_exists: OnExists::Overwrite,
         ..OutputConfig::default()
@@ -307,15 +307,15 @@ fn modelo_personalizado_nao_altera_json() {
 
     let read = |d: &Path, n: &str| fs::read(d.join(n)).unwrap();
     assert_eq!(
-        read(&a, "mapeamento_planilha.json"),
-        read(&b, "mapeamento_planilha.json")
+        read(&a, "simples_celulas.json"),
+        read(&b, "simples_celulas.json")
     );
     assert_ne!(
-        read(&a, "mapeamento_planilha.md"),
-        read(&b, "mapeamento_planilha.md")
+        read(&a, "simples_celulas.md"),
+        read(&b, "simples_celulas.md")
     );
     assert!(
-        fs::read_to_string(b.join("mapeamento_planilha.md"))
+        fs::read_to_string(b.join("simples_celulas.md"))
             .unwrap()
             .starts_with("# Outro título: simples.xlsx\n\nContexto.\n")
     );
@@ -332,11 +332,11 @@ fn exporta_amostra_com_aviso() {
     };
     export_to(&dir, &cfg).unwrap();
 
-    let md = fs::read_to_string(dir.join("mapeamento_planilha.md")).unwrap();
+    let md = fs::read_to_string(dir.join("simples_celulas.md")).unwrap();
     assert!(md.contains("> Amostra: 1 de "), "aviso ausente:\n{md}");
 
     let json: serde_json::Value =
-        serde_json::from_str(&fs::read_to_string(dir.join("mapeamento_planilha.json")).unwrap())
+        serde_json::from_str(&fs::read_to_string(dir.join("simples_celulas.json")).unwrap())
             .unwrap();
     let (full, _) = cells("simples.xlsx");
     let total: usize = full.iter().map(|s| s.cells.len()).sum();
@@ -383,14 +383,12 @@ fn exporta_do_cache_sem_reler_o_arquivo() {
         &mut |_| {},
     )
     .unwrap();
-    assert_eq!(written.len(), 2); // json + md; sem VBA no cache, o vba_code.md é omitido
-    let md = fs::read_to_string(dir.join("mapeamento_planilha.md")).unwrap();
+    assert_eq!(written.len(), 2);
+    let md = fs::read_to_string(dir.join("simples_celulas.md")).unwrap();
     assert!(md.contains("## Aba: SoNoCache") && md.contains("| **A1** | 7 |"));
     fs::remove_dir_all(&dir).ok();
 }
 
-/// Abrir de novo sem alteração devolve a extração do cache (idêntica à original);
-/// arquivo modificado, opções de VBA diferentes ou "recarregar" não usam a extração guardada.
 #[test]
 fn cache_ponta_a_ponta() {
     let tmp = std::env::temp_dir().join(format!("xlsm_inspector_cache_{}", std::process::id()));
@@ -475,9 +473,7 @@ fn nomes_e_colisoes() {
         ..cfg.clone()
     };
     export_to(&dir, &sufixo).unwrap();
-    assert!(
-        dir.join("simples_dados_2.json").exists() && dir.join("mapeamento_planilha_2.md").exists()
-    );
+    assert!(dir.join("simples_dados_2.json").exists() && dir.join("simples_celulas_2.md").exists());
 
     // nome inválido e nomes repetidos falham antes de gravar
     let ruim = OutputConfig {
@@ -493,7 +489,7 @@ fn nomes_e_colisoes() {
     ));
     let igual = OutputConfig {
         names: FileNames {
-            vba_md: "mapeamento_planilha".into(),
+            vba_md: "{arquivo}_celulas".into(),
             ..FileNames::default()
         },
         ..OutputConfig::default()
@@ -649,13 +645,13 @@ fn arquivo_unico_para_ia() {
     let written = run(&a, "com_vba.xlsm", None);
     assert_eq!(written.len(), 1);
     let unico = fs::read_to_string(&written[0]).unwrap();
-    assert!(written[0].ends_with("contexto_ia.md"));
+    assert!(written[0].ends_with("com_vba_contexto_ia.md"));
     assert!(unico.contains("## Resumo") && unico.contains("## COMPONENTE:"));
 
     // limite mínimo: um bloco por parte; juntas, idênticas ao único
     let partes = run(&b, "com_vba.xlsm", Some(1));
     assert!(partes.len() > 1);
-    assert!(partes[0].ends_with("contexto_ia_parte_1.md"));
+    assert!(partes[0].ends_with("com_vba_contexto_ia_parte_1.md"));
     let juntas: String = partes
         .iter()
         .map(|p| fs::read_to_string(p).unwrap())
@@ -741,9 +737,9 @@ fn power_query_fixture_real() {
         &mut |_| {},
     )
     .unwrap();
-    let md = fs::read_to_string(dir.join("power_query.md")).unwrap();
+    let md = fs::read_to_string(dir.join("power_query_power_query.md")).unwrap();
     assert!(md.contains("## Consulta: ") && md.contains("## Conexões"));
-    let bundle = fs::read_to_string(dir.join("contexto_ia.md")).unwrap();
+    let bundle = fs::read_to_string(dir.join("power_query_contexto_ia.md")).unwrap();
     assert!(bundle.contains("Consultas Power Query (2)"));
     fs::remove_dir_all(&dir).ok();
 }

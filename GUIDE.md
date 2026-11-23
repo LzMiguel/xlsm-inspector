@@ -133,8 +133,8 @@ Referências: `PRD.md` (o quê), `Architecture.md` (como), `Design-System.md` (v
 2. Conexões: ler `xl/connections.xml` (nome, descrição e string de conexão). **A string de conexão pode ter caminho de servidor ou usuário: só exibir, nunca testar a conexão (RNF01).**
 3. Dependências novas (`zip`, `quick-xml`): o `calamine` as usa por dentro, mas não as reexporta. Justificar no PR; sem plugin de rede.
 4. `model.rs` e `models.ts`: `PowerQuery { queries: [{ name, code }], connections: [...] }`; comando `extract_power_query`; sem consultas → lista vazia (não é erro).
-5. UI: aba "Power Query" (lista de consultas + código `m` com destaque simples). Saída: `power_query.md` como novo alvo da exportação, com nome configurável (RF09).
-6. O Power Query entra no `ExtractionResult` (portanto no cache, `cache_version` 3), no resumo e nos blocos do arquivo único (RF19). Sem consultas nem conexões, o `power_query.md` é omitido.
+5. UI: aba "Power Query" (lista de consultas + código `m` com destaque simples). Saída: `{arquivo}_power_query.md` como novo alvo da exportação, com nome configurável (RF09).
+6. O Power Query entra no `ExtractionResult` (portanto no cache, `cache_version` 3), no resumo e nos blocos do arquivo único (RF19). Sem consultas nem conexões, o `{arquivo}_power_query.md` é omitido.
 
 **Pronto quando:** uma fixture sintética com duas consultas (uma com nome com espaço e acento) e uma conexão sai separada e correta; arquivo sem consultas mostra o estado vazio.
 
@@ -149,10 +149,10 @@ Esta fase prepara o app para receber `.docx`, `.pptx` e `.pdf` (Fases 11-13). Ho
 1. Detecção por extensão: `SourceKind { Excel, Word, PowerPoint, Pdf }` (em `excel/` ou módulo novo `source.rs`, sem Tauri). Extensão não suportada → `UnsupportedFormat`. Diálogo, arrastar e soltar e `README` passam a listar os formatos.
 2. O modelo atual (`WorkbookSummary`, `ExtractionResult`) continua para Excel. Cada formato novo ganha o **seu** resultado (`WordDocument`, `Presentation`, `PdfDocument`); não forçar tudo em `sheets`. Decidir na hora se `open_workbook` vira `open_document` com um enum ou se cada formato tem comando próprio (recomendado: enum, para a tela inicial e os recentes continuarem únicos).
 3. Subir `cache_version`: o cache atual é de planilha.
-4. RF15: `.docm` e `.pptm`. Projeto VBA em `word/vbaProject.bin` ou `ppt/vbaProject.bin`. **Conferir se o `calamine` 0.38 lê um `vbaProject.bin` solto (`VbaProject` a partir do CFB); se não, ler o ZIP e passar os bytes.** Saída e opções iguais às do RF04 (`vba_code.md`).
+4. RF15: `.docm` e `.pptm`. Projeto VBA em `word/vbaProject.bin` ou `ppt/vbaProject.bin`. **Conferir se o `calamine` 0.38 lê um `vbaProject.bin` solto (`VbaProject` a partir do CFB); se não, ler o ZIP e passar os bytes.** Saída e opções iguais às do RF04 (`{arquivo}_codigo_vba.md`).
 5. UI: o seletor de arquivo e a tela inicial aceitam os formatos; as abas mudam conforme o tipo (Células só para Excel; VBA para `.xlsm`, `.docm`, `.pptm`).
 
-**Pronto quando:** fixtures sintéticas `.docm` e `.pptm` com um módulo VBA saem em `vba_code.md` igual ao de uma planilha; `.docx` sem VBA devolve `NoVbaProject`; extensão desconhecida devolve `UnsupportedFormat`.
+**Pronto quando:** fixtures sintéticas `.docm` e `.pptm` com um módulo VBA saem em `{arquivo}_codigo_vba.md` igual ao de uma planilha; `.docx` sem VBA devolve `NoVbaProject`; extensão desconhecida devolve `UnsupportedFormat`.
 
 ---
 

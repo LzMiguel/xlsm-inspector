@@ -12,7 +12,7 @@ import {
   toAppError,
 } from '../api/commands'
 import { onProgress } from '../api/events'
-import type { PathStatus } from '../types/models'
+import type { AppError, PathStatus } from '../types/models'
 import { useSettingsStore } from './settingsStore'
 import { useWorkbookStore } from './workbookStore'
 
@@ -62,25 +62,28 @@ export async function runExtraction() {
   }
 }
 
-export async function loadDiagnostics() {
+// O erro volta para a própria aba (não vira o alerta global do topo).
+export async function loadDiagnostics(): Promise<AppError | null> {
   const { filePath } = store()
-  if (!filePath) return
+  if (!filePath) return null
   try {
     const d = await diagnoseWorkbook(filePath)
     if (store().filePath === filePath) store().setDiagnostics(d)
+    return null
   } catch (e) {
-    store().setError(toAppError(e))
+    return toAppError(e)
   }
 }
 
-export async function loadPowerQuery() {
+export async function loadPowerQuery(): Promise<AppError | null> {
   const { filePath } = store()
-  if (!filePath) return
+  if (!filePath) return null
   try {
     const p = await extractPowerQuery(filePath)
     if (store().filePath === filePath) store().setPowerQuery(p)
+    return null
   } catch (e) {
-    store().setError(toAppError(e))
+    return toAppError(e)
   }
 }
 

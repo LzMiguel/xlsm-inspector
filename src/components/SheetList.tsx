@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { FunctionSquare } from "lucide-react";
 
 import { useWorkbookStore } from "../store/workbookStore";
 import { Button } from "./ui/Button";
 import { Checkbox } from "./ui/Checkbox";
+import { Input } from "./ui/Fields";
 
 export function SheetList() {
   const sheets = useWorkbookStore((s) => s.summary?.sheets ?? []);
@@ -11,13 +13,17 @@ export function SheetList() {
   const toggle = useWorkbookStore((s) => s.toggleSheet);
   const setAll = useWorkbookStore((s) => s.setAllSheets);
 
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const visible = q ? sheets.filter((s) => s.name.toLowerCase().includes(q)) : sheets;
+
   const all = selected.length === sheets.length;
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">
-          Abas{" "}
+          Planilhas{" "}
           <span className="font-normal text-muted">
             ({selected.length}/{sheets.length})
           </span>
@@ -27,8 +33,23 @@ export function SheetList() {
         </Button>
       </div>
 
+      <p className="text-xs text-muted">Marque as planilhas que serão lidas e exportadas.</p>
+      {sheets.length > 8 && (
+        <Input
+          type="search"
+          aria-label="Filtrar planilhas"
+          placeholder="Filtrar planilhas…"
+          className="py-1"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      )}
+
       <ul className="flex flex-col gap-1">
-        {sheets.map((s) => (
+        {visible.length === 0 && (
+          <li className="text-xs text-muted">Nenhuma planilha encontrada.</li>
+        )}
+        {visible.map((s) => (
           <li key={s.name}>
             <Checkbox
               className="w-full rounded-sm px-1 py-1 hover:bg-surface-muted"

@@ -5,6 +5,7 @@ import { CellTable } from "./CellTable";
 import { DiagnosticsView } from "./DiagnosticsView";
 import { PowerQueryView } from "./PowerQueryView";
 import { SearchView } from "./SearchView";
+import { EmptyState } from "./ui/EmptyState";
 import { Tabs, type TabItem } from "./ui/Tabs";
 import { VbaViewer } from "./VbaViewer";
 
@@ -19,19 +20,29 @@ const TABS: TabItem<PreviewTab>[] = [
 export function Preview() {
   const tab = useWorkbookStore((s) => s.tab);
   const setTab = useWorkbookStore((s) => s.setTab);
-  const sheets = useWorkbookStore((s) => s.result?.sheets ?? []);
+  const result = useWorkbookStore((s) => s.result);
+  const sheets = result?.sheets ?? [];
+  // Diagnóstico e Power Query leem o arquivo por conta própria; o resto precisa da leitura
+  const needsRead = !result && (tab === "cells" || tab === "vba" || tab === "search");
 
   return (
     <section
       aria-label="Pré-visualização"
-      className="flex h-[60vh] min-h-80 flex-col overflow-hidden rounded-md border border-border bg-surface"
+      className="flex min-h-96 flex-1 flex-col overflow-hidden rounded-md border border-border bg-surface"
     >
       <Tabs tabs={TABS} value={tab} onChange={setTab} className="px-4" />
-      {tab === "cells" && <CellTable sheets={sheets} />}
-      {tab === "vba" && <VbaViewer />}
+      {needsRead && (
+        <EmptyState
+          icon={Table2}
+          title="Nada lido ainda"
+          description="Clique em “Ler arquivo” para ver aqui as células, o VBA e a busca. Diagnóstico e Power Query já funcionam."
+        />
+      )}
+      {!needsRead && tab === "cells" && <CellTable sheets={sheets} />}
+      {!needsRead && tab === "vba" && <VbaViewer />}
       {tab === "diagnostics" && <DiagnosticsView />}
       {tab === "powerquery" && <PowerQueryView />}
-      {tab === "search" && <SearchView />}
+      {!needsRead && tab === "search" && <SearchView />}
     </section>
   );
 }

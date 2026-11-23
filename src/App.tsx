@@ -67,7 +67,7 @@ function App() {
 
       <div className="flex min-h-0 flex-1">
         <aside
-          aria-label="Abas e componentes"
+          aria-label="Planilhas e componentes"
           className="flex w-60 shrink-0 flex-col border-r border-border bg-surface"
         >
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -82,8 +82,8 @@ function App() {
           {summary && <ExportPanel />}
         </aside>
 
-        <main className="min-w-0 flex-1 overflow-auto p-6">
-          <div className="mx-auto flex max-w-5xl flex-col gap-4">
+        <main className="flex min-w-0 flex-1 flex-col overflow-auto p-6">
+          <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4">
             {error && <ErrorAlert error={error} />}
             {summary ? (
               <>
@@ -92,7 +92,7 @@ function App() {
                   disabled={busy}
                 />
                 <ExtractPanel />
-                {result && <Preview />}
+                <Preview />
               </>
             ) : (
               <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 pt-8">

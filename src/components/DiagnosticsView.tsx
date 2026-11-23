@@ -1,9 +1,11 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
 import { loadDiagnostics } from '../store/workbookActions'
 import { useWorkbookStore } from '../store/workbookStore'
-import type { CellIssue } from '../types/models'
+import type { AppError, CellIssue } from '../types/models'
+import { ErrorAlert } from './ErrorAlert'
 import { Badge } from './ui/Badge'
+import { Button } from './ui/Button'
 
 const fmtN = (n: number) => n.toLocaleString('pt-BR')
 
@@ -71,7 +73,7 @@ function Issues({
         <Item key={`${i.sheet}!${i.cell}`}>
           <button
             type="button"
-            title="Ver na aba Células"
+            title="Ver na guia Células"
             onClick={() => goToCell({ sheet: i.sheet, cell: i.cell })}
             className="font-mono text-accent underline focus-visible:outline-2 focus-visible:outline-accent"
           >
@@ -99,10 +101,28 @@ function Issues({
 
 export function DiagnosticsView() {
   const d = useWorkbookStore((s) => s.diagnostics)
+  const [error, setError] = useState<AppError | null>(null)
 
   useEffect(() => {
-    if (!useWorkbookStore.getState().diagnostics) void loadDiagnostics()
+    if (!useWorkbookStore.getState().diagnostics)
+      void loadDiagnostics().then(setError)
   }, [])
+
+  if (!d && error)
+    return (
+      <div className="flex flex-col items-start gap-3 p-4">
+        <ErrorAlert error={error} />
+        <Button
+          size="sm"
+          onClick={() => {
+            setError(null)
+            void loadDiagnostics().then(setError)
+          }}
+        >
+          Tentar de novo
+        </Button>
+      </div>
+    )
 
   if (!d)
     return (
@@ -129,12 +149,12 @@ export function DiagnosticsView() {
           bad
         />
         <Card
-          label="Refs. externas"
+          label="Vínculos externos"
           count={d.external_count}
           bad
         />
         <Card
-          label="Abas ocultas"
+          label="Planilhas ocultas"
           count={d.hidden_sheets.length}
         />
         <Card
@@ -165,7 +185,7 @@ export function DiagnosticsView() {
         total={d.external_count}
       />
       <Section
-        title="Abas ocultas"
+        title="Planilhas ocultas"
         empty={d.hidden_sheets.length === 0}
       >
         {d.hidden_sheets.map((h) => (
