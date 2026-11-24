@@ -35,6 +35,7 @@ pub(crate) fn check_extension(path: &Path) -> Result<(), AppError> {
         .unwrap_or_default();
     match ext.as_str() {
         "xlsx" | "xlsm" => Ok(()),
+        "" => Err(AppError::UnsupportedFormat("arquivo sem extensão".into())),
         _ => Err(AppError::UnsupportedFormat(format!(".{ext}"))),
     }
 }

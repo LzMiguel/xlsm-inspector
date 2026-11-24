@@ -1,7 +1,7 @@
 [package]
 name = "xlsm-inspector"
 version = "1.0.0"
-description = "Extrai células e código VBA de planilhas .xlsx/.xlsm para JSON e Markdown"
+description = "Lê planilhas .xlsx/.xlsm e exporta células, código VBA, Power Query e diagnóstico para JSON e Markdown"
 authors = ["Miguel Gandra"]
 edition = "2024"
 

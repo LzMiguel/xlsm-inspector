@@ -9,7 +9,7 @@ pub enum AppError {
     FileLocked(String),
     #[error("Formato não suportado: {0}. Use .xlsx ou .xlsm.")]
     UnsupportedFormat(String),
-    #[error("Arquivo corrompido ou inválido: {0}")]
+    #[error("Arquivo corrompido, inválido ou protegido por senha: {0}")]
     CorruptedFile(String),
     #[error("O arquivo não contém projeto VBA.")]
     NoVbaProject,

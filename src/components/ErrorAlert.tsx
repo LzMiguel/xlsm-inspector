@@ -5,7 +5,7 @@ const TITLES: Record<AppErrorCode, string> = {
   FileNotFound: "Arquivo não encontrado",
   FileLocked: "Arquivo bloqueado",
   UnsupportedFormat: "Formato não suportado",
-  CorruptedFile: "Arquivo corrompido ou inválido",
+  CorruptedFile: "Arquivo corrompido, inválido ou protegido por senha",
   NoVbaProject: "Arquivo sem VBA",
   WriteFailed: "Falha ao gravar os arquivos",
   InvalidName: "Nome de arquivo inválido",

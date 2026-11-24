@@ -123,8 +123,17 @@ pub async fn extract_workbook(
 
 /// Problemas e peças da planilha (erros, nomes, abas ocultas, tabelas, externas). Só leitura.
 #[tauri::command]
-pub async fn diagnose_workbook(path: String) -> Result<Diagnostics, AppError> {
-    blocking(move || diagnostics::diagnose(Path::new(&path))).await
+pub async fn diagnose_workbook(app: AppHandle, path: String) -> Result<Diagnostics, AppError> {
+    let (cfg, data) = (config_dir(&app)?, data_dir(&app)?);
+    blocking(move || {
+        // extração completa em cache evita reler as células
+        let cached = settings::load(&cfg)
+            .use_cache
+            .then(|| cache::cached_full_sheets(&data, Path::new(&path)))
+            .flatten();
+        diagnostics::diagnose_with(Path::new(&path), cached.as_deref())
+    })
+    .await
 }
 
 /// Consultas M e conexões da planilha. Sem Power Query → listas vazias. Só leitura.

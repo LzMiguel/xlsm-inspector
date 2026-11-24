@@ -78,8 +78,9 @@ export function ExtractPanel() {
             </Button>
           }
         >
-          O arquivo não foi relido: é a última leitura, com o arquivo igual ao de
-          então.
+          O arquivo não foi relido: este é o resultado da última leitura, e o
+          arquivo não mudou desde então. Se você o editou e o resultado parece
+          antigo, clique em Recarregar.
         </Alert>
       )}
 

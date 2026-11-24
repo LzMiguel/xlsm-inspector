@@ -75,6 +75,12 @@ fn scan_sheet(sheet: &SheetCells, d: &mut Diagnostics) {
 
 /// Lê o arquivo (somente leitura) e monta o diagnóstico.
 pub fn diagnose(path: &Path) -> Result<Diagnostics, AppError> {
+    diagnose_with(path, None)
+}
+
+/// Com `cached` (extração completa já feita), pula a leitura das células e só abre o arquivo
+/// para nomes, abas ocultas, tabelas e tabelas dinâmicas. Aba ausente em `cached` é lida do arquivo.
+pub fn diagnose_with(path: &Path, cached: Option<&[SheetCells]>) -> Result<Diagnostics, AppError> {
     let mut book = open(path)?;
     book.load_tables().map_err(xlsx_err)?;
 
@@ -102,10 +108,12 @@ pub fn diagnose(path: &Path) -> Result<Diagnostics, AppError> {
     };
 
     for name in sheet_names(&book) {
-        let (sheet, _) = cells::read_sheet(&mut book, &name)?;
         d.tables
             .extend(tables::read_table_objects(&mut book, &name)?);
-        scan_sheet(&sheet, &mut d);
+        match cached.and_then(|c| c.iter().find(|s| s.name == name)) {
+            Some(sheet) => scan_sheet(sheet, &mut d),
+            None => scan_sheet(&cells::read_sheet(&mut book, &name)?.0, &mut d),
+        }
     }
 
     // tabela dinâmica ilegível não derruba o diagnóstico: só some da lista

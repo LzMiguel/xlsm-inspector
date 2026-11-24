@@ -16,7 +16,8 @@ use crate::excel::power_query;
 use crate::excel::vba::{self, VbaOptions};
 use crate::excel::workbook::{self, inspect, io_err};
 use crate::model::{
-    ExtractScope, ExtractionResult, Progress, SheetInfo, Warning, WarningKind, WorkbookSummary,
+    ExtractScope, ExtractionResult, Progress, SheetCells, SheetInfo, Warning, WarningKind,
+    WorkbookSummary,
 };
 
 pub const CACHE_VERSION: u32 = 4; // 4: CellValue lossless + hash FNV-1a estável (3: power_query, 2: procedures)
@@ -519,6 +520,17 @@ pub fn cached_result(
         .cloned()
 }
 
+/// Abas de uma extração completa em cache (todas as abas, escopo `Full`; as opções de VBA
+/// não importam para células). Serve ao diagnóstico, que só olha células.
+pub fn cached_full_sheets(base: &Path, path: &Path) -> Option<Vec<SheetCells>> {
+    let e = lookup(base, path)?;
+    let x = e.extraction?;
+    let mut all: Vec<&str> = e.summary.sheets.iter().map(|s| s.name.as_str()).collect();
+    all.sort_unstable();
+    let full = x.options.scope == ExtractScope::Full && x.options.sheets == all;
+    full.then_some(x.result.sheets)
+}
+
 /// Extração guardada que o frontend restaura ao reabrir.
 #[derive(Debug, Clone, Serialize)]
 pub struct CachedExtraction {
@@ -740,6 +752,35 @@ mod tests {
         put(&t, &p);
         fs::write(&p, "dados maiores").unwrap();
         assert!(lookup(&t.0, &p).is_none());
+    }
+
+    #[test]
+    fn abas_completas_so_com_todas_as_abas_e_escopo_full() {
+        let t = Tmp::new("full");
+        let p = t.file("a.xlsx", "dados");
+        put(&t, &p);
+        assert!(cached_full_sheets(&t.0, &p).is_some());
+
+        let fp = fingerprint(&p).unwrap();
+        let parcial = |o: Options| {
+            store_extraction(&t.0, &p, fp, move |_| o, &result()).unwrap();
+            cached_full_sheets(&t.0, &p)
+        };
+        let all = summary(&p).sheets;
+        let head = Options::new(
+            None,
+            &all,
+            ExtractScope::Head { rows: 5 },
+            VbaOptions::default(),
+        );
+        assert!(parcial(head).is_none());
+        let uma = Options::new(
+            Some(&["A".into()]),
+            &all,
+            ExtractScope::Full,
+            VbaOptions::default(),
+        );
+        assert!(parcial(uma).is_none());
     }
 
     #[test]

@@ -214,6 +214,14 @@ Esta fase prepara o app para receber `.docx`, `.pptx` e `.pdf` (Fases 11-13). Ho
 - Trabalhar paginacao ou cache para evitar travamentos de UI em arquivos grandes.
 - Leitura em duas fases para arquivos grandes: hoje o arquivo é lido para a visão geral (`inspect`) e de novo na extração, ambas bloqueantes. Ler uma vez, ou fazer a visão geral só pelos metadados do ZIP, e emitir progresso por aba para a UI não parecer travada.
 - Ler tabela grande por completo sob demanda: tabelas acima de `MAX_TABLE_CELLS` (500 mil células) são cortadas com o aviso `TableTruncated`. Falta um comando IPC (ex.: `read_full_table`), botão "Ler tabela inteira" no aviso e tipos em `model.rs`/`models.ts`. Avaliar leitura em partes (streaming) para não estourar memória.
+- Cobertura do mapeamento de abas (revisão pré-v1.0; fora da v1.0 por decisão). Em ordem de prioridade:
+  1. Células mescladas: só o canto superior esquerdo guarda valor, as demais parecem vazias para quem lê o JSON. Gravar os intervalos mesclados por aba (`SheetCells.merged`); conferir `load_merged_regions` no `calamine`. Mudar `model.rs`, `models.ts`, saídas e `CACHE_VERSION`.
+  2. Comentários, notas e hiperlinks: o `calamine` não expõe. Ler `xl/comments*.xml` e as relações de hiperlink com `zip` + `quick-xml` (já são dependências).
+  3. Aba com célula perdida longe do resto (ex.: `XFD1048576`): o `Range` do `calamine` é denso e pode estourar a memória em `read_sheet` e `inspect`. Só as tabelas têm limite hoje. Criar fixture e proteger (ler `dimension`, leitura em streaming ou tratar a falha de alocação).
+  4. Fixtures e testes que faltam: células mescladas, fórmula de matriz, data com hora e duração, aba oculta e muito oculta, aba de gráfico. Documentar que valores saem sem formatação (0,15 em vez de 15%).
+  5. Formatos `.xls` e `.xlsb`: o `calamine` lê, mas `Book` está fixo em `Xlsx`. Hoje são recusados com `UnsupportedFormat`.
+  6. Arquivo protegido por senha: é um contêiner OLE e hoje aparece como `CorruptedFile`. Criar erro próprio ("protegido por senha").
+  7. Tabelas sem linha de cabeçalho ou com linha de totais (hoje assume 1 cabeçalho).
 - Melhora pagina de Power Query.
 - Aproveitar mas o espaco de tela.
 - Atualização automática (opt-in). Contraria o RNF01 e exige decisão explícita e atualização do PRD.
