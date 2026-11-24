@@ -208,8 +208,17 @@ Esta fase prepara o app para receber `.docx`, `.pptx` e `.pdf` (Fases 11-13). Ho
 
 - Processamento em lote (pasta inteira).
 - Mapa de dependências entre fórmulas.
+- Em "Celulas" e outras telas rolar apenas o conteudo, não a barra lateral.
+- Alterar UI de exportacoes.
+- Clicar para destacar o VBA no editor de código (como o Excel faz).
+- Trabalhar paginacao ou cache para evitar travamentos de UI em arquivos grandes.
+- Melhora pagina de Power Query.
+- Aproveitar mas o espaco de tela.
 - Atualização automática (opt-in). Contraria o RNF01 e exige decisão explícita e atualização do PRD.
 - Assinatura do instalador.
+- Exportar Word e PowerPoint em Markdown dividido por slide ou seção.
+- Comparar versões de Word, PowerPoint e PDF.
+- Exportar PDF em Markdown dividido por página.
 
 ---
 
