@@ -16,7 +16,7 @@
 
 ## Por que usar?
 
-Entender uma planilha herdada, auditar fórmulas, revisar macros ou aproveitar um documento como contexto para uma IA normalmente exige abrir cada arquivo e navegar célula por célula, slide por slide. O **XLSM Inspector** lê `.xlsx` / `.xlsm`, `.docx` / `.docm`, `.pptx` / `.pptm` e `.pdf` (com texto) e entrega tudo em texto: fácil de ler, comparar, versionar e enviar para uma IA analisar.
+Entender uma planilha herdada, auditar fórmulas, revisar macros ou aproveitar um documento como contexto para uma IA normalmente exige abrir cada arquivo e navegar célula por célula, slide por slide. O **XLSM Inspector** lê planilhas `.xlsx` / `.xlsm` e entrega tudo em texto: fácil de ler, comparar, versionar e enviar para uma IA analisar. Word, PowerPoint e PDF estão planejados (ver `GUIDE.md`).
 
 Ele substitui dois scripts Python (`openpyxl` + `oletools`) por um único app com interface gráfica.
 
@@ -30,8 +30,15 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por um único app co
 - ⚡ **Cache e recentes:** reabrir uma planilha que não mudou é instantâneo.
 - 🤖 **Saída para IA:** arquivo único, estimativa de tokens e divisão em partes sem quebrar tabelas nem código.
 - 🔎 **Diagnóstico e Power Query** das planilhas (consultas M e conexões, só leitura).
-- 🚧 Extração de **Word, PowerPoint e PDF** (em desenvolvimento, ver `GUIDE.md`).
 - 🌗 **Tema claro e escuro.**
+- 🚧 **Planejado:** complementos de Excel (células mescladas, comentários, `.xls`/`.xlsb`), comparar versões e extração de **Word, PowerPoint e PDF** (ver `GUIDE.md`).
+
+### Limitações da v1.0
+
+- Células mescladas: só o canto superior esquerdo tem valor.
+- Comentários, notas e hiperlinks não são lidos.
+- Valores saem sem formatação (0,15 em vez de 15%).
+- `.xls` e `.xlsb` não abrem; arquivo com senha aparece como "corrompido, inválido ou protegido por senha".
 
 ## 📦 O que ele gera
 
@@ -43,7 +50,7 @@ Ele substitui dois scripts Python (`openpyxl` + `oletools`) por um único app co
 | `{arquivo}_power_query.md` | Consultas Power Query (código M) e conexões; omitido se o arquivo não tiver |
 | `{arquivo}_contexto_ia.md` | Arquivo único para IA (opcional; pode sair em partes `_parte_N`)            |
 
-Word, PowerPoint e PDF terão saídas próprias (`documento.md`, `apresentacao.md`, `pdf.md`), conforme o `GUIDE.md`.
+Word, PowerPoint e PDF terão saídas próprias (`documento.md`, `apresentacao.md`, `pdf.md`) quando forem implementados, conforme o `GUIDE.md`.
 
 ## 🔒 Privacidade e segurança
 

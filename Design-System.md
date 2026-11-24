@@ -189,9 +189,12 @@ Escala base de **4px**.
 ### Recentes e cache
 
 - Cada recente mostra um `Badge`: "salvo" (`primary`), "modificado" e "bloqueado" (`warning`), "não encontrado" (`danger`). Com cache ou modificado, um botão ícone (recarregar) ignora o cache.
-- Resultado vindo do cache: `Alert` `info` "Resultado salvo" com botão "Recarregar" no `ExtractPanel` (o botão principal do painel é "Ler arquivo" / "Ler de novo").
+- Resultado vindo do cache: `Alert` `info` "Resultado salvo" com botão "Recarregar" no `ExtractPanel` (o botão principal do painel é "Ler arquivo" / "Ler de novo"). O texto explica que o arquivo não foi relido e não mudou desde a última leitura, e orienta a recarregar se o resultado parecer antigo.
+- Erros (`ErrorAlert`): `CorruptedFile` usa o título "Arquivo corrompido, inválido ou protegido por senha"; `UnsupportedFormat` mostra a extensão recebida ou "arquivo sem extensão".
 
 ### Diagnóstico (`DiagnosticsView`)
+
+- Texto da UI: "planilha" é o arquivo e também cada aba, como no Excel em português; padronizar "planilha" x "aba" está na Fase 3 do `GUIDE.md`.
 
 - Grade de cartões (`--surface-muted`, `radius-md`) com a contagem em `text-lg` e o rótulo em `text-xs`; contagem em `--danger` quando há erros ou referências externas.
 - Abaixo, uma seção por categoria (`text-sm` semibold) com lista em linhas divididas por `--border`. Células são botões `--accent` sublinhados (`Aba!A1`) que abrem a aba Células. "muito oculta" usa `Badge` `warning`. Ícone da aba: `Stethoscope`.

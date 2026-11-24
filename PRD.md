@@ -12,6 +12,8 @@ O **XLSM Inspector** é um aplicativo desktop (Tauri + React) que lê diversos a
 
 A saída é **Markdown**, para leitura humana e para servir de contexto a agentes de IA e **JSON** para as células das planilhas, para automações e scripts.
 
+> **Situação (v1.0):** só o **Excel** (`.xlsx` / `.xlsm`) está implementado: células, VBA, Power Query, diagnóstico, exportação, cache e saída para IA. Word, PowerPoint, PDF e o VBA em `.docm`/`.pptm` estão especificados abaixo (RF15–RF18), mas entram depois dos complementos de Excel (seção 11 e `GUIDE.md`). Os requisitos RF01, RF05, RF06 e RF09 descrevem o produto completo; hoje valem para planilhas.
+
 O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `oletools`) por uma ferramenta única, com interface, sem depender de Python instalado na máquina.
 
 ## 2. Problema
@@ -42,7 +44,7 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 - Executar macros.
 - Extrair o layout visual de UserForms (controles, posições, propriedades).
 - Análise de segurança de macros (detecção de padrões suspeitos).
-- Formatos binários antigos: `.xls`, `.doc`, `.ppt`.
+- Formatos binários antigos: `.doc`, `.ppt`. `.xls` e `.xlsb` não abrem na v1.0 (suporte avaliado na v1.1, `GUIDE.md` Fase 2).
 - OCR: PDF escaneado (sem texto) só gera um aviso.
 - Reproduzir a aparência dos documentos (formatação, imagens, gráficos, layout de slides e de páginas).
 - Contagem exata de tokens de um modelo de IA (o app só estima).
@@ -95,7 +97,8 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 ### RF07 — Avisos
 
 - Alertar quando houver fórmulas sem valor em cache (arquivo provavelmente gerado por script e nunca salvo no Excel), sugerindo abrir, salvar e fechar no Excel.
-- Alertar quando o arquivo estiver bloqueado (aberto no Excel) ou corrompido.
+- Alertar quando o arquivo estiver bloqueado (aberto no Excel), corrompido ou protegido por senha (hoje a senha aparece na mesma mensagem de arquivo inválido; erro próprio na v1.1).
+- Arquivo sem extensão ou com extensão não suportada: mensagem "Formato não suportado" com o que foi recebido.
 
 ### RF08 — Configurações
 
@@ -147,6 +150,7 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 - Aba **Diagnóstico** (ao lado de Células e VBA): cartões de contagem e listas de erros de fórmula (`#REF!`, `#DIV/0!`…), fórmulas com referência a outro arquivo, abas ocultas (e "muito ocultas"), nomes definidos, tabelas e tabelas dinâmicas.
 - Clicar numa célula da lista abre a aba Células nela (ou na tabela que a contém).
 - Só leitura e local; não altera os arquivos exportados. Listas de células mostram até 500 itens; o total aparece nos cartões.
+- Se a planilha já foi lida por completo (todas as abas, "Todas as linhas") e o resultado está no cache, o diagnóstico reaproveita as células e só abre o arquivo para nomes, abas ocultas, tabelas e tabelas dinâmicas. Com escopo parcial, outras abas ou sem cache, lê o arquivo.
 
 ### RF15 — VBA em Word e PowerPoint
 
@@ -273,17 +277,29 @@ End Sub
 | Fase       | Entregas                                                                                                                                                                                                                      |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **MVP**    | RF01, RF03, RF04, RF06 (sem pré-visualização, todas as abas).                                                                                                                                                                 |
-| **v1.0**   | RF02, RF05, RF07, tema escuro.                                                                                                                                                                                                |
-| **v1.1**   | Configurações persistentes (pasta padrão, opções de limpeza).                                                                                                                                                                 |
-| **v1.2**   | Saída para IA (RF19), Power Query (RF13), base multiformato e VBA em Word/PowerPoint (RF15), Word (RF16), PowerPoint (RF17), PDF (RF18), VBA avançado (RF20), comparar versões (RF21). A ordem de entrega está no `GUIDE.md`. |
-| **Futuro** | Processamento em lote (pasta inteira), mapa de dependências entre fórmulas.                                                                                                                                                   |
+| **v1.0**   | **Excel completo no que foi especificado:** RF02, RF05, RF07, tema escuro, configurações (RF08), nomes e modelos de saída (RF09, RF10), escopo (RF11), cache e recentes (RF12), Power Query (RF13), diagnóstico (RF14), saída para IA (RF19) e VBA avançado (RF20). |
+| **v1.1**   | Complementos de Excel (células mescladas, comentários e hiperlinks, erro de senha, `.xls`/`.xlsb`, tabelas sem cabeçalho, tabela grande sob demanda, leitura em duas fases, mapa de dependências), ajustes de UI/UX e comparar versões (RF21). |
+| **v1.2**   | Base multiformato e VBA em Word/PowerPoint (RF15), Word (RF16), PowerPoint (RF17) e PDF (RF18). A ordem de entrega está no `GUIDE.md`. |
+| **Futuro** | Processamento em lote (pasta inteira), exportação de Word/PowerPoint/PDF dividida por seção, slide ou página, comparar versões desses formatos.                                                                                  |
 
 ## 12. Riscos e questões em aberto
+
+### Limitações conhecidas da v1.0 (Excel)
+
+- **Células mescladas:** só a célula do canto superior esquerdo tem valor; as demais saem vazias e a mesclagem não é indicada.
+- **Comentários, notas e hiperlinks** não são lidos.
+- **Formatação:** valores saem brutos (0,15 em vez de 15%; moeda sem símbolo). Datas à meia-noite saem só como data.
+- **`.xls` e `.xlsb`** não abrem. Arquivo protegido por senha aparece como arquivo inválido.
+- **Célula isolada muito distante** (ex.: `XFD1048576`) pode consumir muita memória na leitura.
+- **Tabelas** assumem uma linha de cabeçalho; tabelas acima de 500 mil células são cortadas (aviso `TableTruncated`).
+- **Cache** usa tamanho + data de modificação; em pastas sincronizadas, use "Recarregar". O diagnóstico em cache herda esse limite.
+
+### Demais riscos
 
 - **Valores em cache ausentes:** depende de o arquivo ter sido salvo pelo Excel. Mitigado pelo aviso RF07.
 - **Codepage do VBA:** comentários com acentos podem vir com encoding errado em alguns projetos. Validar com arquivos reais.
 - **Classificação de componentes:** a lib não informa o tipo diretamente; inferência por nome/atributos pode falhar em casos raros.
-- **PDF:** a extração de texto depende de como o PDF foi gerado (colunas, tabelas e ordem de leitura podem sair misturadas). Validar com PDFs variados; a biblioteca ainda será escolhida (`GUIDE.md`, Fase 13).
+- **PDF:** a extração de texto depende de como o PDF foi gerado (colunas, tabelas e ordem de leitura podem sair misturadas). Validar com PDFs variados; a biblioteca ainda será escolhida (`GUIDE.md`, Fase 8).
 - **Word:** os nomes dos estilos de título mudam com o idioma do Office; resolver pelo `styles.xml`.
 - **Arquivos Office grandes ou maliciosos:** são ZIPs de XML; ler em streaming e tratar entradas gigantes como arquivo corrompido.
 - **Tokens:** a estimativa (≈ caracteres ÷ 4) pode diferir bastante da contagem real de cada modelo.
