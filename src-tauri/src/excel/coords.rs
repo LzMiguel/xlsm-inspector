@@ -12,7 +12,6 @@ fn col_bytes(col: u32, buf: &mut [u8; 8]) -> usize {
     i
 }
 
-/// Coluna (base 0) → letras: 0→A, 25→Z, 26→AA, 702→AAA.
 pub fn col_to_letters(col: u32) -> String {
     let mut buf = [0u8; 8];
     let start = col_bytes(col, &mut buf);
@@ -21,7 +20,6 @@ pub fn col_to_letters(col: u32) -> String {
         .to_string()
 }
 
-/// (linha, coluna), ambas base 0 → "A1".
 pub fn to_a1(row: u32, col: u32) -> String {
     let mut buf = [0u8; 8];
     let start = col_bytes(col, &mut buf);

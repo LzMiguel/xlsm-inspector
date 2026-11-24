@@ -86,7 +86,6 @@ export async function runExtraction() {
   }
 }
 
-// O erro volta para a própria aba (não vira o alerta global do topo).
 export async function loadDiagnostics(): Promise<AppError | null> {
   const { filePath } = store()
   if (!filePath) return null

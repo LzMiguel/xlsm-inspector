@@ -40,7 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
             Ocorreu uma falha ao exibir a interface. Você pode tentar recarregar
             a tela sem alterar nenhum arquivo.
           </p>
-          <p className="w-full break-words rounded-sm bg-surface-muted p-2 font-mono text-xs text-muted">
+          <p className="w-full wrap-break-word rounded-sm bg-surface-muted p-2 font-mono text-xs text-muted">
             {error.message}
           </p>
           <Button

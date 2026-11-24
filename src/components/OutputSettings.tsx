@@ -8,11 +8,11 @@ import { Button } from './ui/Button'
 import { Field, Input } from './ui/Fields'
 
 const NAME_FIELDS: { key: keyof FileNames; label: string; ext: string }[] = [
-  { key: 'json', label: 'Células (JSON)', ext: '.json' },
-  { key: 'cells_md', label: 'Células (Markdown)', ext: '.md' },
-  { key: 'vba_md', label: 'Código VBA (Markdown)', ext: '.md' },
-  { key: 'power_query', label: 'Power Query (Markdown)', ext: '.md' },
-  { key: 'bundle', label: 'Arquivo único para IA (Markdown)', ext: '.md' },
+  { key: 'json', label: 'Células', ext: '.json' },
+  { key: 'cells_md', label: 'Células', ext: '.md' },
+  { key: 'vba_md', label: 'Código VBA', ext: '.md' },
+  { key: 'power_query', label: 'Power Query', ext: '.md' },
+  { key: 'bundle', label: 'Arquivo único para IA', ext: '.md' },
 ]
 
 export function OutputSettings() {
@@ -37,8 +37,7 @@ export function OutputSettings() {
         </Button>
       </div>
       <p className="text-sm text-muted">
-        Use {'{arquivo}'} (nome da planilha, sem extensão) e {'{data}'}{' '}
-        (AAAA-MM-DD). A extensão é fixa e o JSON nunca muda de formato.
+        Use {'{arquivo}'} (nome da planilha) e {'{data}'} (AAAA-MM-DD).
       </p>
       {NAME_FIELDS.map(({ key, label, ext }) => (
         <Field

@@ -40,7 +40,7 @@ export function ScopeSelector({ value, onChange, disabled }: Props) {
       >
         <option value="full">Todas as linhas</option>
         <option value="head">Só as primeiras linhas</option>
-        <option value="sample">Amostra espaçada</option>
+        <option value="sample">Amostra das linhas</option>
       </Select>
       {value.kind !== 'full' && (
         <Input

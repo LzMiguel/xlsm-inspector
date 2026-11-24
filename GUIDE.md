@@ -4,20 +4,6 @@ Guia dos próximos passos, em fases. Estratégia: **backend Rust testável prime
 
 Referências: `PRD.md` (o quê), `Architecture.md` (como), `Design-System.md` (visual), `AGENTS.md` (regras).
 
-## Já implementado (removido deste guia; detalhes no histórico do git)
-
-| Entrega                                                                              | Req                 |
-| ------------------------------------------------------------------------------------ | ------------------- |
-| Configurações persistentes (`store/settings.rs`, `SettingsDialog`)                   | RF08                |
-| Nome dos arquivos e modelos de saída (`output/naming.rs`, `output/template.rs`)      | RF09, RF10          |
-| Amostra e head (`ExtractScope`, `ScopeSelector`)                                     | RF11                |
-| Cache dos 5 recentes e verificação em segundo plano (`store/cache.rs`, `recent.rs`)  | RF12, RNF08         |
-| Diagnóstico da planilha (`excel/diagnostics.rs`, aba "Diagnóstico", usa o cache)     | RF14                |
-| Saída para IA: arquivo único, tokens e partes (`output/bundle.rs`, `tokens.rs`)      | RF19, RNF09         |
-| VBA avançado: índice de procedimentos e exportação `.bas/.cls/.frm`                  | RF20, RNF10         |
-| Power Query: consultas M, conexões, aba, exportação, cache e arquivo único           | RF13                |
-| Ícones do app gerados; textos e avisos da UI revisados (pt-BR)                       | —                   |
-
 ## Decisões de arquitetura (valem para todas as fases)
 
 1. **Configurações vivem no Rust** (`settings.json` em `app_config_dir`, via `get_settings`/`save_settings`), porque `export_outputs` roda no Rust e precisa delas. Esquema com `#[serde(default)]` e campo `version`. Sem plugin `fs` novo: só `std::fs`.
@@ -169,17 +155,17 @@ Prepara o app para `.docx`, `.pptx` e `.pdf` (Fases 6-8). Hoje tudo parte de "pl
 
 ## Checklist de requisitos pendentes
 
-| Req   | Descrição                      | Fase | OK  |
-| ----- | ------------------------------ | ---- | --- |
-| —     | Lançamento da v1.0             | 1    | [ ] |
-| —     | Complementos de Excel          | 2    | [ ] |
-| —     | Ajustes de UI e UX             | 3    | [ ] |
-| RF21  | Comparar versões               | 4    | [ ] |
-| RNF11 | Comparar versões               | 4    | [ ] |
-| RF15  | VBA em Word e PowerPoint       | 5    | [ ] |
-| RF16  | Extração de Word               | 6    | [ ] |
-| RF17  | Extração de PowerPoint         | 7    | [ ] |
-| RF18  | Extração de PDF                | 8    | [ ] |
+| Req   | Descrição                | Fase | OK  |
+| ----- | ------------------------ | ---- | --- |
+| —     | Lançamento da v1.0       | 1    | [ ] |
+| —     | Complementos de Excel    | 2    | [ ] |
+| —     | Ajustes de UI e UX       | 3    | [ ] |
+| RF21  | Comparar versões         | 4    | [ ] |
+| RNF11 | Comparar versões         | 4    | [ ] |
+| RF15  | VBA em Word e PowerPoint | 5    | [ ] |
+| RF16  | Extração de Word         | 6    | [ ] |
+| RF17  | Extração de PowerPoint   | 7    | [ ] |
+| RF18  | Extração de PDF          | 8    | [ ] |
 
 ---
 
@@ -218,14 +204,14 @@ Ao pedir, cite a fase e a etapa deste guia (ex.: "Fase 2, item 1"). O agente seg
 
 ## Commits sugeridos (Conventional Commits)
 
-| Marco  | Mensagem                                                |
-| ------ | ------------------------------------------------------- |
-| Fase 1 | `chore: release v1.0.0`                                 |
-| Fase 2 | `feat(excel): mesclagens, comentários e hiperlinks`     |
-| Fase 3 | `feat(ui): exportação, espaço de tela e Power Query`    |
-| Fase 4 | `feat: comparar versões`                                |
-| Fase 5 | `feat: base multiformato e VBA em Word e PowerPoint`    |
-| Fase 6 | `feat: extração de Word`                                |
-| Fase 7 | `feat: extração de PowerPoint`                          |
-| Fase 8 | `feat: extração de PDF`                                 |
-| Fase 9 | `chore: release v1.2.0`                                 |
+| Marco  | Mensagem                                             |
+| ------ | ---------------------------------------------------- |
+| Fase 1 | `chore: release v1.0.0`                              |
+| Fase 2 | `feat(excel): mesclagens, comentários e hiperlinks`  |
+| Fase 3 | `feat(ui): exportação, espaço de tela e Power Query` |
+| Fase 4 | `feat: comparar versões`                             |
+| Fase 5 | `feat: base multiformato e VBA em Word e PowerPoint` |
+| Fase 6 | `feat: extração de Word`                             |
+| Fase 7 | `feat: extração de PowerPoint`                       |
+| Fase 8 | `feat: extração de PDF`                              |
+| Fase 9 | `chore: release v1.2.0`                              |

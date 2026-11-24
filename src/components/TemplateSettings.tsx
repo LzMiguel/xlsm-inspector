@@ -25,11 +25,15 @@ const TEMPLATE_FIELDS: {
   { key: 'title', label: 'Título', hint: 'Use {arquivo} e {data}.' },
   {
     key: 'intro',
-    label: 'Texto de abertura (opcional)',
-    hint: 'Logo após o título. Ex.: instruções para uma IA.',
+    label: 'Texto de abertura',
+    hint: 'Descrição do conteúdo do arquivo ou instruções.',
     multiline: true,
   },
-  { key: 'sheet_heading', label: 'Título de cada planilha', hint: 'Use {aba}.' },
+  {
+    key: 'sheet_heading',
+    label: 'Título de cada planilha',
+    hint: 'Use {aba}.',
+  },
   { key: 'cell_header', label: 'Cabeçalho da coluna de células' },
   { key: 'content_header', label: 'Cabeçalho da coluna de conteúdo' },
   { key: 'formula_label', label: 'Rótulo da fórmula' },
@@ -118,7 +122,7 @@ export function TemplateSettings() {
         <div className="flex-1">
           <Field
             label="Salvar o modelo atual como"
-            hint="Mesmo nome de um modelo seu = substitui."
+            hint="Mesmo nome substitui o atual."
           >
             <Input
               value={newName}

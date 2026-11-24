@@ -190,7 +190,6 @@ export function ExportPanel() {
     !busyElsewhere &&
     (needsCells || vbaOn || targets.power_query) &&
     !(needsCells && selectedSheets.length === 0)
-  // nomes finais mostrados antes de gravar (o Rust resolve {arquivo} e {data} do mesmo jeito)
   const stem =
     filePath
       ?.split(/[\\/]/)
@@ -268,16 +267,13 @@ export function ExportPanel() {
         disabled={busy}
       />
 
-      <Field
-        label="Modelo do texto (Markdown)"
-        hint="Vale só para esta exportação (não altera as configurações)."
-      >
+      <Field label="Modelo da exportação">
         <Select
           value={templateName}
           disabled={busy}
           onChange={(e) => setTemplateName(e.currentTarget.value)}
         >
-          <option value="">Modelo ativo nas configurações</option>
+          <option value="">Modelo padrão</option>
           {builtin.map((p) => (
             <option key={p.name}>{p.name}</option>
           ))}
@@ -372,7 +368,7 @@ export function ExportPanel() {
       <p className="text-xs text-muted">
         {chosen.length === 0
           ? 'Nenhum arquivo selecionado.'
-          : `Serão gravados: ${chosen.join(', ')}. VBA e Power Query só saem se o arquivo tiver.`}
+          : `Serão gravados: ${chosen.join(', ')}.`}
       </p>
 
       {error && <ErrorAlert error={error} />}
@@ -394,7 +390,7 @@ export function ExportPanel() {
               size="sm"
               onClick={() => run(conflict.outDir, 'suffix')}
             >
-              Adicionar sufixo _2
+              Adicionar sufixo "*_2"
             </Button>
             <Button
               size="sm"

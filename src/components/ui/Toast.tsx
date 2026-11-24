@@ -21,7 +21,6 @@ export function Toast({
   const closeRef = useRef(onClose)
   closeRef.current = onClose
 
-  // parado enquanto o mouse ou o foco estão sobre ele: dá tempo de usar a ação
   const [paused, setPaused] = useState(false)
 
   useEffect(() => {

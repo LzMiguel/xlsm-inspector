@@ -25,8 +25,7 @@ function CodeViewer({ component }: { component: VbaComponent }) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const plain = useMemo(() => component.code.split('\n'), [component.code])
-  const tokens =
-    highlighted?.code === component.code ? highlighted.lines : null
+  const tokens = highlighted?.code === component.code ? highlighted.lines : null
   const count = tokens?.length ?? plain.length
 
   useEffect(() => {

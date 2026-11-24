@@ -10,14 +10,12 @@ use super::workbook::{check_extension, io_err};
 use crate::error::AppError;
 use crate::model::{ConnectionInfo, PowerQuery, PowerQueryItem};
 
-/// Limite máximo de bytes descomprimidos por entrada ZIP (proteção contra ZIP bomb / OOM).
 pub const MAX_ENTRY_BYTES: u64 = 32 * 1024 * 1024;
 
 fn corrupt(e: impl std::fmt::Display) -> AppError {
     AppError::CorruptedFile(e.to_string())
 }
 
-/// Só leitura. Sem consultas nem conexões → `PowerQuery` vazio (não é erro).
 pub fn extract_file(path: &Path) -> Result<PowerQuery, AppError> {
     check_extension(path)?;
     let file = File::open(path).map_err(io_err)?;
@@ -80,7 +78,6 @@ fn read_entry_limited<R: Read + Seek>(
     Ok(buf)
 }
 
-/// Os `customXml/item*.xml` do Excel costumam ser UTF-16 com BOM.
 fn decode_text(bytes: &[u8]) -> String {
     match bytes {
         [0xFF, 0xFE, rest @ ..] => utf16(rest, u16::from_le_bytes),
@@ -113,7 +110,6 @@ fn local_tag_name(raw: &str) -> &str {
     raw.rsplit_once(':').map_or(raw, |(_, local)| local)
 }
 
-/// Texto do elemento `<DataMashup ...>BASE64</DataMashup>` (aceita prefixo de namespace).
 fn datamashup_base64(xml: &str) -> Option<String> {
     let mut pos = 0;
     while let Some(rel) = xml[pos..].find('<') {
@@ -154,7 +150,6 @@ fn queries_from_mashup(b64: &str) -> Result<Vec<PowerQueryItem>, AppError> {
         return Err(corrupt("DataMashup excede o limite"));
     }
     let data = STANDARD.decode(b64).map_err(corrupt)?;
-    // 4 bytes de versão + 4 bytes (LE) com o tamanho do pacote OPC (ZIP).
     let len = data
         .get(4..8)
         .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize)
@@ -171,7 +166,6 @@ fn queries_from_mashup(b64: &str) -> Result<Vec<PowerQueryItem>, AppError> {
     Ok(split_queries(m.trim_start_matches('\u{feff}')))
 }
 
-/// Uma consulta por `shared <nome> = ...;` no início da linha.
 /// shortcut: um `shared` no começo de linha dentro de texto multilinha vira consulta falsa; raro em M gerado pelo Excel.
 pub fn split_queries(m: &str) -> Vec<PowerQueryItem> {
     let mut out: Vec<PowerQueryItem> = Vec::new();
@@ -195,7 +189,6 @@ pub fn split_queries(m: &str) -> Vec<PowerQueryItem> {
     out
 }
 
-/// `#"Relatório Mensal" = ...` ou `Nome = ...` → (nome sem o `#""`, texto depois do `=`).
 fn split_name(s: &str) -> (String, &str) {
     let (name, rest) = if let Some(quoted) = s.strip_prefix("#\"") {
         let mut end = quoted.len();
@@ -205,7 +198,7 @@ fn split_name(s: &str) -> (String, &str) {
                 continue;
             }
             if matches!(chars.peek(), Some((_, '"'))) {
-                chars.next(); // "" é aspa escapada
+                chars.next();
             } else {
                 end = i;
                 break;
@@ -225,7 +218,6 @@ fn split_name(s: &str) -> (String, &str) {
     (name, rest.strip_prefix('=').unwrap_or(rest))
 }
 
-/// `<connection name description>` + o filho `dbPr`/`webPr`/`textPr` (`connection`, `url` ou `sourceFile`).
 /// shortcut: outros tipos de conexão ficam com a string vazia; ampliar se aparecer caso real.
 fn parse_connections(xml: &str) -> Vec<ConnectionInfo> {
     let mut reader = Reader::from_str(xml);
@@ -318,7 +310,7 @@ mod tests {
         let mut blob = vec![0, 0, 0, 0];
         blob.extend((package.len() as u32).to_le_bytes());
         blob.extend(&package);
-        blob.extend([0u8; 12]); // permissões/metadados depois do pacote
+        blob.extend([0u8; 12]);
         let xml = format!(
             "<DataMashup xmlns=\"http://schemas.microsoft.com/DataMashup\">{}</DataMashup>",
             STANDARD.encode(blob)

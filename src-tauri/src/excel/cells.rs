@@ -36,16 +36,13 @@ fn table_row_bounds(t: &TableInfo) -> (u32, u32) {
     (start_row, first_body)
 }
 
-/// Corta a aba conforme o escopo (por linha com conteúdo). Cabeçalhos de tabela ficam sempre;
-/// o corpo das tabelas segue a mesma seleção. Devolve o aviso se cortou algo.
-/// shortcut: conta linhas com conteúdo, não linhas físicas; o parsing já leu tudo (ver GUIDE: leitura em duas fases).
 pub fn apply_scope(sheet: &mut SheetCells, scope: ExtractScope) -> Option<Warning> {
     let want = match scope {
         ExtractScope::Full => return None,
         ExtractScope::Head { rows } | ExtractScope::Sample { rows } => rows.max(1),
     };
     let mut rows: Vec<u32> = sheet.cells.keys().map(|k| row_of(k)).collect();
-    rows.dedup(); // as células vêm em ordem de linha
+    rows.dedup();
     let total = rows.len();
     if want >= total {
         return None;
@@ -102,7 +99,6 @@ pub fn apply_scope(sheet: &mut SheetCells, scope: ExtractScope) -> Option<Warnin
     })
 }
 
-/// Abre o arquivo e extrai as abas pedidas (`None` = todas), na ordem da pasta de trabalho.
 pub fn extract_cells(
     path: &Path,
     sheets: Option<&[String]>,
@@ -155,14 +151,12 @@ pub fn to_value(d: &Data) -> CellValue {
         Data::Empty => CellValue::Empty,
         Data::Bool(b) => CellValue::Bool(*b),
         Data::Int(i) => CellValue::Int(*i),
-        // openpyxl devolve 84, não 84.0.
         Data::Float(f) if f.fract() == 0.0 && f.abs() < 1e15 => CellValue::Int(*f as i64),
         Data::Float(f) => CellValue::Float(*f),
         Data::String(s) => CellValue::String(s.clone()),
         Data::DateTime(dt) => CellValue::DateTime(
             dt.as_datetime()
                 .map(|d| {
-                    // Meia-noite → só a data ("2024-01-15"); senão "2024-01-15 10:30:00".
                     let s = d.to_string();
                     s.strip_suffix(" 00:00:00").map(str::to_string).unwrap_or(s)
                 })
@@ -174,14 +168,12 @@ pub fn to_value(d: &Data) -> CellValue {
     }
 }
 
-/// Une valores e fórmulas pela posição ABSOLUTA (os ranges podem começar em
-/// células diferentes). Ordem de saída: linha a linha.
 pub fn extract_sheet(
     name: &str,
     values: &Range<Data>,
     formulas: &Range<String>,
 ) -> (SheetCells, Option<Warning>) {
-    type Slot<'a> = (Option<&'a Data>, Option<&'a str>); // (valor, fórmula)
+    type Slot<'a> = (Option<&'a Data>, Option<&'a str>);
     let mut merged: BTreeMap<(u32, u32), Slot> = BTreeMap::new();
 
     if let Some((r0, c0)) = values.start() {
@@ -246,13 +238,12 @@ mod tests {
     use super::*;
 
     fn ranges() -> (Range<Data>, Range<String>) {
-        // valores: B2:C4 (origem em (1,1)); fórmulas: C3:D4 (origem em (2,2)).
         let mut v = Range::new((1, 1), (3, 2));
-        v.set_value((1, 1), Data::String("texto".into())); // B2
-        v.set_value((2, 2), Data::Float(84.0)); // C3 (fórmula com cache)
+        v.set_value((1, 1), Data::String("texto".into()));
+        v.set_value((2, 2), Data::Float(84.0));
         let mut f = Range::new((2, 2), (3, 3));
-        f.set_value((2, 2), "SUM(B1:B2)".to_string()); // C3
-        f.set_value((3, 3), "A1+1".to_string()); // D4 (sem cache)
+        f.set_value((2, 2), "SUM(B1:B2)".to_string());
+        f.set_value((3, 3), "A1+1".to_string());
         (v, f)
     }
 
@@ -271,7 +262,7 @@ mod tests {
                 valor: CellValue::Int(84)
             }
         );
-        assert_eq!(sheet.cells.len(), 3); // B2, C3, D4
+        assert_eq!(sheet.cells.len(), 3);
     }
 
     #[test]
@@ -297,7 +288,6 @@ mod tests {
         assert!(sheet.cells.is_empty() && warning.is_none());
     }
 
-    /// Aba com uma célula por linha, A1..A10, e uma tabela A4:A10 (cabeçalho na linha 4).
     fn sheet10() -> SheetCells {
         let cells: IndexMap<String, CellContent> = (1..=10)
             .map(|r| (format!("A{r}"), CellContent::Plain(CellValue::Int(r))))
@@ -340,7 +330,6 @@ mod tests {
     fn head_pega_as_primeiras_linhas() {
         let mut s = sheet10();
         let w = apply_scope(&mut s, ExtractScope::Head { rows: 3 }).unwrap();
-        // A4 é o cabeçalho da tabela: fica mesmo fora das 3 primeiras
         assert_eq!(keys(&s), ["A1", "A2", "A3", "A4"]);
         assert_eq!(
             s.sampled,
@@ -359,9 +348,7 @@ mod tests {
         apply_scope(&mut a, ExtractScope::Sample { rows: 4 });
         apply_scope(&mut b, ExtractScope::Sample { rows: 4 });
         assert_eq!(keys(&a), keys(&b));
-        // índices 0, 2, 5, 7 → linhas 1, 3, 6, 8; mais o cabeçalho (4)
         assert_eq!(keys(&a), ["A1", "A3", "A4", "A6", "A8"]);
-        // corpo da tabela: só as linhas 6 e 8
         assert_eq!(a.tables[0].rows.len(), 2);
         assert_eq!(a.tables[0].cells, ["A4", "A6", "A8"]);
     }

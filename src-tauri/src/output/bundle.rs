@@ -1,6 +1,3 @@
-//! Markdown único para IA: resumo + células + VBA, com divisão opcional em partes.
-//! Não importa nada do Tauri.
-
 use serde::Serialize;
 
 use super::markdown::{
@@ -45,9 +42,6 @@ fn summary_block(sheets: &[SheetCells], vba: &[VbaComponent], pq: &PowerQuery) -
     out
 }
 
-/// Blocos indivisíveis do arquivo único, na ordem: abertura + resumo, cada aba, cada componente
-/// VBA e o rodapé. A junção de todos é o arquivo único; cortar entre eles nunca parte um bloco
-/// de código nem uma tabela.
 pub fn bundle_units(
     file_name: &str,
     sheets: &[SheetCells],
@@ -78,7 +72,6 @@ pub fn bundle_units(
     units
 }
 
-/// O arquivo único inteiro.
 pub fn bundle_markdown(
     file_name: &str,
     sheets: &[SheetCells],
@@ -90,7 +83,6 @@ pub fn bundle_markdown(
     bundle_units(file_name, sheets, vba, pq, t, date).concat()
 }
 
-/// O arquivo único dividido em partes de até `max_tokens` (estimados). Sem limite, uma só parte.
 pub fn bundle_parts(
     file_name: &str,
     sheets: &[SheetCells],
@@ -107,7 +99,6 @@ pub fn bundle_parts(
     }
 }
 
-/// Tamanho aproximado do arquivo único (tokens são uma estimativa, não uma contagem exata).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct BundleEstimate {
     pub tokens: usize,
@@ -196,7 +187,6 @@ mod tests {
         assert!(md.contains("- Componentes VBA (2): Module1, Classe1"));
         assert!(md.contains("## Aba: Aba1") && md.contains("## Aba: Aba2"));
         assert!(md.contains("## COMPONENTE: Module1") && md.contains("## COMPONENTE: Classe1"));
-        // abas antes do VBA
         assert!(md.find("## Aba: Aba2") < md.find("## COMPONENTE: Module1"));
     }
 
@@ -226,7 +216,6 @@ mod tests {
         assert!(md.contains("- Consultas Power Query (1): Relatório Mensal\n"));
         assert!(md.contains("## Consulta: Relatório Mensal\n\n```m\nlet x = 1 in x\n```\n"));
         assert!(md.contains("## Conexões\n\n### Consulta - Vendas"));
-        // dividido, a junção das partes continua igual ao arquivo único
         let partes = bundle_parts("a.xlsm", &s, &v, &pq, &t(), "d", Some(1));
         assert!(partes.len() > 1);
         assert_eq!(partes.concat(), md);
@@ -280,13 +269,10 @@ mod tests {
             );
             assert!(partes.len() > 1, "max={max} deveria dividir");
             for (i, p) in partes.iter().enumerate() {
-                // cercas de código sempre em par
                 assert_eq!(p.matches("```").count() % 2, 0, "parte {i} max={max}");
-                // toda linha de tabela tem cabeçalho na mesma parte
                 if p.contains("| **") {
                     assert!(p.contains("| Célula |"), "parte {i} sem cabeçalho");
                 }
-                // linhas de tabela inteiras (terminam em `|`)
                 for line in p.lines().filter(|l| l.starts_with("| **")) {
                     assert!(line.ends_with(" |"), "linha cortada: {line}");
                 }
@@ -302,7 +288,6 @@ mod tests {
         let unico = estimate_bundle("a.xlsm", &s, &v, &PowerQuery::default(), &t(), "d", None);
         assert_eq!(unico.parts, 1);
         assert!(unico.tokens > 0);
-        // a soma por bloco é a do texto inteiro, com folga de arredondamento (≤ 1 por bloco)
         let todo = tokens::estimate(&bundle_markdown(
             "a.xlsm",
             &s,
@@ -318,7 +303,6 @@ mod tests {
     fn corte_so_em_limite_de_secao() {
         let (s, v) = dados();
         let partes = bundle_parts("a.xlsm", &s, &v, &PowerQuery::default(), &t(), "d", Some(1));
-        // com limite mínimo: abertura, 2 abas e 2 componentes, um por parte
         assert_eq!(partes.len(), 5);
         assert!(partes[1].contains("## Aba: Aba1") && !partes[1].contains("Aba2"));
         assert!(partes[3].contains("## COMPONENTE: Module1") && !partes[3].contains("Classe1"));

@@ -33,11 +33,17 @@ function Code({ code }: { code: string }) {
     <pre className="overflow-auto bg-code-bg p-3 font-mono text-xs">
       {tokens
         ? tokens.map((line, i) => (
-            <div key={i} className="whitespace-pre">
+            <div
+              key={i}
+              className="whitespace-pre"
+            >
               {line.length === 0
                 ? '\u200b'
                 : line.map((t, j) => (
-                    <span key={j} style={{ color: t.color }}>
+                    <span
+                      key={j}
+                      style={{ color: t.color }}
+                    >
                       {t.content}
                     </span>
                   ))}
@@ -157,7 +163,10 @@ export function PowerQueryView() {
             Consultas ({pq.queries.length})
           </h3>
           {pq.queries.map((q) => (
-            <Query key={q.name} q={q} />
+            <Query
+              key={q.name}
+              q={q}
+            />
           ))}
         </section>
       )}

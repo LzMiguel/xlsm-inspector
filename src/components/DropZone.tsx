@@ -30,7 +30,7 @@ export function DropZone({ dragging, loading, invalid }: DropZoneProps) {
         aria-hidden
       />
       <div>
-        <h2 className="text-xl font-semibold">Arraste um .xlsx ou .xlsm</h2>
+        <h2 className="text-xl font-semibold">Arraste uma planilha</h2>
         <p className="text-base text-muted">
           ou selecione o arquivo no seu computador.
         </p>
@@ -44,8 +44,8 @@ export function DropZone({ dragging, loading, invalid }: DropZoneProps) {
         Selecionar arquivo
       </Button>
       <p className="max-w-md text-xs text-muted">
-        Gera Markdown e JSON com células, fórmulas, VBA, Power Query e
-        diagnóstico. Tudo é feito no seu computador: nada é enviado para fora.
+        Gera um compilado do arquivo com células, fórmulas, VBA, Power Query e
+        diagnóstico.
       </p>
     </div>
   )

@@ -5,7 +5,6 @@ use crate::model::{
     CellContent, CellValue, SheetCells, SheetObject, TableInfo, Warning, WarningKind,
 };
 
-/// Limite de células materializadas por tabela (evita OOM em intervalos gigantes como A1:XFD1048576).
 pub const MAX_TABLE_CELLS: usize = 500_000;
 
 fn clamp_end_row(r0: u32, r1: u32, c0: u32, c1: u32) -> u32 {
@@ -19,7 +18,6 @@ fn clamp_end_row(r0: u32, r1: u32, c0: u32, c1: u32) -> u32 {
     r0.saturating_add(max_offset).min(r1)
 }
 
-/// Só metadados (nome e intervalo) das tabelas da aba, sem materializar o corpo. Exige `book.load_tables()`.
 pub fn read_table_objects(book: &mut Book, sheet_name: &str) -> Result<Vec<SheetObject>, AppError> {
     let names: Vec<String> = book
         .table_names_in_sheet(sheet_name)
@@ -44,9 +42,7 @@ pub fn read_table_objects(book: &mut Book, sheet_name: &str) -> Result<Vec<Sheet
     Ok(out)
 }
 
-/// Tabelas (ListObjects) da aba. Exige `book.load_tables()` antes.
 /// shortcut: assume 1 linha de cabeçalho (padrão do Excel); tabela sem corpo é ignorada.
-/// Tabela acima de `MAX_TABLE_CELLS` é cortada e gera `Warning::TableTruncated`.
 pub fn read_tables(
     book: &mut Book,
     sheet: &SheetCells,

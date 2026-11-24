@@ -129,11 +129,10 @@
   --color-code-comment: var(--code-comment);
   --color-code-number: var(--code-number);
   --color-code-bg: var(--code-bg);
-  /* fundo do modal: sempre escuro, nos dois temas */
   --color-overlay: rgb(0 0 0 / 0.6);
 }
 
-/* Tipografia, raios e sombras (valores fixos). Espaçamento: a escala padrão
+/* Tipografia, raios e sombras. Espaçamento: a escala padrão
    do Tailwind já é de 4px (p-1 = 4px … p-12 = 48px). */
 @theme {
   --font-sans: 'Inter Variable', system-ui, 'Segoe UI', sans-serif;

@@ -10,11 +10,8 @@ use crate::model::{
     SheetObject,
 };
 
-/// Máximo de células listadas por categoria; o total real vai em `*_count`.
 pub const MAX_LISTED: usize = 500;
 
-/// Fórmula com `[n]` solto (`[1]Plan1!A1`, `'[2]Dados'!B2`). `Tabela[[...]]` e `Tabela[Col]`
-/// não contam: o `[` vem colado em letra/dígito.
 /// ponytail: um texto literal `"[1]"` dentro da fórmula também dispara; não vale um parser.
 fn has_external_ref(formula: &str) -> bool {
     let b = formula.as_bytes();
@@ -22,7 +19,6 @@ fn has_external_ref(formula: &str) -> bool {
     for (i, &ch) in b.iter().enumerate() {
         match ch {
             b'[' => {
-                // `[` dentro de outro `[...]` é especificador de tabela, nunca ref. externa
                 if depth == 0 {
                     let rest = &b[i + 1..];
                     let digits = rest.iter().take_while(|c| c.is_ascii_digit()).count();
@@ -51,7 +47,6 @@ fn push(list: &mut Vec<CellIssue>, count: &mut usize, sheet: &str, cell: &str, d
     }
 }
 
-/// Erros (valor `#DIV/0!` etc., com ou sem fórmula) e referências externas da aba.
 fn scan_sheet(sheet: &SheetCells, d: &mut Diagnostics) {
     for (cell, c) in &sheet.cells {
         let (formula, value) = match c {
@@ -73,19 +68,15 @@ fn scan_sheet(sheet: &SheetCells, d: &mut Diagnostics) {
     }
 }
 
-/// Lê o arquivo (somente leitura) e monta o diagnóstico.
 pub fn diagnose(path: &Path) -> Result<Diagnostics, AppError> {
     diagnose_with(path, None)
 }
 
-/// Com `cached` (extração completa já feita), pula a leitura das células e só abre o arquivo
-/// para nomes, abas ocultas, tabelas e tabelas dinâmicas. Aba ausente em `cached` é lida do arquivo.
 pub fn diagnose_with(path: &Path, cached: Option<&[SheetCells]>) -> Result<Diagnostics, AppError> {
     let mut book = open(path)?;
     book.load_tables().map_err(xlsx_err)?;
 
     let mut d = Diagnostics {
-        // `_xlnm.*` são nomes internos do Excel (área de impressão, filtros)
         names: book
             .defined_names()
             .iter()
@@ -116,7 +107,6 @@ pub fn diagnose_with(path: &Path, cached: Option<&[SheetCells]>) -> Result<Diagn
         }
     }
 
-    // tabela dinâmica ilegível não derruba o diagnóstico: só some da lista
     if let Ok(p) = book.pivot_tables() {
         d.pivots = p
             .get_pivot_tables_by_name_and_sheet()
@@ -180,7 +170,7 @@ mod tests {
             (
                 "A4",
                 CellContent::Plain(CellValue::String("#DIV/0!".into())),
-            ), // texto, não erro
+            ),
             ("A5", f("=[1]X!A1", CellValue::Empty)),
         ]);
         let mut d = Diagnostics::default();

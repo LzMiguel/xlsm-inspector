@@ -11,7 +11,6 @@ use crate::model::{SheetInfo, WorkbookSummary};
 pub type Book = Xlsx<BufReader<File>>;
 
 pub(crate) fn io_err(e: io::Error) -> AppError {
-    // 32/33 = ERROR_SHARING_VIOLATION / ERROR_LOCK_VIOLATION (Windows).
     if e.kind() == io::ErrorKind::PermissionDenied || matches!(e.raw_os_error(), Some(32 | 33)) {
         AppError::FileLocked(e.to_string())
     } else if e.kind() == io::ErrorKind::NotFound {
@@ -40,7 +39,6 @@ pub(crate) fn check_extension(path: &Path) -> Result<(), AppError> {
     }
 }
 
-/// Abre o arquivo somente para leitura (`File::open`), nunca escreve.
 pub fn open(path: &Path) -> Result<Book, AppError> {
     Ok(open_with_size(path)?.0)
 }
@@ -53,7 +51,6 @@ fn open_with_size(path: &Path) -> Result<(Book, u64), AppError> {
     Ok((book, size_bytes))
 }
 
-/// Nomes das abas de dados (ignora gráficos, macros antigas etc.).
 pub fn sheet_names(book: &Book) -> Vec<String> {
     book.sheets_metadata()
         .iter()

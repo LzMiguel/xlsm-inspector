@@ -10,10 +10,7 @@ import { cn } from './cn'
 const BASE =
   'w-full rounded-sm border border-border bg-surface px-2 py-1.5 text-sm text-text placeholder:text-muted disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-accent'
 
-export function Input({
-  className,
-  ...rest
-}: ComponentPropsWithRef<'input'>) {
+export function Input({ className, ...rest }: ComponentPropsWithRef<'input'>) {
   return (
     <input
       className={cn(BASE, className)}

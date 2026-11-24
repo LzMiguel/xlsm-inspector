@@ -16,7 +16,12 @@ import type {
 } from '../types/models'
 
 export type Status = 'idle' | 'loading' | 'extracting' | 'ready' | 'error'
-export type PreviewTab = 'cells' | 'vba' | 'diagnostics' | 'powerquery' | 'search'
+export type PreviewTab =
+  | 'cells'
+  | 'vba'
+  | 'diagnostics'
+  | 'powerquery'
+  | 'search'
 
 export interface CellFocus {
   sheet: string

@@ -35,5 +35,8 @@ export async function highlightVba(code: string): Promise<CodeToken[][]> {
 
 export async function highlightM(code: string): Promise<CodeToken[][]> {
   const h = await getHighlighter()
-  return h.codeToTokensBase(code, { lang: 'powerquery', theme: 'css-variables' })
+  return h.codeToTokensBase(code, {
+    lang: 'powerquery',
+    theme: 'css-variables',
+  })
 }

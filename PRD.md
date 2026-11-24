@@ -274,13 +274,13 @@ End Sub
 
 ## 11. Roadmap
 
-| Fase       | Entregas                                                                                                                                                                                                                      |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **MVP**    | RF01, RF03, RF04, RF06 (sem pré-visualização, todas as abas).                                                                                                                                                                 |
+| Fase       | Entregas                                                                                                                                                                                                                                                            |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **MVP**    | RF01, RF03, RF04, RF06 (sem pré-visualização, todas as abas).                                                                                                                                                                                                       |
 | **v1.0**   | **Excel completo no que foi especificado:** RF02, RF05, RF07, tema escuro, configurações (RF08), nomes e modelos de saída (RF09, RF10), escopo (RF11), cache e recentes (RF12), Power Query (RF13), diagnóstico (RF14), saída para IA (RF19) e VBA avançado (RF20). |
-| **v1.1**   | Complementos de Excel (células mescladas, comentários e hiperlinks, erro de senha, `.xls`/`.xlsb`, tabelas sem cabeçalho, tabela grande sob demanda, leitura em duas fases, mapa de dependências), ajustes de UI/UX e comparar versões (RF21). |
-| **v1.2**   | Base multiformato e VBA em Word/PowerPoint (RF15), Word (RF16), PowerPoint (RF17) e PDF (RF18). A ordem de entrega está no `GUIDE.md`. |
-| **Futuro** | Processamento em lote (pasta inteira), exportação de Word/PowerPoint/PDF dividida por seção, slide ou página, comparar versões desses formatos.                                                                                  |
+| **v1.1**   | Complementos de Excel (células mescladas, comentários e hiperlinks, erro de senha, `.xls`/`.xlsb`, tabelas sem cabeçalho, tabela grande sob demanda, leitura em duas fases, mapa de dependências), ajustes de UI/UX e comparar versões (RF21).                      |
+| **v1.2**   | Base multiformato e VBA em Word/PowerPoint (RF15), Word (RF16), PowerPoint (RF17) e PDF (RF18). A ordem de entrega está no `GUIDE.md`.                                                                                                                              |
+| **Futuro** | Processamento em lote (pasta inteira), exportação de Word/PowerPoint/PDF dividida por seção, slide ou página, comparar versões desses formatos.                                                                                                                     |
 
 ## 12. Riscos e questões em aberto
 

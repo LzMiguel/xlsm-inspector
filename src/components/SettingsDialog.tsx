@@ -81,9 +81,6 @@ export function SettingsDialog({
         <>
           <section className="flex flex-col gap-2">
             <h3 className="text-sm font-semibold">Pasta de exportação</h3>
-            <p className="text-sm text-muted">
-              O diálogo de exportação abre nesta pasta.
-            </p>
             <div className="flex items-center gap-2">
               <span
                 className="min-w-0 flex-1 truncate rounded-sm border border-border bg-surface-muted px-2 py-1.5 font-mono text-sm"
@@ -113,11 +110,10 @@ export function SettingsDialog({
           <section className="flex flex-col gap-2">
             <h3 className="text-sm font-semibold">Resultados salvos</h3>
             <p className="text-sm text-muted">
-              Guarda no disco, só neste computador, a última leitura dos 5 arquivos
-              mais recentes. Reabrir um arquivo que não mudou não o relê.
+              Guarda a última leitura dos 5 arquivos mais recentes.
             </p>
             <Checkbox
-              label="Guardar resultados para abrir mais rápido"
+              label="Guardar resultados"
               checked={settings.use_cache}
               onChange={(v) => updateSettings({ use_cache: v })}
             />
