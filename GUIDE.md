@@ -212,6 +212,8 @@ Esta fase prepara o app para receber `.docx`, `.pptx` e `.pdf` (Fases 11-13). Ho
 - Alterar UI de exportacoes.
 - Clicar para destacar o VBA no editor de código (como o Excel faz).
 - Trabalhar paginacao ou cache para evitar travamentos de UI em arquivos grandes.
+- Leitura em duas fases para arquivos grandes: hoje o arquivo é lido para a visão geral (`inspect`) e de novo na extração, ambas bloqueantes. Ler uma vez, ou fazer a visão geral só pelos metadados do ZIP, e emitir progresso por aba para a UI não parecer travada.
+- Ler tabela grande por completo sob demanda: tabelas acima de `MAX_TABLE_CELLS` (500 mil células) são cortadas com o aviso `TableTruncated`. Falta um comando IPC (ex.: `read_full_table`), botão "Ler tabela inteira" no aviso e tipos em `model.rs`/`models.ts`. Avaliar leitura em partes (streaming) para não estourar memória.
 - Melhora pagina de Power Query.
 - Aproveitar mas o espaco de tela.
 - Atualização automática (opt-in). Contraria o RNF01 e exige decisão explícita e atualização do PRD.

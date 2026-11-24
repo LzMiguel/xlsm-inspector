@@ -15,6 +15,7 @@ pub struct VbaOptions {
 }
 
 impl Default for VbaOptions {
+    /// Padrão = comportamento do script Python (remove linhas em branco).
     fn default() -> Self {
         Self {
             remove_blank_lines: true,
@@ -41,7 +42,7 @@ pub fn extract(book: &mut Book, opts: &VbaOptions) -> Result<Vec<VbaComponent>, 
         let code = clean_code(&raw, opts);
         out.push(VbaComponent {
             name: name.to_string(),
-            kind: classify(name, &raw),
+            kind: classify(name, &raw), // sobre o código bruto: precisa dos Attribute
             line_count: code.lines().count(),
             procedures: super::vba_index::index(&code),
             code,
@@ -58,14 +59,18 @@ pub fn clean_code(code: &str, opts: &VbaOptions) -> String {
         .join("\n")
 }
 
+/// Inferência pelos `Attribute VB_...` e, se faltar, pelo nome.
 pub fn classify(name: &str, raw: &str) -> VbaComponentKind {
     use VbaComponentKind::*;
 
+    // GUID da classe base: UserForm / Workbook / Worksheet / Chart.
     if let Some(base) = raw
         .lines()
         .find(|l| l.trim_start().starts_with("Attribute VB_Base"))
     {
         let base = base.to_uppercase();
+        // UserForm: "0{<GUID da classe>}{<GUID do designer>}" (o 1º varia por form).
+        // Classe/Documento têm um GUID só.
         if base.contains("}{") || base.contains("C62A69F0-16DC-11CE-9E98-00AA00574A4F") {
             return UserForm;
         }
@@ -182,6 +187,7 @@ mod tests {
             ),
             Class
         );
+        // sem atributos: cai no nome
         assert_eq!(classify("ThisWorkbook", ""), Workbook);
         assert_eq!(classify("EstaPastaDeTrabalho", ""), Workbook);
         assert_eq!(classify("Sheet12", ""), Document);

@@ -38,7 +38,7 @@ fn table_row_bounds(t: &TableInfo) -> (u32, u32) {
 
 /// Corta a aba conforme o escopo (por linha com conteúdo). Cabeçalhos de tabela ficam sempre;
 /// o corpo das tabelas segue a mesma seleção. Devolve o aviso se cortou algo.
-/// Conta linhas com conteúdo, não linhas físicas; o parsing já leu tudo.
+/// shortcut: conta linhas com conteúdo, não linhas físicas; o parsing já leu tudo (ver GUIDE: leitura em duas fases).
 pub fn apply_scope(sheet: &mut SheetCells, scope: ExtractScope) -> Option<Warning> {
     let want = match scope {
         ExtractScope::Full => return None,
@@ -79,7 +79,9 @@ pub fn apply_scope(sheet: &mut SheetCells, scope: ExtractScope) -> Option<Warnin
         t.rows = body
             .into_iter()
             .enumerate()
-            .filter(|(i, _)| keep.contains(&first_body.saturating_add(u32::try_from(*i).unwrap_or(u32::MAX))))
+            .filter(|(i, _)| {
+                keep.contains(&first_body.saturating_add(u32::try_from(*i).unwrap_or(u32::MAX)))
+            })
             .map(|(_, r)| r)
             .collect();
         t.cells.retain(|k| keep.contains(&row_of(k)));
@@ -136,10 +138,12 @@ pub fn extract_with_scope_from_book(
     for (i, name) in names.iter().enumerate() {
         on_progress(Progress::new("cells", i, total, name));
         let (mut sheet, warning) = read_sheet(book, name)?;
-        sheet.tables = tables::read_tables(book, &sheet)?;
+        let (tbls, table_warnings) = tables::read_tables(book, &sheet)?;
+        sheet.tables = tbls;
         let sampled = apply_scope(&mut sheet, scope);
         out.push(sheet);
         warnings.extend(warning);
+        warnings.extend(table_warnings);
         warnings.extend(sampled);
     }
     on_progress(Progress::new("cells", total, total, ""));
@@ -430,7 +434,13 @@ mod tests {
         let w = apply_scope(&mut s, ExtractScope::Head { rows: 2 }).unwrap();
         assert_eq!(w.kind, WarningKind::Sampled);
         assert_eq!(s.tables[0].rows.len(), 2);
-        assert_eq!(s.tables[0].rows[0][0], CellContent::Plain(CellValue::Int(1)));
-        assert_eq!(s.tables[0].rows[1][0], CellContent::Plain(CellValue::Int(2)));
+        assert_eq!(
+            s.tables[0].rows[0][0],
+            CellContent::Plain(CellValue::Int(1))
+        );
+        assert_eq!(
+            s.tables[0].rows[1][0],
+            CellContent::Plain(CellValue::Int(2))
+        );
     }
 }

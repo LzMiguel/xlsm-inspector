@@ -23,14 +23,9 @@
   },
   "bundle": {
     "active": true,
-    "targets": [
-      "nsis",
-      "msi"
-    ],
+    "targets": ["nsis", "msi"],
     "windows": {
-      "nsis": {
-        "installMode": "currentUser"
-      }
+      "nsis": { "installMode": "currentUser" }
     },
     "icon": [
       "icons/32x32.png",

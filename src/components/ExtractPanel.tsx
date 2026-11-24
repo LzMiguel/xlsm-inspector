@@ -35,7 +35,7 @@ export function ExtractPanel() {
   )
 
   return (
-    <section className="flex flex-col gap-4 rounded-md border border-border bg-surface p-4">
+    <section className="flex shrink-0 flex-col gap-4 rounded-md border border-border bg-surface p-4">
       <div className="flex flex-wrap items-center gap-4">
         <Button
           variant={result ? 'secondary' : 'primary'}
@@ -91,16 +91,20 @@ export function ExtractPanel() {
         />
       )}
 
-      {!extracting &&
-        warnings.map((w) => (
-          <Alert
-            key={`${w.kind}:${w.sheet}`}
-            variant={w.kind === 'Sampled' ? 'info' : 'warning'}
-            title={`Planilha "${w.sheet}"`}
-          >
-            {w.message}
-          </Alert>
-        ))}
+      {/* Muitos avisos rolam aqui dentro e não empurram a pré-visualização. */}
+      {!extracting && warnings.length > 0 && (
+        <div className="flex max-h-40 flex-col gap-2 overflow-y-auto">
+          {warnings.map((w, i) => (
+            <Alert
+              key={`${w.kind}:${w.sheet}:${i}`}
+              variant={w.kind === 'Sampled' ? 'info' : 'warning'}
+              title={w.sheet ? `Planilha "${w.sheet}"` : 'Aviso'}
+            >
+              {w.message}
+            </Alert>
+          ))}
+        </div>
+      )}
     </section>
   )
 }

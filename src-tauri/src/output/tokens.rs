@@ -107,7 +107,11 @@ mod tests {
     fn count_parts_bate_com_split_units() {
         let u = units(&[1, 7, 2, 2, 9, 1, 3]);
         for max in [0, 1, 4, 8, 100] {
-            assert_eq!(count_parts(&u, max), split_units(&u, max).len(), "max={max}");
+            assert_eq!(
+                count_parts(&u, max),
+                split_units(&u, max).len(),
+                "max={max}"
+            );
         }
     }
 }

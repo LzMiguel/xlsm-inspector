@@ -190,7 +190,11 @@ mod tests {
 
         let dir = std::env::temp_dir().join(format!("vba_files_safe_{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        let c = [comp("..\\fora", VbaComponentKind::Module, "Sub A()\nEnd Sub")];
+        let c = [comp(
+            "..\\fora",
+            VbaComponentKind::Module,
+            "Sub A()\nEnd Sub",
+        )];
         let written = export_files(&c, &dir).unwrap();
         assert_eq!(Path::new(&written[0]).parent(), Some(dir.as_path()));
         let _ = std::fs::remove_dir_all(&dir);

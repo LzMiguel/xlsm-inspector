@@ -172,10 +172,11 @@ fn queries_from_mashup(b64: &str) -> Result<Vec<PowerQueryItem>, AppError> {
 }
 
 /// Uma consulta por `shared <nome> = ...;` no início da linha.
+/// shortcut: um `shared` no começo de linha dentro de texto multilinha vira consulta falsa; raro em M gerado pelo Excel.
 pub fn split_queries(m: &str) -> Vec<PowerQueryItem> {
     let mut out: Vec<PowerQueryItem> = Vec::new();
     for line in m.lines() {
-        if let Some(rest) = line.trim_start().strip_prefix("shared ") {
+        if let Some(rest) = line.strip_prefix("shared ") {
             let (name, tail) = split_name(rest.trim_start());
             out.push(PowerQueryItem {
                 name,
@@ -225,6 +226,7 @@ fn split_name(s: &str) -> (String, &str) {
 }
 
 /// `<connection name description>` + o filho `dbPr`/`webPr`/`textPr` (`connection`, `url` ou `sourceFile`).
+/// shortcut: outros tipos de conexão ficam com a string vazia; ampliar se aparecer caso real.
 fn parse_connections(xml: &str) -> Vec<ConnectionInfo> {
     let mut reader = Reader::from_str(xml);
     let mut out: Vec<ConnectionInfo> = Vec::new();
@@ -381,7 +383,10 @@ mod tests {
     #[test]
     fn datamashup_namespace_e_self_closing() {
         assert_eq!(datamashup_base64("<DataMashup/>"), None);
-        assert_eq!(datamashup_base64("<DataMashupFoo>abc</DataMashupFoo>"), None);
+        assert_eq!(
+            datamashup_base64("<DataMashupFoo>abc</DataMashupFoo>"),
+            None
+        );
         assert_eq!(
             datamashup_base64("<m:DataMashup xmlns:m=\"x\">  YWJj \n</m:DataMashup>"),
             Some("YWJj".into())

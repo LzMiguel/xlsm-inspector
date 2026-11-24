@@ -74,7 +74,11 @@ export interface VbaProcedure {
   end_line: number
 }
 
-export type WarningKind = 'MissingCache' | 'Sampled'
+export type WarningKind =
+  | 'MissingCache'
+  | 'Sampled'
+  | 'TableTruncated'
+  | 'PowerQueryUnreadable'
 
 export interface Warning {
   kind: WarningKind

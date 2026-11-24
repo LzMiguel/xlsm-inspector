@@ -85,9 +85,14 @@ function App() {
           {summary && <ExportPanel />}
         </aside>
 
-        <main className="flex min-w-0 flex-1 flex-col overflow-auto p-6">
-          <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4">
-            {error && <ErrorAlert error={error} />}
+        {/* Sem rolagem aqui: só a área de exibição (cada aba) rola, o cabeçalho fica fixo. */}
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-6">
+          <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-4">
+            {error && (
+              <div className="shrink-0">
+                <ErrorAlert error={error} />
+              </div>
+            )}
             {summary ? (
               <>
                 <FileCard
@@ -98,7 +103,7 @@ function App() {
                 <Preview />
               </>
             ) : (
-              <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 pt-8">
+              <div className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col gap-6 overflow-y-auto pt-8">
                 <DropZone
                   dragging={dragging}
                   loading={status === 'loading'}

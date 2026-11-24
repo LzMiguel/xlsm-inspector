@@ -1,7 +1,7 @@
 //! Cache em disco do resultado da extração (até 5 planilhas, só local).
 //! Um JSON por planilha em `<base>/cache/`. A entrada vale enquanto tamanho + data de
 //! modificação do arquivo forem os mesmos. Nunca escreve na planilha (RNF07).
-//! Limite conhecido: tamanho + mtime pode errar em pastas sincronizadas (OneDrive); "Recarregar" ignora o cache.
+//! shortcut: tamanho + mtime pode errar em pastas sincronizadas (OneDrive); "Recarregar" é a válvula.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -15,7 +15,9 @@ use crate::excel::cells::extract_with_scope_from_book;
 use crate::excel::power_query;
 use crate::excel::vba::{self, VbaOptions};
 use crate::excel::workbook::{self, inspect, io_err};
-use crate::model::{ExtractScope, ExtractionResult, Progress, SheetInfo, WorkbookSummary};
+use crate::model::{
+    ExtractScope, ExtractionResult, Progress, SheetInfo, Warning, WarningKind, WorkbookSummary,
+};
 
 pub const CACHE_VERSION: u32 = 4; // 4: CellValue lossless + hash FNV-1a estável (3: power_query, 2: procedures)
 pub const MAX_ENTRIES: usize = 5;
@@ -179,7 +181,11 @@ mod wire_result {
                 .iter()
                 .map(|sh| SheetRef {
                     name: &sh.name,
-                    cells: sh.cells.iter().map(|(k, v)| (k.as_str(), v.into())).collect(),
+                    cells: sh
+                        .cells
+                        .iter()
+                        .map(|(k, v)| (k.as_str(), v.into()))
+                        .collect(),
                     tables: sh
                         .tables
                         .iter()
@@ -576,7 +582,8 @@ pub fn extract(
 ) -> Result<ExtractionResult, AppError> {
     let fp = fingerprint(path)?;
     let mut book = workbook::open(path)?;
-    let (cells, warnings) = extract_with_scope_from_book(&mut book, sheets, scope, on_progress)?;
+    let (cells, mut warnings) =
+        extract_with_scope_from_book(&mut book, sheets, scope, on_progress)?;
     on_progress(Progress::new("vba", 0, 1, "VBA"));
     let vba = match vba::extract(&mut book, &vba_opts) {
         Ok(v) => v,
@@ -584,8 +591,16 @@ pub fn extract(
         Err(e) => return Err(e),
     };
     on_progress(Progress::new("vba", 1, 1, "VBA"));
-    // Power Query ilegível vira vazio para não derrubar a extração das células
-    let power_query = power_query::extract_file(path).unwrap_or_default();
+    // Power Query ilegível não derruba as células, mas o usuário é avisado.
+    let power_query = power_query::extract_file(path).unwrap_or_else(|e| {
+        warnings.push(Warning {
+            kind: WarningKind::PowerQueryUnreadable,
+            sheet: String::new(),
+            count: 0,
+            message: format!("Power Query não pôde ser lido: {e}"),
+        });
+        Default::default()
+    });
     let result = ExtractionResult {
         sheets: cells,
         vba,

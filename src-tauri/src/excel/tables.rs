@@ -1,7 +1,9 @@
 use super::coords::to_a1;
 use super::workbook::{Book, xlsx_err};
 use crate::error::AppError;
-use crate::model::{CellContent, CellValue, SheetCells, SheetObject, TableInfo};
+use crate::model::{
+    CellContent, CellValue, SheetCells, SheetObject, TableInfo, Warning, WarningKind,
+};
 
 /// Limite de células materializadas por tabela (evita OOM em intervalos gigantes como A1:XFD1048576).
 pub const MAX_TABLE_CELLS: usize = 500_000;
@@ -43,14 +45,19 @@ pub fn read_table_objects(book: &mut Book, sheet_name: &str) -> Result<Vec<Sheet
 }
 
 /// Tabelas (ListObjects) da aba. Exige `book.load_tables()` antes.
-/// Assume 1 linha de cabeçalho quando `r0 > 0` (padrão do Excel); tabela sem corpo é ignorada.
-pub fn read_tables(book: &mut Book, sheet: &SheetCells) -> Result<Vec<TableInfo>, AppError> {
+/// shortcut: assume 1 linha de cabeçalho (padrão do Excel); tabela sem corpo é ignorada.
+/// Tabela acima de `MAX_TABLE_CELLS` é cortada e gera `Warning::TableTruncated`.
+pub fn read_tables(
+    book: &mut Book,
+    sheet: &SheetCells,
+) -> Result<(Vec<TableInfo>, Vec<Warning>), AppError> {
     let names: Vec<String> = book
         .table_names_in_sheet(&sheet.name)
         .into_iter()
         .cloned()
         .collect();
     let mut out = Vec::with_capacity(names.len());
+    let mut warnings = Vec::new();
     for name in names {
         let table = book.table_by_name_ref(&name).map_err(xlsx_err)?;
         let (Some((r0, c0)), Some((r1, _))) = (table.data().start(), table.data().end()) else {
@@ -60,6 +67,19 @@ pub fn read_tables(book: &mut Book, sheet: &SheetCells) -> Result<Vec<TableInfo>
         let col_span = table.columns().len().max(1).saturating_sub(1);
         let c1 = c0.saturating_add(u32::try_from(col_span).unwrap_or(u32::MAX));
         let end_r = clamp_end_row(r0, r1, c0, c1);
+        if end_r < r1 {
+            warnings.push(Warning {
+                kind: WarningKind::TableTruncated,
+                sheet: sheet.name.clone(),
+                count: (end_r - r0 + 1) as usize,
+                message: format!(
+                    "Tabela \"{name}\" (aba \"{}\"): lidas {} de {} linhas (limite de {MAX_TABLE_CELLS} células).",
+                    sheet.name,
+                    end_r - r0 + 1,
+                    r1 - r0 + 1
+                ),
+            });
+        }
         let cells = (top..=end_r)
             .flat_map(|r| (c0..=c1).map(move |c| to_a1(r, c)))
             .filter(|k| sheet.cells.contains_key(k))
@@ -85,7 +105,7 @@ pub fn read_tables(book: &mut Book, sheet: &SheetCells) -> Result<Vec<TableInfo>
             cells,
         });
     }
-    Ok(out)
+    Ok((out, warnings))
 }
 
 #[cfg(test)]

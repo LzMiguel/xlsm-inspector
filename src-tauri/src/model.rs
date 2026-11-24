@@ -119,6 +119,10 @@ pub enum WarningKind {
     MissingCache,
     /// A aba foi cortada pelo escopo (primeiras linhas ou amostra).
     Sampled,
+    /// Tabela maior que o limite de células: só o início foi lido.
+    TableTruncated,
+    /// Power Query/conexões ilegíveis: o restante da extração segue sem elas.
+    PowerQueryUnreadable,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

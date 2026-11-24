@@ -82,7 +82,7 @@ export function ExportPanel() {
   const [splitText, setSplitText] = useState(DEFAULT_SPLIT)
   const [estimate, setEstimate] = useState<{
     key: string
-    value: BundleEstimate
+    value: BundleEstimate | null // null = o cálculo falhou
   } | null>(null)
   const extractScope = useWorkbookStore((s) => s.scope)
   const [exportScope, setExportScope] = useState<ExtractScope | null>(null)
@@ -126,8 +126,8 @@ export function ExportPanel() {
     template,
     splitTokens,
   })
-  const currentEstimate =
-    estimate?.key === estimateKey ? estimate.value : null
+  const estimateReady = estimate?.key === estimateKey
+  const currentEstimate = estimateReady ? estimate.value : null
 
   useEffect(() => {
     setNameEdits({})
@@ -168,7 +168,7 @@ export function ExportPanel() {
           if (!cancelled) setEstimate({ key: estimateKey, value: e })
         })
         .catch(() => {
-          if (!cancelled) setEstimate(null)
+          if (!cancelled) setEstimate({ key: estimateKey, value: null })
         })
     }, 300)
     return () => {
@@ -357,7 +357,9 @@ export function ExportPanel() {
                           (currentEstimate.parts > 1
                             ? ` · ${currentEstimate.parts} partes`
                             : '')
-                        : 'Calculando estimativa…'
+                        : estimateReady
+                          ? 'Não foi possível calcular a estimativa.'
+                          : 'Calculando estimativa…'
                       : 'Estimativa de tokens: ≈ caracteres ÷ 4.'}
                   </p>
                 </div>

@@ -261,8 +261,8 @@ pub fn export_outputs(
                 None
             };
             let pq = if need_pq {
-                // Power Query ilegível vira vazio (mesmo comportamento de store/cache.rs)
-                fresh_pq = power_query::extract_file(path).unwrap_or_default();
+                // Erro de leitura é propagado: nada é omitido em silêncio no export.
+                fresh_pq = power_query::extract_file(path)?;
                 &fresh_pq
             } else {
                 &empty_pq
@@ -370,7 +370,13 @@ mod tests {
             ["ctx_parte_1.md", "ctx_parte_2_2.md"]
         );
         assert_eq!(
-            settle(&dir, names.clone(), OnExists::Overwrite, &mut HashSet::new()).unwrap(),
+            settle(
+                &dir,
+                names.clone(),
+                OnExists::Overwrite,
+                &mut HashSet::new()
+            )
+            .unwrap(),
             names
         );
 

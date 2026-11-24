@@ -32,7 +32,7 @@ export function Preview() {
   return (
     <section
       aria-label="Pré-visualização"
-      className="flex min-h-96 flex-1 flex-col overflow-hidden rounded-md border border-border bg-surface"
+      className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-border bg-surface"
     >
       <Tabs tabs={TABS} value={tab} onChange={setTab} className="px-4" />
       {needsRead && (

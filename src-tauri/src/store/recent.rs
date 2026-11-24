@@ -86,7 +86,10 @@ mod tests {
 
     #[test]
     fn move_para_o_topo_sem_duplicar() {
-        let out = with_recent(vec![f("a", 1), f("C:\\X\\b.xlsx", 2)], f("c:\\x\\B.xlsx", 5));
+        let out = with_recent(
+            vec![f("a", 1), f("C:\\X\\b.xlsx", 2)],
+            f("c:\\x\\B.xlsx", 5),
+        );
         let paths: Vec<_> = out.iter().map(|r| r.path.as_str()).collect();
         assert_eq!(paths, ["c:\\x\\B.xlsx", "a"]);
         assert_eq!(out[0].opened_at, 5);

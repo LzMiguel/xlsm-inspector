@@ -103,7 +103,8 @@ pub fn diagnose(path: &Path) -> Result<Diagnostics, AppError> {
 
     for name in sheet_names(&book) {
         let (sheet, _) = cells::read_sheet(&mut book, &name)?;
-        d.tables.extend(tables::read_table_objects(&mut book, &name)?);
+        d.tables
+            .extend(tables::read_table_objects(&mut book, &name)?);
         scan_sheet(&sheet, &mut d);
     }
 

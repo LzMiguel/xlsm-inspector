@@ -16,7 +16,7 @@ export function FileCard({ summary, disabled }: { summary: WorkbookSummary; disa
   const n = summary.sheets.length;
   const reset = useWorkbookStore((s) => s.reset);
   return (
-    <section className="flex items-center gap-4 rounded-md border border-border bg-surface p-4">
+    <section className="flex shrink-0 items-center gap-4 rounded-md border border-border bg-surface p-4">
       <FileSpreadsheet size={20} strokeWidth={1.75} className="shrink-0 text-primary" aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="truncate text-base font-medium" title={summary.path}>
