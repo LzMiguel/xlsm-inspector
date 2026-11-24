@@ -2,7 +2,7 @@
 name = "xlsm-inspector"
 version = "1.0.0"
 description = "Extrai células e código VBA de planilhas .xlsx/.xlsm para JSON e Markdown"
-authors = ["you"]
+authors = ["Miguel Gandra"]
 edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

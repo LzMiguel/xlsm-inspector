@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
@@ -44,7 +45,7 @@ pub enum OnExists {
     Suffix,
 }
 
-fn reserved(base: &str) -> bool {
+pub(crate) fn is_reserved(base: &str) -> bool {
     let b = base.trim_end().to_ascii_uppercase();
     matches!(b.as_str(), "CON" | "PRN" | "AUX" | "NUL")
         || b.strip_prefix("COM")
@@ -72,7 +73,7 @@ pub fn resolve(pattern: &str, ext: &str, vars: &[(&str, &str)]) -> Result<String
     if stem.ends_with('.') {
         return Err(bad("não pode terminar com ponto"));
     }
-    if reserved(stem.split('.').next().unwrap_or_default()) {
+    if is_reserved(stem.split('.').next().unwrap_or_default()) {
         return Err(bad("nome reservado do Windows"));
     }
     Ok(format!("{stem}.{ext}"))
@@ -80,13 +81,22 @@ pub fn resolve(pattern: &str, ext: &str, vars: &[(&str, &str)]) -> Result<String
 
 /// `name` se estiver livre em `dir`; senão o primeiro `nome_N.ext` livre.
 pub fn free_name(dir: &Path, name: &str) -> String {
-    if !dir.join(name).exists() {
+    free_name_avoiding(dir, name, &HashSet::new())
+}
+
+/// Como `free_name`, mas evita também nomes já reservados (`taken`, em minúsculas) no mesmo lote.
+pub fn free_name_avoiding(dir: &Path, name: &str, taken: &HashSet<String>) -> String {
+    let is_free = |cand: &str| !taken.contains(&cand.to_lowercase()) && !dir.join(cand).exists();
+    if is_free(name) {
         return name.to_string();
     }
-    let (stem, ext) = name.rsplit_once('.').unwrap_or((name, ""));
-    (2..)
-        .map(|n| format!("{stem}_{n}.{ext}"))
-        .find(|c| !dir.join(c).exists())
+    let split = name.rsplit_once('.');
+    (2u64..)
+        .map(|n| match split {
+            Some((stem, ext)) => format!("{stem}_{n}.{ext}"),
+            None => format!("{name}_{n}"),
+        })
+        .find(|c| is_free(c))
         .unwrap_or_else(|| name.to_string())
 }
 
@@ -150,6 +160,10 @@ mod tests {
         assert_eq!(free_name(&dir, "a.json"), "a_2.json");
         fs::write(dir.join("a_2.json"), "").unwrap();
         assert_eq!(free_name(&dir, "a.json"), "a_3.json");
+        fs::write(dir.join("semext"), "").unwrap();
+        assert_eq!(free_name(&dir, "semext"), "semext_2");
+        let taken: HashSet<String> = ["a_3.json".into()].into_iter().collect();
+        assert_eq!(free_name_avoiding(&dir, "a.json", &taken), "a_4.json");
         let _ = fs::remove_dir_all(&dir);
     }
 }

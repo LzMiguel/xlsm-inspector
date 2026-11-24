@@ -6,7 +6,10 @@ import {
   previewTemplate,
   toAppError,
 } from '../api/commands'
-import { updateSettings } from '../store/settingsActions'
+import {
+  updateSettings,
+  updateSettingsDebounced,
+} from '../store/settingsActions'
 import { useSettingsStore } from '../store/settingsStore'
 import type { AppError, OutputTemplate, TemplatePreset } from '../types/models'
 import { ErrorAlert } from './ErrorAlert'
@@ -50,9 +53,17 @@ export function TemplateSettings() {
   const [error, setError] = useState<AppError | null>(null)
 
   useEffect(() => {
+    let cancelled = false
     getBuiltinTemplates()
-      .then(setBuiltin)
-      .catch((e) => setError(toAppError(e)))
+      .then((list) => {
+        if (!cancelled) setBuiltin(list)
+      })
+      .catch((e) => {
+        if (!cancelled) setError(toAppError(e))
+      })
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   useEffect(() => {
@@ -75,7 +86,7 @@ export function TemplateSettings() {
   const canSave = name !== '' && !builtin.some((b) => b.name === name)
 
   const setField = (k: keyof OutputTemplate) => (v: string) =>
-    updateSettings({ template: { ...template, [k]: v } })
+    updateSettingsDebounced({ template: { ...template, [k]: v } })
 
   return (
     <div className="flex flex-col gap-3">
@@ -107,7 +118,7 @@ export function TemplateSettings() {
         <div className="flex-1">
           <Field
             label="Salvar o modelo atual como"
-            hint="Mesmo nome de uma sua = substitui."
+            hint="Mesmo nome de um modelo seu = substitui."
           >
             <Input
               value={newName}

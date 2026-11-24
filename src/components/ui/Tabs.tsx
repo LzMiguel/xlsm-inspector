@@ -18,11 +18,19 @@ interface TabsProps<T extends string> {
 
 export function Tabs<T extends string>({ tabs, value, onChange, className }: TabsProps<T>) {
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-    if (!step) return;
+    let nextIdx = -1;
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      const step = e.key === "ArrowRight" ? 1 : -1;
+      const i = tabs.findIndex((t) => t.id === value);
+      nextIdx = (i + step + tabs.length) % tabs.length;
+    } else if (e.key === "Home") {
+      nextIdx = 0;
+    } else if (e.key === "End") {
+      nextIdx = tabs.length - 1;
+    }
+    if (nextIdx < 0) return;
     e.preventDefault();
-    const i = tabs.findIndex((t) => t.id === value);
-    const next = tabs[(i + step + tabs.length) % tabs.length];
+    const next = tabs[nextIdx];
     onChange(next.id);
     e.currentTarget.querySelector<HTMLElement>(`[data-tab="${next.id}"]`)?.focus();
   };

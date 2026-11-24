@@ -39,6 +39,7 @@ interface WorkbookState {
   powerQuery: PowerQuery | null
   focus: CellFocus | null
   vbaLine: number | null
+  vbaJumpSeq: number
   scope: ExtractScope
   fromCache: boolean
   recent: RecentFile[]
@@ -81,6 +82,7 @@ const initial = {
   powerQuery: null,
   focus: null,
   vbaLine: null as number | null,
+  vbaJumpSeq: 0,
   fromCache: false,
 }
 
@@ -185,7 +187,12 @@ export const useWorkbookStore = create<WorkbookState>((set, get) => ({
     set({ selectedComponent, vbaLine: null }),
 
   goToVba: (selectedComponent, vbaLine) =>
-    set({ tab: 'vba', selectedComponent, vbaLine }),
+    set((s) => ({
+      tab: 'vba',
+      selectedComponent,
+      vbaLine,
+      vbaJumpSeq: s.vbaJumpSeq + 1,
+    })),
 
   reset: () => set({ ...initial }),
 }))

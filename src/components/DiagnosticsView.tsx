@@ -102,10 +102,18 @@ function Issues({
 export function DiagnosticsView() {
   const d = useWorkbookStore((s) => s.diagnostics)
   const [error, setError] = useState<AppError | null>(null)
+  const [retrying, setRetrying] = useState(false)
 
   useEffect(() => {
-    if (!useWorkbookStore.getState().diagnostics)
-      void loadDiagnostics().then(setError)
+    let cancelled = false
+    if (!useWorkbookStore.getState().diagnostics) {
+      void loadDiagnostics().then((err) => {
+        if (!cancelled) setError(err)
+      })
+    }
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   if (!d && error)
@@ -114,9 +122,14 @@ export function DiagnosticsView() {
         <ErrorAlert error={error} />
         <Button
           size="sm"
+          loading={retrying}
           onClick={() => {
             setError(null)
-            void loadDiagnostics().then(setError)
+            setRetrying(true)
+            void loadDiagnostics().then((err) => {
+              setRetrying(false)
+              setError(err)
+            })
           }}
         >
           Tentar de novo
@@ -199,8 +212,8 @@ export function DiagnosticsView() {
         title="Nomes definidos"
         empty={d.names.length === 0}
       >
-        {d.names.map((n) => (
-          <Item key={n.name}>
+        {d.names.map((n, i) => (
+          <Item key={`${n.name}-${i}`}>
             <span className="font-mono">{n.name}</span>
             <span
               className="min-w-0 flex-1 truncate font-mono text-muted"

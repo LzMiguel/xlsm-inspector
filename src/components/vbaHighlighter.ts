@@ -10,11 +10,16 @@ import vb from 'shiki/langs/vb.mjs'
 let instance: Promise<HighlighterCore> | undefined
 
 function getHighlighter() {
-  instance ??= createHighlighterCore({
-    themes: [createCssVariablesTheme({ fontStyle: false })],
-    langs: [vb, powerquery],
-    engine: createJavaScriptRegexEngine(),
-  })
+  if (!instance) {
+    instance = createHighlighterCore({
+      themes: [createCssVariablesTheme({ fontStyle: false })],
+      langs: [vb, powerquery],
+      engine: createJavaScriptRegexEngine(),
+    }).catch((err) => {
+      instance = undefined
+      throw err
+    })
+  }
   return instance
 }
 

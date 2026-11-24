@@ -65,7 +65,7 @@ Todas as cores são tokens. Componentes nunca usam valores hexadecimais diretame
 | ---------------- | --------- | --------- | ------------------------- |
 | `--code-keyword` | `#4B5BD6` | `#8592F0` | `Sub`, `Dim`, `If`, `End` |
 | `--code-string`  | `#1F7A55` | `#7FD1A8` | `"texto"`                 |
-| `--code-comment` | `#8A919C` | `#6B727D` | `' comentário`            |
+| `--code-comment` | `#5F6672` | `#8A919C` | `' comentário`            |
 | `--code-number`  | `#B7591F` | `#E8A06A` | `42`, `3.14`              |
 | `--code-bg`      | `#F7F8FA` | `#13161B` | Fundo do bloco            |
 

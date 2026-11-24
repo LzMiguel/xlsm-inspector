@@ -98,33 +98,25 @@ export function RecentFiles({ disabled }: { disabled: boolean }) {
                 </span>
               </button>
               {(status === 'Cached' || status === 'Modified') && (
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={RefreshCw}
                   disabled={disabled}
                   aria-label={`Recarregar ${r.name} do arquivo`}
                   title="Recarregar do arquivo (ignora o resultado salvo)"
                   onClick={() => openWorkbook(r.path, true)}
-                  className="rounded-sm p-1 text-subtle hover:bg-surface-muted hover:text-text focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
-                >
-                  <RefreshCw
-                    size={16}
-                    strokeWidth={1.75}
-                    aria-hidden
-                  />
-                </button>
+                  className="px-1.5 text-subtle hover:text-text"
+                />
               )}
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={X}
                 aria-label={`Remover ${r.name} do histórico`}
                 onClick={() => forgetRecent(r.path)}
-                className="rounded-sm p-1 text-subtle hover:bg-surface-muted hover:text-text focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                <X
-                  size={16}
-                  strokeWidth={1.75}
-                  aria-hidden
-                />
-              </button>
+                className="px-1.5 text-subtle hover:text-text"
+              />
             </li>
           )
         })}

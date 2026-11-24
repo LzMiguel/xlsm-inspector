@@ -1,11 +1,24 @@
 import { useEffect, useRef } from 'react'
 
-export function useHotkey(key: string, handler: () => void) {
+interface HotkeyOptions {
+  enabled?: boolean
+  allowInModal?: boolean
+}
+
+export function useHotkey(
+  key: string,
+  handler: () => void,
+  options?: HotkeyOptions,
+) {
   const ref = useRef(handler)
   ref.current = handler
+  const enabled = options?.enabled ?? true
+  const allowInModal = options?.allowInModal ?? false
 
   useEffect(() => {
+    if (!enabled) return
     const onKey = (e: KeyboardEvent) => {
+      if (!allowInModal && document.querySelector('dialog[open]')) return
       if (
         (e.ctrlKey || e.metaKey) &&
         !e.altKey &&
@@ -18,5 +31,5 @@ export function useHotkey(key: string, handler: () => void) {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [key])
+  }, [key, enabled, allowInModal])
 }

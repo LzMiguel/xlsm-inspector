@@ -25,9 +25,20 @@ fn row_of(key: &str) -> u32 {
         .unwrap_or(0)
 }
 
+fn table_row_bounds(t: &TableInfo) -> (u32, u32) {
+    let (start_s, end_s) = t.range.split_once(':').unwrap_or((&t.range, &t.range));
+    let start_row = row_of(start_s);
+    let end_row = row_of(end_s);
+    let first_body = end_row
+        .saturating_add(1)
+        .saturating_sub(u32::try_from(t.rows.len()).unwrap_or(u32::MAX))
+        .max(start_row);
+    (start_row, first_body)
+}
+
 /// Corta a aba conforme o escopo (por linha com conteúdo). Cabeçalhos de tabela ficam sempre;
 /// o corpo das tabelas segue a mesma seleção. Devolve o aviso se cortou algo.
-/// ponytail: conta linhas com conteúdo, não linhas físicas; o parsing já leu tudo.
+/// Conta linhas com conteúdo, não linhas físicas; o parsing já leu tudo.
 pub fn apply_scope(sheet: &mut SheetCells, scope: ExtractScope) -> Option<Warning> {
     let want = match scope {
         ExtractScope::Full => return None,
@@ -42,25 +53,38 @@ pub fn apply_scope(sheet: &mut SheetCells, scope: ExtractScope) -> Option<Warnin
 
     let mut keep: HashSet<u32> = match scope {
         ExtractScope::Head { .. } => rows[..want].iter().copied().collect(),
-        _ => (0..want).map(|i| rows[i * total / want]).collect(),
+        _ => (0..want)
+            .map(|i| {
+                let idx = (i as u128 * total as u128 / want as u128) as usize;
+                rows[idx]
+            })
+            .collect(),
     };
-    let header = |t: &TableInfo| row_of(t.range.split(':').next().unwrap_or_default());
-    keep.extend(sheet.tables.iter().map(header));
+    for t in &sheet.tables {
+        let (start_row, first_body) = table_row_bounds(t);
+        if first_body > start_row {
+            keep.insert(start_row);
+        }
+    }
+
+    let kept = rows.iter().filter(|r| keep.contains(r)).count();
+    if kept >= total {
+        return None;
+    }
 
     sheet.cells.retain(|k, _| keep.contains(&row_of(k)));
     for t in &mut sheet.tables {
-        let first_body = header(t) + 1;
+        let (_, first_body) = table_row_bounds(t);
         let body = std::mem::take(&mut t.rows);
         t.rows = body
             .into_iter()
             .enumerate()
-            .filter(|(i, _)| keep.contains(&(first_body + *i as u32)))
+            .filter(|(i, _)| keep.contains(&first_body.saturating_add(u32::try_from(*i).unwrap_or(u32::MAX))))
             .map(|(_, r)| r)
             .collect();
         t.cells.retain(|k| keep.contains(&row_of(k)));
     }
 
-    let kept = rows.iter().filter(|r| keep.contains(r)).count();
     sheet.sampled = Some(SampleInfo {
         total_rows: total,
         kept_rows: kept,
@@ -92,8 +116,17 @@ pub fn extract_with_scope(
     on_progress: &mut dyn FnMut(Progress),
 ) -> Result<(Vec<SheetCells>, Vec<Warning>), AppError> {
     let mut book = open(path)?;
+    extract_with_scope_from_book(&mut book, sheets, scope, on_progress)
+}
+
+pub fn extract_with_scope_from_book(
+    book: &mut Book,
+    sheets: Option<&[String]>,
+    scope: ExtractScope,
+    on_progress: &mut dyn FnMut(Progress),
+) -> Result<(Vec<SheetCells>, Vec<Warning>), AppError> {
     book.load_tables().map_err(xlsx_err)?;
-    let names: Vec<String> = sheet_names(&book)
+    let names: Vec<String> = sheet_names(book)
         .into_iter()
         .filter(|n| sheets.is_none_or(|s| s.contains(n)))
         .collect();
@@ -102,8 +135,8 @@ pub fn extract_with_scope(
     let (mut out, mut warnings) = (Vec::with_capacity(total), Vec::new());
     for (i, name) in names.iter().enumerate() {
         on_progress(Progress::new("cells", i, total, name));
-        let (mut sheet, warning) = read_sheet(&mut book, name)?;
-        sheet.tables = tables::read_tables(&mut book, &sheet)?;
+        let (mut sheet, warning) = read_sheet(book, name)?;
+        sheet.tables = tables::read_tables(book, &sheet)?;
         let sampled = apply_scope(&mut sheet, scope);
         out.push(sheet);
         warnings.extend(warning);
@@ -149,12 +182,16 @@ pub fn extract_sheet(
 
     if let Some((r0, c0)) = values.start() {
         for (r, c, v) in values.used_cells() {
-            merged.entry((r0 + r as u32, c0 + c as u32)).or_default().0 = Some(v);
+            let rr = r0.saturating_add(u32::try_from(r).unwrap_or(u32::MAX));
+            let cc = c0.saturating_add(u32::try_from(c).unwrap_or(u32::MAX));
+            merged.entry((rr, cc)).or_default().0 = Some(v);
         }
     }
     if let Some((r0, c0)) = formulas.start() {
         for (r, c, f) in formulas.used_cells() {
-            merged.entry((r0 + r as u32, c0 + c as u32)).or_default().1 = Some(f.as_str());
+            let rr = r0.saturating_add(u32::try_from(r).unwrap_or(u32::MAX));
+            let cc = c0.saturating_add(u32::try_from(c).unwrap_or(u32::MAX));
+            merged.entry((rr, cc)).or_default().1 = Some(f.as_str());
         }
     }
 
@@ -348,5 +385,52 @@ mod tests {
             to_value(&Data::Error(calamine::CellErrorType::Div0)),
             CellValue::Error("#DIV/0!".into())
         );
+    }
+
+    #[test]
+    fn cabecalho_que_completa_todas_as_linhas_nao_marca_sampled() {
+        let mut s = SheetCells {
+            name: "S".into(),
+            cells: (1..=4)
+                .map(|r| (format!("A{r}"), CellContent::Plain(CellValue::Int(r))))
+                .collect(),
+            tables: vec![TableInfo {
+                name: "T".into(),
+                range: "A4:A5".into(),
+                columns: vec!["c".into()],
+                rows: vec![vec![CellContent::Plain(CellValue::Int(5))]],
+                cells: vec!["A4".into()],
+            }],
+            sampled: None,
+        };
+        assert!(apply_scope(&mut s, ExtractScope::Head { rows: 3 }).is_none());
+        assert!(s.sampled.is_none());
+        assert_eq!(s.cells.len(), 4);
+    }
+
+    #[test]
+    fn tabela_sem_cabecalho_na_linha_1_mantem_alinhamento() {
+        let cells: IndexMap<String, CellContent> = (1..=5)
+            .map(|r| (format!("A{r}"), CellContent::Plain(CellValue::Int(r))))
+            .collect();
+        let mut s = SheetCells {
+            name: "S".into(),
+            cells,
+            tables: vec![TableInfo {
+                name: "SemCab".into(),
+                range: "A1:A5".into(),
+                columns: vec!["c".into()],
+                rows: (1..=5)
+                    .map(|r| vec![CellContent::Plain(CellValue::Int(r))])
+                    .collect(),
+                cells: (1..=5).map(|r| format!("A{r}")).collect(),
+            }],
+            sampled: None,
+        };
+        let w = apply_scope(&mut s, ExtractScope::Head { rows: 2 }).unwrap();
+        assert_eq!(w.kind, WarningKind::Sampled);
+        assert_eq!(s.tables[0].rows.len(), 2);
+        assert_eq!(s.tables[0].rows[0][0], CellContent::Plain(CellValue::Int(1)));
+        assert_eq!(s.tables[0].rows[1][0], CellContent::Plain(CellValue::Int(2)));
     }
 }

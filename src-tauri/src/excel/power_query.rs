@@ -6,9 +6,12 @@ use base64::{Engine, engine::general_purpose::STANDARD};
 use quick_xml::{Reader, XmlVersion, events::BytesStart, events::Event};
 use zip::ZipArchive;
 
-use super::workbook::io_err;
+use super::workbook::{check_extension, io_err};
 use crate::error::AppError;
 use crate::model::{ConnectionInfo, PowerQuery, PowerQueryItem};
+
+/// Limite máximo de bytes descomprimidos por entrada ZIP (proteção contra ZIP bomb / OOM).
+pub const MAX_ENTRY_BYTES: u64 = 32 * 1024 * 1024;
 
 fn corrupt(e: impl std::fmt::Display) -> AppError {
     AppError::CorruptedFile(e.to_string())
@@ -16,6 +19,7 @@ fn corrupt(e: impl std::fmt::Display) -> AppError {
 
 /// Só leitura. Sem consultas nem conexões → `PowerQuery` vazio (não é erro).
 pub fn extract_file(path: &Path) -> Result<PowerQuery, AppError> {
+    check_extension(path)?;
     let file = File::open(path).map_err(io_err)?;
     extract(ZipArchive::new(file).map_err(corrupt)?)
 }
@@ -31,7 +35,11 @@ pub fn extract<R: Read + Seek>(mut zip: ZipArchive<R>) -> Result<PowerQuery, App
 
     let items: Vec<String> = entries
         .iter()
-        .filter(|n| n.starts_with("customXml/item") && n.ends_with(".xml"))
+        .filter(|n| {
+            n.starts_with("customXml/item")
+                && !n.starts_with("customXml/itemProps")
+                && n.ends_with(".xml")
+        })
         .cloned()
         .collect();
 
@@ -52,11 +60,23 @@ pub fn extract<R: Read + Seek>(mut zip: ZipArchive<R>) -> Result<PowerQuery, App
 }
 
 fn read_entry<R: Read + Seek>(zip: &mut ZipArchive<R>, name: &str) -> Result<Vec<u8>, AppError> {
+    read_entry_limited(zip, name, MAX_ENTRY_BYTES)
+}
+
+fn read_entry_limited<R: Read + Seek>(
+    zip: &mut ZipArchive<R>,
+    name: &str,
+    limit: u64,
+) -> Result<Vec<u8>, AppError> {
     let mut buf = Vec::new();
     zip.by_name(name)
         .map_err(corrupt)?
+        .take(limit.saturating_add(1))
         .read_to_end(&mut buf)
         .map_err(corrupt)?;
+    if buf.len() as u64 > limit {
+        return Err(corrupt(format!("entrada ZIP \"{name}\" excede o limite")));
+    }
     Ok(buf)
 }
 
@@ -71,25 +91,77 @@ fn decode_text(bytes: &[u8]) -> String {
 }
 
 fn utf16(bytes: &[u8], f: fn([u8; 2]) -> u16) -> String {
-    let units: Vec<u16> = bytes.chunks_exact(2).map(|c| f([c[0], c[1]])).collect();
+    let units: Vec<u16> = bytes.as_chunks::<2>().0.iter().copied().map(f).collect();
     String::from_utf16_lossy(&units)
 }
 
-/// Texto do elemento `<DataMashup ...>BASE64</DataMashup>`.
+fn find_tag_end(s: &str) -> Option<usize> {
+    let mut quote: Option<u8> = None;
+    for (i, b) in s.bytes().enumerate() {
+        match quote {
+            Some(q) if b == q => quote = None,
+            Some(_) => {}
+            None if b == b'"' || b == b'\'' => quote = Some(b),
+            None if b == b'>' => return Some(i),
+            None => {}
+        }
+    }
+    None
+}
+
+fn local_tag_name(raw: &str) -> &str {
+    raw.rsplit_once(':').map_or(raw, |(_, local)| local)
+}
+
+/// Texto do elemento `<DataMashup ...>BASE64</DataMashup>` (aceita prefixo de namespace).
 fn datamashup_base64(xml: &str) -> Option<String> {
-    let start = xml.find("<DataMashup")?;
-    let open_end = start + xml[start..].find('>')? + 1;
-    let close = open_end + xml[open_end..].find("</DataMashup")?;
-    Some(xml[open_end..close].split_whitespace().collect())
+    let mut pos = 0;
+    while let Some(rel) = xml[pos..].find('<') {
+        let tag_start = pos + rel;
+        let after_lt = &xml[tag_start + 1..];
+        if after_lt.starts_with('/') || after_lt.starts_with('!') || after_lt.starts_with('?') {
+            pos = tag_start + 1;
+            continue;
+        }
+        let end_rel = find_tag_end(after_lt)?;
+        let tag_body = &after_lt[..end_rel];
+        let name_end = tag_body
+            .find(|c: char| c.is_whitespace() || c == '/')
+            .unwrap_or(tag_body.len());
+        let name = &tag_body[..name_end];
+        let content_start = tag_start + 1 + end_rel + 1;
+        if local_tag_name(name) == "DataMashup" && !tag_body.trim_end().ends_with('/') {
+            let mut search = content_start;
+            while let Some(close_rel) = xml[search..].find("</") {
+                let close_start = search + close_rel;
+                let after_close = &xml[close_start + 2..];
+                let close_end = after_close.find('>')?;
+                let close_name = after_close[..close_end].trim();
+                if local_tag_name(close_name) == "DataMashup" {
+                    return Some(xml[content_start..close_start].split_whitespace().collect());
+                }
+                search = close_start + 2 + close_end + 1;
+            }
+            return None;
+        }
+        pos = content_start;
+    }
+    None
 }
 
 fn queries_from_mashup(b64: &str) -> Result<Vec<PowerQueryItem>, AppError> {
+    if b64.len() as u64 > MAX_ENTRY_BYTES.saturating_mul(2) {
+        return Err(corrupt("DataMashup excede o limite"));
+    }
     let data = STANDARD.decode(b64).map_err(corrupt)?;
     // 4 bytes de versão + 4 bytes (LE) com o tamanho do pacote OPC (ZIP).
     let len = data
         .get(4..8)
         .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize)
         .ok_or_else(|| corrupt("DataMashup truncado"))?;
+    if len as u64 > MAX_ENTRY_BYTES {
+        return Err(corrupt("pacote DataMashup excede o limite"));
+    }
     let package = data
         .get(8..)
         .and_then(|d| d.get(..len))
@@ -100,11 +172,10 @@ fn queries_from_mashup(b64: &str) -> Result<Vec<PowerQueryItem>, AppError> {
 }
 
 /// Uma consulta por `shared <nome> = ...;` no início da linha.
-/// shortcut: um `shared` no começo de linha dentro de texto multilinha vira consulta falsa; raro em M gerado pelo Excel.
 pub fn split_queries(m: &str) -> Vec<PowerQueryItem> {
     let mut out: Vec<PowerQueryItem> = Vec::new();
     for line in m.lines() {
-        if let Some(rest) = line.strip_prefix("shared ") {
+        if let Some(rest) = line.trim_start().strip_prefix("shared ") {
             let (name, tail) = split_name(rest.trim_start());
             out.push(PowerQueryItem {
                 name,
@@ -154,30 +225,55 @@ fn split_name(s: &str) -> (String, &str) {
 }
 
 /// `<connection name description>` + o filho `dbPr`/`webPr`/`textPr` (`connection`, `url` ou `sourceFile`).
-/// shortcut: outros tipos de conexão ficam com a string vazia; ampliar se aparecer caso real.
 fn parse_connections(xml: &str) -> Vec<ConnectionInfo> {
     let mut reader = Reader::from_str(xml);
     let mut out: Vec<ConnectionInfo> = Vec::new();
+    let mut in_connection = false;
     loop {
         match reader.read_event() {
-            Ok(Event::Start(e) | Event::Empty(e)) => {
+            Ok(Event::Start(e)) => {
                 let tag = e.local_name();
                 let tag = tag.as_ref();
                 if tag == "connection" {
                     out.push(ConnectionInfo {
                         name: attr(&e, "name"),
                         description: attr(&e, "description"),
-                        connection: String::new(),
+                        connection: attr(&e, "odcFile"),
                     });
-                } else if matches!(tag, "dbPr" | "webPr" | "textPr")
+                    in_connection = true;
+                } else if in_connection
+                    && matches!(tag, "dbPr" | "webPr" | "textPr")
                     && let Some(c) = out.last_mut()
-                {
-                    c.connection = ["connection", "url", "sourceFile"]
+                    && let Some(val) = ["connection", "url", "sourceFile"]
                         .iter()
                         .map(|k| attr(&e, k))
                         .find(|v| !v.is_empty())
-                        .unwrap_or_default();
+                {
+                    c.connection = val;
                 }
+            }
+            Ok(Event::Empty(e)) => {
+                let tag = e.local_name();
+                let tag = tag.as_ref();
+                if tag == "connection" {
+                    out.push(ConnectionInfo {
+                        name: attr(&e, "name"),
+                        description: attr(&e, "description"),
+                        connection: attr(&e, "odcFile"),
+                    });
+                } else if in_connection
+                    && matches!(tag, "dbPr" | "webPr" | "textPr")
+                    && let Some(c) = out.last_mut()
+                    && let Some(val) = ["connection", "url", "sourceFile"]
+                        .iter()
+                        .map(|k| attr(&e, k))
+                        .find(|v| !v.is_empty())
+                {
+                    c.connection = val;
+                }
+            }
+            Ok(Event::End(e)) if e.local_name().as_ref() == "connection" => {
+                in_connection = false;
             }
             Ok(Event::Eof) | Err(_) => break,
             _ => {}
@@ -280,5 +376,34 @@ mod tests {
         let q = split_queries("shared #\"a\"\"b\" = 1;");
         assert_eq!(q[0].name, "a\"b");
         assert_eq!(q[0].code, "1");
+    }
+
+    #[test]
+    fn datamashup_namespace_e_self_closing() {
+        assert_eq!(datamashup_base64("<DataMashup/>"), None);
+        assert_eq!(datamashup_base64("<DataMashupFoo>abc</DataMashupFoo>"), None);
+        assert_eq!(
+            datamashup_base64("<m:DataMashup xmlns:m=\"x\">  YWJj \n</m:DataMashup>"),
+            Some("YWJj".into())
+        );
+    }
+
+    #[test]
+    fn entrada_zip_acima_do_limite_e_corrompida() {
+        let bytes = zip_of(&[("a.txt", &[b'x'; 32])]);
+        let mut zip = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        assert!(matches!(
+            read_entry_limited(&mut zip, "a.txt", 16),
+            Err(AppError::CorruptedFile(_))
+        ));
+        assert_eq!(read_entry_limited(&mut zip, "a.txt", 32).unwrap().len(), 32);
+    }
+
+    #[test]
+    fn rejeita_extensao_invalida() {
+        assert!(matches!(
+            extract_file(Path::new("arquivo.txt")),
+            Err(AppError::UnsupportedFormat(_))
+        ));
     }
 }

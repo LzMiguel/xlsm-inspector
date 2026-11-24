@@ -80,7 +80,10 @@ export function ExportPanel() {
   const [open, setOpen] = useState(false)
   const [splitOn, setSplitOn] = useState(false)
   const [splitText, setSplitText] = useState(DEFAULT_SPLIT)
-  const [estimate, setEstimate] = useState<BundleEstimate | null>(null)
+  const [estimate, setEstimate] = useState<{
+    key: string
+    value: BundleEstimate
+  } | null>(null)
   const extractScope = useWorkbookStore((s) => s.scope)
   const [exportScope, setExportScope] = useState<ExtractScope | null>(null)
   const [nameEdits, setNameEdits] = useState<Partial<FileNames>>({})
@@ -115,13 +118,39 @@ export function ExportPanel() {
   const template =
     [...builtin, ...presets].find((p) => p.name === templateName)?.template ??
     settings.template
+  const estimateKey = JSON.stringify({
+    filePath,
+    selectedSheets,
+    scope,
+    vbaOptions,
+    template,
+    splitTokens,
+  })
+  const currentEstimate =
+    estimate?.key === estimateKey ? estimate.value : null
 
   useEffect(() => {
-    if (!open) return
+    setNameEdits({})
+    setExportScope(null)
+    setTemplateName('')
+    setConflict(null)
+    setDone(null)
+  }, [filePath])
+
+  useEffect(() => {
+    if (!open || builtin.length > 0) return
+    let cancelled = false
     getBuiltinTemplates()
-      .then(setBuiltin)
-      .catch((e) => setError(toAppError(e)))
-  }, [open])
+      .then((list) => {
+        if (!cancelled) setBuiltin(list)
+      })
+      .catch((e) => {
+        if (!cancelled) setError(toAppError(e))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [open, builtin.length])
 
   useEffect(() => {
     if (!estimateOn || !filePath) return
@@ -135,8 +164,12 @@ export function ExportPanel() {
         template,
         splitTokens,
       })
-        .then((e) => !cancelled && setEstimate(e))
-        .catch(() => !cancelled && setEstimate(null))
+        .then((e) => {
+          if (!cancelled) setEstimate({ key: estimateKey, value: e })
+        })
+        .catch(() => {
+          if (!cancelled) setEstimate(null)
+        })
     }, 300)
     return () => {
       cancelled = true
@@ -144,6 +177,7 @@ export function ExportPanel() {
     }
   }, [
     estimateOn,
+    estimateKey,
     filePath,
     selectedSheets,
     scope,
@@ -218,6 +252,9 @@ export function ExportPanel() {
     if (!canOpen) return
     setError(null)
     setConflict(null)
+    setNameEdits({})
+    setExportScope(null)
+    setTemplateName('')
     setOpen(true)
   }
 
@@ -266,7 +303,7 @@ export function ExportPanel() {
               <Checkbox
                 label={disabled ? `${label} (sem VBA)` : label}
                 checked={checked}
-                disabled={disabled}
+                disabled={disabled || busy}
                 onChange={set(key)}
               />
               {checked && (
@@ -274,6 +311,7 @@ export function ExportPanel() {
                   <Input
                     aria-label={`Nome do arquivo ${ext}`}
                     className="py-1 font-mono text-xs"
+                    disabled={busy}
                     value={names[name]}
                     onChange={(e) => {
                       const v = e.currentTarget.value
@@ -288,6 +326,7 @@ export function ExportPanel() {
                   <Checkbox
                     label="Dividir em partes"
                     checked={splitOn}
+                    disabled={busy}
                     onChange={setSplitOn}
                   />
                   {splitOn && (
@@ -297,20 +336,28 @@ export function ExportPanel() {
                         min={1}
                         step={1000}
                         className="py-1 font-mono text-xs"
+                        disabled={busy}
                         value={splitText}
                         onChange={(e) => setSplitText(e.currentTarget.value)}
                       />
                     </Field>
                   )}
+                  {splitOn && !splitTokens && (
+                    <p className="text-xs text-warning">
+                      Informe um número maior que 0 para dividir em partes.
+                    </p>
+                  )}
                   <p
                     className="text-xs text-muted"
                     aria-live="polite"
                   >
-                    {estimateOn && estimate
-                      ? `≈ ${estimate.tokens.toLocaleString('pt-BR')} tokens (estimativa)` +
-                        (estimate.parts > 1
-                          ? ` · ${estimate.parts} partes`
-                          : '')
+                    {estimateOn
+                      ? currentEstimate
+                        ? `≈ ${currentEstimate.tokens.toLocaleString('pt-BR')} tokens (estimativa)` +
+                          (currentEstimate.parts > 1
+                            ? ` · ${currentEstimate.parts} partes`
+                            : '')
+                        : 'Calculando estimativa…'
                       : 'Estimativa de tokens: ≈ caracteres ÷ 4.'}
                   </p>
                 </div>
@@ -367,6 +414,7 @@ export function ExportPanel() {
           Cancelar
         </Button>
         <Button
+          variant="primary"
           icon={Download}
           loading={busy}
           disabled={!canExport}
@@ -401,7 +449,10 @@ export function ExportPanel() {
 
       <Dialog
         open={open}
-        onClose={() => setOpen(false)}
+        preventClose={busy}
+        onClose={() => {
+          if (!busy) setOpen(false)
+        }}
         title="Exportar"
       >
         {options}
@@ -413,7 +464,9 @@ export function ExportPanel() {
           actionLabel="Abrir pasta"
           onAction={() => {
             if (done[0])
-              revealInFolder(done[0]).catch((e) => setError(toAppError(e)))
+              revealInFolder(done[0]).catch((e) =>
+                useWorkbookStore.getState().setError(toAppError(e)),
+              )
           }}
           onClose={() => setDone(null)}
         />

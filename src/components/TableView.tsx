@@ -1,10 +1,11 @@
-import { useDeferredValue, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Search } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 
 import type { CellContent, TableInfo } from '../types/models'
 import { Button } from './ui/Button'
 import { Checkbox } from './ui/Checkbox'
+import { Input } from './ui/Fields'
 import { fmt } from './cellFormat'
 
 const ROW_HEIGHT = 32
@@ -45,17 +46,25 @@ export function TableView({
   const [truncate, setTruncate] = useState(true)
   const rowHeight = hasFormula ? ROW_HEIGHT_FORMULA : ROW_HEIGHT
 
+  const maxLens = useMemo(
+    () =>
+      table.columns.map((name, i) => {
+        let len = name.length
+        for (const r of rows) {
+          const c = r[i]
+          if (!c) continue
+          len = Math.max(len, c.value.length, c.formula.length)
+        }
+        return len
+      }),
+    [table, rows],
+  )
   const widths = useMemo(() => {
     const max = truncate ? MAX_COL_TRUNCATED : MAX_COL_FULL
-    return table.columns.map((name, i) => {
-      let len = name.length
-      for (const r of rows) {
-        const c = r[i]
-        len = Math.max(len, c.value.length, c.formula.length)
-      }
-      return Math.min(max, Math.max(MIN_COL, Math.ceil(len * CHAR_PX)))
-    })
-  }, [table, rows, truncate])
+    return maxLens.map((len) =>
+      Math.min(max, Math.max(MIN_COL, Math.ceil(len * CHAR_PX))),
+    )
+  }, [maxLens, truncate])
   const filtered = useMemo(() => {
     const q = deferred.trim().toLowerCase()
     return q
@@ -69,11 +78,15 @@ export function TableView({
       : rows
   }, [rows, deferred])
 
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 })
+  }, [deferred])
+
   const virtualizer = useVirtualizer({
     count: filtered.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => (truncate ? rowHeight : ROW_HEIGHT),
-    getItemKey: (i) => `${truncate}:${deferred}:${i}`,
+    getItemKey: (i) => `${truncate}:${i}`,
     overscan: 12,
   })
 
@@ -89,13 +102,9 @@ export function TableView({
         <Button
           variant="secondary"
           size="sm"
+          icon={ArrowLeft}
           onClick={onBack}
         >
-          <ArrowLeft
-            size={16}
-            strokeWidth={1.75}
-            aria-hidden
-          />{' '}
           Voltar
         </Button>
         <span className="font-mono text-sm">
@@ -114,13 +123,13 @@ export function TableView({
             className="pointer-events-none absolute top-2 left-2 text-subtle"
             aria-hidden
           />
-          <input
+          <Input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar na tabela"
             aria-label="Buscar na tabela"
-            className="h-8 w-full rounded-sm border border-border bg-surface pr-2 pl-8 text-sm placeholder:text-subtle focus-visible:outline-2 focus-visible:outline-accent"
+            className="h-8 py-0 pr-2 pl-8 placeholder:text-subtle"
           />
         </label>
         <span className="shrink-0 text-sm text-muted tabular-nums">

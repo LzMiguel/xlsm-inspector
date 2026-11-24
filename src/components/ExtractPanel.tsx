@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { RefreshCw, Table2 } from 'lucide-react'
 
 import { openWorkbook, runExtraction } from '../store/workbookActions'
@@ -27,8 +28,11 @@ export function ExtractPanel() {
   const setScope = useWorkbookStore((s) => s.setScope)
   const extracting = status === 'extracting'
 
-  const cellCount =
-    result?.sheets.reduce((n, s) => n + Object.keys(s.cells).length, 0) ?? 0
+  const cellCount = useMemo(
+    () =>
+      result?.sheets.reduce((n, s) => n + Object.keys(s.cells).length, 0) ?? 0,
+    [result],
+  )
 
   return (
     <section className="flex flex-col gap-4 rounded-md border border-border bg-surface p-4">

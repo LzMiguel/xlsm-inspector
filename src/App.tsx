@@ -25,7 +25,10 @@ function App() {
   const tab = useWorkbookStore((s) => s.tab)
   const status = useWorkbookStore((s) => s.status)
   const error = useWorkbookStore((s) => s.error)
-  const dragging = useFileDrop(openWorkbook)
+  const dragging = useFileDrop((path) => {
+    const st = useWorkbookStore.getState().status
+    if (st !== 'loading' && st !== 'extracting') void openWorkbook(path)
+  })
 
   const [settingsOpen, setSettingsOpen] = useState(false)
   useEffect(() => {

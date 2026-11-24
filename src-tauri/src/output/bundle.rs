@@ -37,8 +37,7 @@ fn summary_block(sheets: &[SheetCells], vba: &[VbaComponent], pq: &PowerQuery) -
     if !pq.queries.is_empty() {
         let names: Vec<&str> = pq.queries.iter().map(|q| q.name.as_str()).collect();
         out.push_str(&format!(
-            "- Consultas Power Query ({}): {}
-",
+            "- Consultas Power Query ({}): {}\n",
             pq.queries.len(),
             names.join(", ")
         ));
@@ -67,23 +66,11 @@ pub fn bundle_units(
         units.push(format!("{sep}{}", vba_block(c, file_name, t, date)));
     }
     for (i, q) in pq.queries.iter().enumerate() {
-        let sep = if i == 0 {
-            "
----
-
-"
-        } else {
-            "
-"
-        };
+        let sep = if i == 0 { "\n---\n\n" } else { "\n" };
         units.push(format!("{sep}{}", pq_query_block(q)));
     }
     if !pq.connections.is_empty() {
-        units.push(format!(
-            "
-{}",
-            pq_connections_block(&pq.connections)
-        ));
+        units.push(format!("\n{}", pq_connections_block(&pq.connections)));
     }
     if !t.footer.is_empty() {
         units.push(footer_block(file_name, t, date));
@@ -140,7 +127,7 @@ pub fn estimate_bundle(
     BundleEstimate {
         tokens: units.iter().map(|u| tokens::estimate(u)).sum(),
         parts: match max_tokens {
-            Some(n) => tokens::split_units(&units, n).len(),
+            Some(n) => tokens::count_parts(&units, n),
             None => 1,
         },
     }
@@ -236,23 +223,9 @@ mod tests {
             }],
         };
         let md = bundle_markdown("a.xlsm", &s, &v, &pq, &t(), "d");
-        assert!(md.contains(
-            "- Consultas Power Query (1): Relatório Mensal
-"
-        ));
-        assert!(md.contains(
-            "## Consulta: Relatório Mensal
-
-```m
-let x = 1 in x
-```
-"
-        ));
-        assert!(md.contains(
-            "## Conexões
-
-### Consulta - Vendas"
-        ));
+        assert!(md.contains("- Consultas Power Query (1): Relatório Mensal\n"));
+        assert!(md.contains("## Consulta: Relatório Mensal\n\n```m\nlet x = 1 in x\n```\n"));
+        assert!(md.contains("## Conexões\n\n### Consulta - Vendas"));
         // dividido, a junção das partes continua igual ao arquivo único
         let partes = bundle_parts("a.xlsm", &s, &v, &pq, &t(), "d", Some(1));
         assert!(partes.len() > 1);

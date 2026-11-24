@@ -8,11 +8,13 @@ import type { CellContent, SheetCells, TableInfo } from '../types/models'
 import { fmt } from './cellFormat'
 import { TableView } from './TableView'
 import { EmptyState } from './ui/EmptyState'
+import { Input, Select } from './ui/Fields'
 
 interface Row {
   coord: string
   formula: string
   value: string
+  search: string
   table?: TableInfo
 }
 
@@ -21,13 +23,22 @@ const ROW_HEIGHT = 32
 
 function toRow(coord: string, c: CellContent): Row {
   if (typeof c === 'object' && c !== null) {
+    const formula = c.formula.replace(/\r?\n/g, ' ↵ ')
+    const value = fmt(c.valor)
     return {
       coord,
-      formula: c.formula.replace(/\r?\n/g, ' ↵ '),
-      value: fmt(c.valor),
+      formula,
+      value,
+      search: `${coord}\n${formula}\n${value}`.toLowerCase(),
     }
   }
-  return { coord, formula: '', value: fmt(c) }
+  const value = fmt(c)
+  return {
+    coord,
+    formula: '',
+    value,
+    search: `${coord}\n${value}`.toLowerCase(),
+  }
 }
 
 export function CellTable({ sheets }: { sheets: SheetCells[] }) {
@@ -41,8 +52,6 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
   const searchRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  useHotkey('f', () => searchRef.current?.focus())
-
   const [tableName, setTableName] = useState<string | null>(
     () =>
       sheets
@@ -52,6 +61,8 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
 
   const sheet = sheets.find((s) => s.name === sheetName) ?? sheets[0]
   const table = sheet?.tables.find((t) => t.name === tableName) ?? null
+
+  useHotkey('f', () => searchRef.current?.focus(), { enabled: !table })
 
   const rows = useMemo<Row[]>(() => {
     if (!sheet) return []
@@ -64,7 +75,13 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
       if (!t) out.push(toRow(k, c))
       else if (!seen.has(t)) {
         seen.add(t)
-        out.push({ coord: t.range, formula: '', value: t.name, table: t })
+        out.push({
+          coord: t.range,
+          formula: '',
+          value: t.name,
+          search: `${t.range}\n${t.name}`.toLowerCase(),
+          table: t,
+        })
       }
     }
     return out
@@ -73,12 +90,7 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
   const filtered = useMemo(() => {
     const q = deferred.trim().toLowerCase()
     if (!q) return rows
-    return rows.filter(
-      (r) =>
-        r.coord.toLowerCase().includes(q) ||
-        r.formula.toLowerCase().includes(q) ||
-        r.value.toLowerCase().includes(q),
-    )
+    return rows.filter((r) => r.search.includes(q))
   }, [rows, deferred])
 
   const virtualizer = useVirtualizer({
@@ -109,14 +121,14 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-3 p-3">
-        <select
+        <Select
           aria-label="Planilha"
           value={sheet.name}
           onChange={(e) => {
             setSheetName(e.target.value)
             setTableName(null)
           }}
-          className="h-8 max-w-56 rounded-sm border border-border bg-surface px-2 text-sm focus-visible:outline-2 focus-visible:outline-accent"
+          className="h-8 w-auto max-w-56 py-0"
         >
           {sheets.map((s) => (
             <option
@@ -126,7 +138,7 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
               {s.name}
             </option>
           ))}
-        </select>
+        </Select>
 
         <label className="relative flex-1">
           <Search
@@ -135,14 +147,14 @@ export function CellTable({ sheets }: { sheets: SheetCells[] }) {
             className="pointer-events-none absolute top-2 left-2 text-subtle"
             aria-hidden
           />
-          <input
+          <Input
             ref={searchRef}
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar por célula, fórmula ou valor (Ctrl+F)"
             aria-label="Buscar células"
-            className="h-8 w-full rounded-sm border border-border bg-surface pr-2 pl-8 text-sm placeholder:text-subtle focus-visible:outline-2 focus-visible:outline-accent"
+            className="h-8 py-0 pr-2 pl-8 placeholder:text-subtle"
           />
         </label>
 

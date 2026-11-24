@@ -6,7 +6,7 @@ import { updateVbaOptions } from "../store/settingsActions";
 import { useSettingsStore } from "../store/settingsStore";
 import { refreshVba } from "../store/workbookActions";
 import { useWorkbookStore } from "../store/workbookStore";
-import type { AppError } from "../types/models";
+import type { AppError, VbaComponent } from "../types/models";
 import { ErrorAlert } from "./ErrorAlert";
 import { Badge } from "./ui/Badge";
 import { Button } from "./ui/Button";
@@ -15,24 +15,31 @@ import { cn } from "./ui/cn";
 import { Toast } from "./ui/Toast";
 import { KIND_GROUP_LABEL, KIND_ORDER } from "./vbaKinds";
 
+const EMPTY_VBA: VbaComponent[] = [];
+
 export function ComponentList() {
-  const vba = useWorkbookStore((s) => s.result?.vba ?? []);
+  const vba = useWorkbookStore((s) => s.result?.vba) ?? EMPTY_VBA;
   const selected = useWorkbookStore((s) => s.selectedComponent);
   const select = useWorkbookStore((s) => s.selectComponent);
   const goToVba = useWorkbookStore((s) => s.goToVba);
   const filePath = useWorkbookStore((s) => s.filePath);
   const defaultDir = useSettingsStore((s) => s.settings.default_out_dir);
   const vbaOptions = useSettingsStore((s) => s.settings.vba_options);
+  const [exporting, setExporting] = useState(false);
   const [done, setDone] = useState<string[] | null>(null);
   const [error, setError] = useState<AppError | null>(null);
 
   async function exportFiles() {
-    if (!filePath) return;
+    if (!filePath || exporting) return;
+    setExporting(true);
+    setError(null);
     try {
       const dir = await pickFolder(defaultDir ?? undefined);
       if (dir) setDone(await exportVbaFiles(filePath, dir));
     } catch (e) {
       setError(toAppError(e));
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -110,7 +117,7 @@ export function ComponentList() {
           </section>
         );
       })}
-      <Button size="sm" icon={FileDown} onClick={exportFiles}>
+      <Button size="sm" icon={FileDown} loading={exporting} onClick={exportFiles}>
         Exportar como arquivos
       </Button>
       {error && <ErrorAlert error={error} />}

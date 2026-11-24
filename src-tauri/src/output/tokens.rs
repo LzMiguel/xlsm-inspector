@@ -6,6 +6,30 @@ pub fn estimate(text: &str) -> usize {
     text.chars().count().div_ceil(4)
 }
 
+/// Conta em quantas partes `split_units` dividiria `units`, sem alocar nem copiar o texto.
+pub fn count_parts(units: &[String], max_tokens: usize) -> usize {
+    let max = max_tokens.max(1);
+    let mut parts = 0usize;
+    let mut has_current = false;
+    let mut current_tokens = 0usize;
+    for unit in units {
+        let t = estimate(unit);
+        if has_current && current_tokens + t > max {
+            parts += 1;
+            current_tokens = 0;
+            has_current = false;
+        }
+        if !unit.is_empty() {
+            has_current = true;
+            current_tokens += t;
+        }
+    }
+    if has_current {
+        parts += 1;
+    }
+    parts
+}
+
 /// Agrupa `units` (blocos indivisíveis: aba, tabela, componente VBA) em partes de até
 /// `max_tokens`. Nunca corta uma unidade: uma unidade maior que o limite fica sozinha na sua
 /// parte. A junção das partes é idêntica à junção das unidades. `max_tokens == 0` vale 1.
@@ -76,5 +100,14 @@ mod tests {
     #[test]
     fn sem_unidades_nao_ha_partes() {
         assert!(split_units(&[], 10).is_empty());
+        assert_eq!(count_parts(&[], 10), 0);
+    }
+
+    #[test]
+    fn count_parts_bate_com_split_units() {
+        let u = units(&[1, 7, 2, 2, 9, 1, 3]);
+        for max in [0, 1, 4, 8, 100] {
+            assert_eq!(count_parts(&u, max), split_units(&u, max).len(), "max={max}");
+        }
     }
 }

@@ -14,14 +14,35 @@ export async function loadSettings() {
 }
 
 let saving: Promise<void> = Promise.resolve()
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
 
 export function updateSettings(patch: Partial<Settings>) {
+  if (debounceTimer !== undefined) {
+    clearTimeout(debounceTimer)
+    debounceTimer = undefined
+  }
   const next = { ...store().settings, ...patch }
   store().setSettings(next)
   saving = saving
     .then(() => saveSettings(next))
     .catch((e) => store().setError(toAppError(e)))
   return saving
+}
+
+export function updateSettingsDebounced(
+  patch: Partial<Settings>,
+  delayMs = 300,
+) {
+  const next = { ...store().settings, ...patch }
+  store().setSettings(next)
+  if (debounceTimer !== undefined) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    debounceTimer = undefined
+    const latest = store().settings
+    saving = saving
+      .then(() => saveSettings(latest))
+      .catch((e) => store().setError(toAppError(e)))
+  }, delayMs)
 }
 
 export const updateVbaOptions = (o: Partial<VbaOptions>) =>

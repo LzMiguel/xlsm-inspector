@@ -3,13 +3,13 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
+use super::write_atomic;
 use crate::error::AppError;
 use crate::excel::vba::VbaOptions;
 use crate::output::naming::FileNames;
 use crate::output::template::{OutputTemplate, TemplatePreset};
 
 const FILE: &str = "settings.json";
-const TMP_FILE: &str = "settings.json.tmp";
 pub const VERSION: u32 = 1;
 
 /// Campos ausentes ou desconhecidos no JSON caem nos padrões (`#[serde(default)]`).
@@ -53,16 +53,12 @@ pub fn load(dir: &Path) -> Settings {
 
 /// Grava em arquivo temporário e renomeia, para nunca deixar o JSON pela metade.
 pub fn save(dir: &Path, settings: &Settings) -> Result<(), AppError> {
-    let wf = |e: std::io::Error| AppError::WriteFailed(format!("configurações: {e}"));
-    fs::create_dir_all(dir).map_err(wf)?;
     let json = serde_json::to_string_pretty(&Settings {
         version: VERSION,
         ..settings.clone()
     })
     .map_err(|e| AppError::WriteFailed(e.to_string()))?;
-    let tmp = dir.join(TMP_FILE);
-    fs::write(&tmp, json).map_err(wf)?;
-    fs::rename(&tmp, dir.join(FILE)).map_err(wf)
+    write_atomic(dir, FILE, &json).map_err(|e| AppError::WriteFailed(format!("configurações: {e}")))
 }
 
 #[cfg(test)]
@@ -109,7 +105,11 @@ mod tests {
         };
         save(&dir, &s).unwrap();
         assert_eq!(load(&dir), s);
-        assert!(!dir.join(TMP_FILE).exists());
+        let has_tmp = fs::read_dir(&dir)
+            .unwrap()
+            .flatten()
+            .any(|e| e.path().extension().is_some_and(|x| x == "tmp"));
+        assert!(!has_tmp);
         let _ = fs::remove_dir_all(&dir);
     }
 

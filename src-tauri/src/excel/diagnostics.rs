@@ -102,13 +102,8 @@ pub fn diagnose(path: &Path) -> Result<Diagnostics, AppError> {
     };
 
     for name in sheet_names(&book) {
-        let (mut sheet, _) = cells::read_sheet(&mut book, &name)?;
-        sheet.tables = tables::read_tables(&mut book, &sheet)?;
-        d.tables.extend(sheet.tables.iter().map(|t| SheetObject {
-            sheet: name.clone(),
-            name: t.name.clone(),
-            range: Some(t.range.clone()),
-        }));
+        let (sheet, _) = cells::read_sheet(&mut book, &name)?;
+        d.tables.extend(tables::read_table_objects(&mut book, &name)?);
         scan_sheet(&sheet, &mut d);
     }
 

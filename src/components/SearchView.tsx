@@ -1,10 +1,16 @@
-import { useDeferredValue, useMemo, useState } from 'react'
+import { useDeferredValue, useMemo, useRef, useState } from 'react'
 import { Search } from 'lucide-react'
 
+import { useHotkey } from '../hooks/useHotkey'
 import { useWorkbookStore } from '../store/workbookStore'
+import type { SheetCells, VbaComponent } from '../types/models'
 import { searchAll } from './searchAll'
 import { Badge } from './ui/Badge'
 import { EmptyState } from './ui/EmptyState'
+import { Input } from './ui/Fields'
+
+const EMPTY_SHEETS: SheetCells[] = []
+const EMPTY_VBA: VbaComponent[] = []
 
 export function SearchView() {
   const result = useWorkbookStore((s) => s.result)
@@ -12,9 +18,17 @@ export function SearchView() {
   const goToVba = useWorkbookStore((s) => s.goToVba)
   const [query, setQuery] = useState('')
   const deferred = useDeferredValue(query)
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  useHotkey('f', () => searchRef.current?.focus())
 
   const { hits, total } = useMemo(
-    () => searchAll(result?.sheets ?? [], result?.vba ?? [], deferred),
+    () =>
+      searchAll(
+        result?.sheets ?? EMPTY_SHEETS,
+        result?.vba ?? EMPTY_VBA,
+        deferred,
+      ),
     [result, deferred],
   )
 
@@ -31,14 +45,15 @@ export function SearchView() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex items-center gap-3 p-3">
-        <input
+        <Input
+          ref={searchRef}
           type="search"
           autoFocus
           aria-label="Buscar em células e VBA"
           placeholder="Buscar em células e VBA…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="h-8 flex-1 rounded-sm border border-border bg-surface px-2 text-sm focus-visible:outline-2 focus-visible:outline-accent"
+          className="h-8 flex-1 py-0"
         />
         <span className="text-sm text-muted tabular-nums">
           {total.toLocaleString('pt-BR')} resultado(s)

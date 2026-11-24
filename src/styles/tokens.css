@@ -28,7 +28,7 @@
 
   --code-keyword: #4b5bd6;
   --code-string: #1f7a55;
-  --code-comment: #8a919c;
+  --code-comment: #5f6672;
   --code-number: #b7591f;
   --code-bg: #f7f8fa;
 }
@@ -56,7 +56,7 @@
 
     --code-keyword: #8592f0;
     --code-string: #7fd1a8;
-    --code-comment: #6b727d;
+    --code-comment: #8a919c;
     --code-number: #e8a06a;
     --code-bg: #13161b;
   }
@@ -84,7 +84,7 @@
 
   --code-keyword: #8592f0;
   --code-string: #7fd1a8;
-  --code-comment: #6b727d;
+  --code-comment: #8a919c;
   --code-number: #e8a06a;
   --code-bg: #13161b;
 }

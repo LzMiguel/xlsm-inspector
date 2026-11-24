@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FolderOpen } from 'lucide-react'
 
 import { clearCache, pickFolder, toAppError } from '../api/commands'
 import { updateSettings, updateVbaOptions } from '../store/settingsActions'
 import { useSettingsStore } from '../store/settingsStore'
-import { loadRecent } from '../store/workbookActions'
+import { loadRecent, refreshVba } from '../store/workbookActions'
 import { ErrorAlert } from './ErrorAlert'
 import { OutputSettings } from './OutputSettings'
 import { TemplateSettings } from './TemplateSettings'
@@ -32,6 +32,15 @@ export function SettingsDialog({
   const setError = useSettingsStore((s) => s.setError)
   const [tab, setTab] = useState<Tab>('geral')
   const [cacheCleared, setCacheCleared] = useState(false)
+
+  useEffect(() => {
+    if (open) setCacheCleared(false)
+  }, [open])
+
+  const changeVbaOption = (o: Partial<typeof settings.vba_options>) => {
+    updateVbaOptions(o)
+    void refreshVba()
+  }
 
   async function emptyCache() {
     try {
@@ -130,12 +139,12 @@ export function SettingsDialog({
             <Checkbox
               label="Remover linhas em branco"
               checked={settings.vba_options.remove_blank_lines}
-              onChange={(v) => updateVbaOptions({ remove_blank_lines: v })}
+              onChange={(v) => changeVbaOption({ remove_blank_lines: v })}
             />
             <Checkbox
               label="Ocultar linhas Attribute VB_"
               checked={settings.vba_options.hide_attributes}
-              onChange={(v) => updateVbaOptions({ hide_attributes: v })}
+              onChange={(v) => changeVbaOption({ hide_attributes: v })}
             />
           </section>
         </>

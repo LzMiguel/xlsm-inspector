@@ -247,15 +247,16 @@ pub async fn estimate_bundle(
         let result = match cached {
             Some(r) => r,
             None => {
-                let mut emit = emitter(app);
+                // Não sobrescreve o cache da extração ativa nem emite progresso global em prévia.
+                let mut noop = |_| {};
                 cache::extract(
                     &data,
                     Path::new(&path),
-                    use_cache,
+                    false,
                     sheets.as_deref(),
                     scope,
                     vba_options,
-                    &mut emit,
+                    &mut noop,
                 )?
             }
         };

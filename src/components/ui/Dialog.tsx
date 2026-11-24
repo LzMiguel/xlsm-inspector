@@ -10,6 +10,7 @@ interface DialogProps {
   title: string
   children: ReactNode
   wide?: boolean
+  preventClose?: boolean
 }
 
 export function Dialog({
@@ -18,8 +19,12 @@ export function Dialog({
   title,
   children,
   wide = false,
+  preventClose = false,
 }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null)
+  const openRef = useRef(open)
+  openRef.current = open
+  const backdropDown = useRef(false)
   const titleId = useId()
 
   useEffect(() => {
@@ -33,8 +38,25 @@ export function Dialog({
     <dialog
       ref={ref}
       aria-labelledby={titleId}
-      onClose={onClose}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onCancel={(e) => {
+        if (preventClose) e.preventDefault()
+      }}
+      onClose={() => {
+        if (openRef.current && !preventClose) onClose()
+      }}
+      onMouseDown={(e) => {
+        backdropDown.current = e.target === e.currentTarget
+      }}
+      onClick={(e) => {
+        if (
+          !preventClose &&
+          backdropDown.current &&
+          e.target === e.currentTarget
+        ) {
+          onClose()
+        }
+        backdropDown.current = false
+      }}
       className={cn(
         'm-auto max-h-[90vh] w-full overflow-y-auto rounded-lg border border-border bg-surface p-0 text-text shadow-md backdrop:bg-overlay',
         wide ? 'max-w-3xl' : 'max-w-lg',
@@ -53,6 +75,7 @@ export function Dialog({
           variant="ghost"
           icon={X}
           aria-label="Fechar"
+          disabled={preventClose}
           onClick={onClose}
         />
       </div>

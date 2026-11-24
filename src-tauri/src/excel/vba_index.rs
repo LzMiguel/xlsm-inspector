@@ -2,8 +2,8 @@ use crate::model::VbaProcedure;
 
 const MODIFIERS: [&str; 5] = ["public", "private", "friend", "static", "global"];
 
-fn words(line: &str) -> Vec<String> {
-    let mut code = String::new();
+fn strip_strings_and_comments(line: &str) -> String {
+    let mut code = String::with_capacity(line.len());
     let mut in_str = false;
     for c in line.chars() {
         match c {
@@ -16,15 +16,67 @@ fn words(line: &str) -> Vec<String> {
             _ => code.push(c),
         }
     }
-    let w: Vec<String> = code
-        .split(|c: char| !(c.is_alphanumeric() || c == '_'))
-        .filter(|s| !s.is_empty())
-        .map(str::to_string)
-        .collect();
-    if w.first().is_some_and(|f| f.eq_ignore_ascii_case("rem")) {
-        return Vec::new();
+    code
+}
+
+fn words(line: &str) -> Vec<String> {
+    let code = strip_strings_and_comments(line);
+    let mut out = Vec::new();
+    for stmt in code.split(':') {
+        let stmt_words: Vec<String> = stmt
+            .split(|c: char| !(c.is_alphanumeric() || c == '_'))
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+            .collect();
+        if stmt_words
+            .first()
+            .is_some_and(|f| f.eq_ignore_ascii_case("rem"))
+        {
+            break;
+        }
+        out.extend(stmt_words);
     }
-    w
+    out
+}
+
+fn logical_lines(code: &str) -> Vec<(usize, usize, String)> {
+    let mut out = Vec::new();
+    let mut cur = String::new();
+    let mut start = 0usize;
+    let mut end = 0usize;
+
+    for (i, line) in code.lines().enumerate() {
+        let n = i + 1;
+        let clean = strip_strings_and_comments(line);
+        let trimmed = clean.trim_end();
+        let continues = trimmed == "_"
+            || trimmed
+                .strip_suffix('_')
+                .is_some_and(|before| before.ends_with(char::is_whitespace));
+        let part = if continues {
+            trimmed.strip_suffix('_').unwrap_or(trimmed).trim_end()
+        } else {
+            trimmed
+        };
+
+        if start == 0 {
+            start = n;
+        }
+        if !cur.is_empty() && !part.is_empty() {
+            cur.push(' ');
+        }
+        cur.push_str(part);
+        end = n;
+
+        if !continues {
+            out.push((start, end, std::mem::take(&mut cur)));
+            start = 0;
+        }
+    }
+    if start != 0 {
+        out.push((start, end, cur));
+    }
+    out
 }
 
 fn header(w: &[String]) -> Option<(String, String, String)> {
@@ -65,10 +117,9 @@ pub fn index(code: &str) -> Vec<VbaProcedure> {
     let mut out: Vec<VbaProcedure> = Vec::new();
     let mut open: Option<String> = None;
     let mut last = 0;
-    for (i, line) in code.lines().enumerate() {
-        let n = i + 1;
-        last = n;
-        let w = words(line);
+    for (start_n, end_n, line) in logical_lines(code) {
+        last = end_n;
+        let w = words(&line);
         if open.is_none()
             && let Some((kind, name, visibility)) = header(&w)
         {
@@ -77,15 +128,15 @@ pub fn index(code: &str) -> Vec<VbaProcedure> {
                 name,
                 kind,
                 visibility,
-                start_line: n,
-                end_line: n,
+                start_line: start_n,
+                end_line: end_n,
             });
         }
         if let Some(base) = &open
             && closes(&w, base)
         {
             if let Some(p) = out.last_mut() {
-                p.end_line = n;
+                p.end_line = end_n;
             }
             open = None;
         }
@@ -161,5 +212,14 @@ Public Declare PtrSafe Sub Sleep Lib \"kernel32\" (ByVal ms As Long)\nSub Real()
         assert_eq!(rows("Sub Ação()\nEnd Sub")[0].0, "Ação");
         assert!(index("").is_empty());
         assert!(index("Dim x As Long\n' Sub Fake()").is_empty());
+    }
+
+    #[test]
+    fn continuacao_de_linha_e_rem_apos_dois_pontos() {
+        let code = "Public Sub _\n  MeuProc()\n  x = 1: Rem End Sub\n  y = 2\nEnd Sub";
+        let got = rows(code);
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].0, "MeuProc");
+        assert_eq!((got[0].3, got[0].4), (1, 5));
     }
 }

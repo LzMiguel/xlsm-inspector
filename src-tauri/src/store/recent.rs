@@ -33,10 +33,14 @@ fn save(dir: &Path, list: &[RecentFile]) -> Result<(), AppError> {
     write_atomic(dir, FILE, &json).map_err(|e| AppError::WriteFailed(format!("recentes: {e}")))
 }
 
-/// Move/insere o arquivo no topo, sem duplicar, respeitando o limite.
+fn same_path(a: &str, b: &str) -> bool {
+    a.to_lowercase() == b.to_lowercase()
+}
+
+/// Move/insere o arquivo no topo, sem duplicar (insensível a maiúsculas como o Windows), respeitando o limite.
 pub fn with_recent(list: Vec<RecentFile>, file: RecentFile) -> Vec<RecentFile> {
     let mut out = vec![file.clone()];
-    out.extend(list.into_iter().filter(|r| r.path != file.path));
+    out.extend(list.into_iter().filter(|r| !same_path(&r.path, &file.path)));
     out.truncate(MAX);
     out
 }
@@ -49,7 +53,7 @@ pub fn add(dir: &Path, file: RecentFile) -> Result<Vec<RecentFile>, AppError> {
 
 pub fn remove(dir: &Path, path: &str) -> Result<Vec<RecentFile>, AppError> {
     let mut list = load(dir);
-    list.retain(|r| r.path != path);
+    list.retain(|r| !same_path(&r.path, path));
     save(dir, &list)?;
     Ok(list)
 }
@@ -82,9 +86,9 @@ mod tests {
 
     #[test]
     fn move_para_o_topo_sem_duplicar() {
-        let out = with_recent(vec![f("a", 1), f("b", 2)], f("b", 5));
+        let out = with_recent(vec![f("a", 1), f("C:\\X\\b.xlsx", 2)], f("c:\\x\\B.xlsx", 5));
         let paths: Vec<_> = out.iter().map(|r| r.path.as_str()).collect();
-        assert_eq!(paths, ["b", "a"]);
+        assert_eq!(paths, ["c:\\x\\B.xlsx", "a"]);
         assert_eq!(out[0].opened_at, 5);
     }
 

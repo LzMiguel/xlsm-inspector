@@ -27,8 +27,8 @@ export function FileCard({ summary, disabled }: { summary: WorkbookSummary; disa
         </p>
       </div>
       {summary.has_vba && <Badge variant="primary">VBA</Badge>}
-      <Button variant="ghost" size="sm" disabled={disabled} onClick={reset}>
-        <House size={16} strokeWidth={1.75} aria-hidden /> Início
+      <Button variant="ghost" size="sm" icon={House} disabled={disabled} onClick={reset}>
+        Início
       </Button>
       <Button variant="secondary" size="sm" disabled={disabled} onClick={chooseAndOpenWorkbook}>
         Trocar arquivo

@@ -1,6 +1,7 @@
 import { Code2, Database, Search, Stethoscope, Table2 } from "lucide-react";
 
 import { useWorkbookStore, type PreviewTab } from "../store/workbookStore";
+import type { SheetCells } from "../types/models";
 import { CellTable } from "./CellTable";
 import { DiagnosticsView } from "./DiagnosticsView";
 import { PowerQueryView } from "./PowerQueryView";
@@ -8,6 +9,8 @@ import { SearchView } from "./SearchView";
 import { EmptyState } from "./ui/EmptyState";
 import { Tabs, type TabItem } from "./ui/Tabs";
 import { VbaViewer } from "./VbaViewer";
+
+const EMPTY_SHEETS: SheetCells[] = [];
 
 const TABS: TabItem<PreviewTab>[] = [
   { id: "cells", label: "Células", icon: Table2 },
@@ -20,8 +23,9 @@ const TABS: TabItem<PreviewTab>[] = [
 export function Preview() {
   const tab = useWorkbookStore((s) => s.tab);
   const setTab = useWorkbookStore((s) => s.setTab);
+  const filePath = useWorkbookStore((s) => s.filePath);
   const result = useWorkbookStore((s) => s.result);
-  const sheets = result?.sheets ?? [];
+  const sheets = result?.sheets ?? EMPTY_SHEETS;
   // Diagnóstico e Power Query leem o arquivo por conta própria; o resto precisa da leitura
   const needsRead = !result && (tab === "cells" || tab === "vba" || tab === "search");
 
@@ -38,7 +42,7 @@ export function Preview() {
           description="Clique em “Ler arquivo” para ver aqui as células, o VBA e a busca. Diagnóstico e Power Query já funcionam."
         />
       )}
-      {!needsRead && tab === "cells" && <CellTable sheets={sheets} />}
+      {!needsRead && tab === "cells" && <CellTable key={filePath ?? ""} sheets={sheets} />}
       {!needsRead && tab === "vba" && <VbaViewer />}
       {tab === "diagnostics" && <DiagnosticsView />}
       {tab === "powerquery" && <PowerQueryView />}

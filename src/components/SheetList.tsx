@@ -2,12 +2,15 @@ import { useState } from "react";
 import { FunctionSquare } from "lucide-react";
 
 import { useWorkbookStore } from "../store/workbookStore";
+import type { SheetInfo } from "../types/models";
 import { Button } from "./ui/Button";
 import { Checkbox } from "./ui/Checkbox";
 import { Input } from "./ui/Fields";
 
+const EMPTY_SHEETS: SheetInfo[] = [];
+
 export function SheetList() {
-  const sheets = useWorkbookStore((s) => s.summary?.sheets ?? []);
+  const sheets = useWorkbookStore((s) => s.summary?.sheets) ?? EMPTY_SHEETS;
   const selected = useWorkbookStore((s) => s.selectedSheets);
   const busy = useWorkbookStore((s) => s.status === "extracting" || s.status === "loading");
   const toggle = useWorkbookStore((s) => s.toggleSheet);

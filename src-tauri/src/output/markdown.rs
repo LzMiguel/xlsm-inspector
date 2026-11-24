@@ -1,3 +1,6 @@
+use std::borrow::Cow;
+use std::fmt::Write;
+
 use indexmap::IndexMap;
 
 use super::template::{OutputTemplate, fill};
@@ -18,10 +21,21 @@ fn value_text(v: &CellValue) -> String {
 }
 
 /// Como no script original: `|` vira `\|` e quebra de linha vira `|`.
-fn escape(s: &str) -> String {
-    s.replace('|', "\\|")
-        .replace("\r\n", "\n")
-        .replace('\n', "|")
+fn escape(s: &str) -> Cow<'_, str> {
+    if !s.contains(['|', '\r', '\n']) {
+        return Cow::Borrowed(s);
+    }
+    let mut out = String::with_capacity(s.len() + 8);
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '|' => out.push_str("\\|"),
+            '\r' if chars.peek() == Some(&'\n') => {}
+            '\n' => out.push('|'),
+            _ => out.push(c),
+        }
+    }
+    Cow::Owned(out)
 }
 
 /// 52000 → "52.000"
@@ -98,23 +112,31 @@ pub(super) fn sheet_block(
             )
         })
         .unwrap_or_default();
-    let mut out = format!(
+    let mut out = String::with_capacity(sheet.cells.len().saturating_mul(48) + 128);
+    let _ = write!(
+        out,
         "\n{heading}\n{note}\n| {} | {} |\n| ------ | ----------------- |\n",
         escape(&t.cell_header),
         escape(&t.content_header)
     );
+    let formula_label = escape(&t.formula_label);
+    let value_label = escape(&t.value_label);
     for (coord, content) in &sheet.cells {
-        let text = match content {
-            CellContent::Plain(v) => escape(&value_text(v)),
-            CellContent::Formula { formula, valor } => format!(
-                "`{}: {}` <br> **{}:** {}",
-                t.formula_label,
-                escape(formula),
-                t.value_label,
-                escape(&value_text(valor))
-            ),
-        };
-        out.push_str(&format!("| **{coord}** | {text} |\n"));
+        match content {
+            CellContent::Plain(v) => {
+                let val = value_text(v);
+                let _ = writeln!(out, "| **{coord}** | {} |", escape(&val));
+            }
+            CellContent::Formula { formula, valor } => {
+                let val = value_text(valor);
+                let _ = writeln!(
+                    out,
+                    "| **{coord}** | `{formula_label}: {}` <br> **{value_label}:** {} |",
+                    escape(formula),
+                    escape(&val)
+                );
+            }
+        }
     }
     out
 }
@@ -134,7 +156,8 @@ pub(super) fn vba_block(
             ("componente", &c.name),
         ],
     );
-    format!("{heading}\n\n```vba\n{}\n```\n", c.code)
+    let fence = fence_for(&c.code);
+    format!("{heading}\n\n{fence}vba\n{}\n{fence}\n", c.code)
 }
 
 pub fn vba_to_markdown(
@@ -153,71 +176,32 @@ pub fn vba_to_markdown(
 /// Uma consulta: título e código `m`.
 pub fn pq_query_block(q: &PowerQueryItem) -> String {
     let fence = fence_for(&q.code);
-    format!(
-        "## Consulta: {}
-
-{fence}m
-{}
-{fence}
-",
-        q.name, q.code
-    )
+    format!("## Consulta: {}\n\n{fence}m\n{}\n{fence}\n", q.name, q.code)
 }
 
 /// Seção "Conexões": nome, descrição e string de conexão de cada uma.
 pub fn pq_connections_block(connections: &[ConnectionInfo]) -> String {
-    let mut out = String::from(
-        "## Conexões
-",
-    );
+    let mut out = String::from("## Conexões\n");
     for c in connections {
-        out.push_str(&format!(
-            "
-### {}
-",
-            c.name
-        ));
+        let _ = write!(out, "\n### {}\n", c.name);
         if !c.description.is_empty() {
-            out.push_str(&format!(
-                "
-{}
-",
-                c.description
-            ));
+            let _ = write!(out, "\n{}\n", c.description);
         }
         if !c.connection.is_empty() {
             let fence = fence_for(&c.connection);
-            out.push_str(&format!(
-                "
-{fence}
-{}
-{fence}
-",
-                c.connection
-            ));
+            let _ = write!(out, "\n{fence}\n{}\n{fence}\n", c.connection);
         }
     }
     out
 }
 
 pub fn power_query_to_markdown(pq: &PowerQuery, file_name: &str) -> String {
-    let mut out = format!(
-        "# Power Query: {file_name}
-"
-    );
+    let mut out = format!("# Power Query: {file_name}\n");
     for q in &pq.queries {
-        out.push_str(&format!(
-            "
-{}",
-            pq_query_block(q)
-        ));
+        let _ = write!(out, "\n{}", pq_query_block(q));
     }
     if !pq.connections.is_empty() {
-        out.push_str(&format!(
-            "
-{}",
-            pq_connections_block(&pq.connections)
-        ));
+        let _ = write!(out, "\n{}", pq_connections_block(&pq.connections));
     }
     out
 }
@@ -399,5 +383,17 @@ mod tests {
     fn previa_tem_cells_e_vba() {
         let p = preview(&OutputTemplate::default(), "2026-01-02");
         assert!(p.contains("## Aba: Resumo") && p.contains("## COMPONENTE: Module1"));
+    }
+
+    #[test]
+    fn vba_com_crases_usa_cerca_maior() {
+        let md = vba_to_markdown(
+            &[comp("M", "' exemplo ```\nSub A()\nEnd Sub")],
+            "a.xlsm",
+            &OutputTemplate::default(),
+            "d",
+        );
+        assert!(md.contains("````vba\n"));
+        assert!(md.ends_with("\n````\n"));
     }
 }

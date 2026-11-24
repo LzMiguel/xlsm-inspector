@@ -1,19 +1,35 @@
-/// Coluna (base 0) → letras: 0→A, 25→Z, 26→AA, 702→AAA.
-pub fn col_to_letters(col: u32) -> String {
-    let mut n = col + 1;
-    let mut out = Vec::new();
+use std::fmt::Write;
+
+fn col_bytes(col: u32, buf: &mut [u8; 8]) -> usize {
+    let mut n = u64::from(col) + 1;
+    let mut i = buf.len();
     while n > 0 {
         n -= 1;
-        out.push(b'A' + (n % 26) as u8);
+        i -= 1;
+        buf[i] = b'A' + (n % 26) as u8;
         n /= 26;
     }
-    out.reverse();
-    String::from_utf8_lossy(&out).into_owned()
+    i
+}
+
+/// Coluna (base 0) → letras: 0→A, 25→Z, 26→AA, 702→AAA.
+pub fn col_to_letters(col: u32) -> String {
+    let mut buf = [0u8; 8];
+    let start = col_bytes(col, &mut buf);
+    std::str::from_utf8(&buf[start..])
+        .unwrap_or_default()
+        .to_string()
 }
 
 /// (linha, coluna), ambas base 0 → "A1".
 pub fn to_a1(row: u32, col: u32) -> String {
-    format!("{}{}", col_to_letters(col), row + 1)
+    let mut buf = [0u8; 8];
+    let start = col_bytes(col, &mut buf);
+    let letters = std::str::from_utf8(&buf[start..]).unwrap_or_default();
+    let mut out = String::with_capacity(letters.len() + 10);
+    out.push_str(letters);
+    let _ = write!(out, "{}", u64::from(row) + 1);
+    out
 }
 
 #[cfg(test)]
@@ -35,5 +51,6 @@ mod tests {
         assert_eq!(to_a1(0, 0), "A1");
         assert_eq!(to_a1(1, 1), "B2");
         assert_eq!(to_a1(1048575, 16383), "XFD1048576");
+        assert!(!to_a1(u32::MAX, u32::MAX).is_empty());
     }
 }

@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 import type { ExtractScope } from '../types/models'
 import { Input, Select } from './ui/Fields'
 
@@ -10,6 +12,13 @@ interface Props {
 }
 
 export function ScopeSelector({ value, onChange, disabled }: Props) {
+  const propRows = value.kind === 'full' ? DEFAULT_ROWS : value.rows
+  const [rowsText, setRowsText] = useState(String(propRows))
+
+  useEffect(() => {
+    setRowsText(String(propRows))
+  }, [propRows])
+
   return (
     <div className="flex items-center gap-2">
       <Select
@@ -41,13 +50,23 @@ export function ScopeSelector({ value, onChange, disabled }: Props) {
           title="Quantas linhas"
           className="w-24"
           disabled={disabled}
-          value={value.rows}
-          onChange={(e) =>
-            onChange({
-              kind: value.kind,
-              rows: Math.max(1, Math.floor(Number(e.currentTarget.value)) || 1),
-            })
-          }
+          value={rowsText}
+          onChange={(e) => {
+            const text = e.currentTarget.value
+            setRowsText(text)
+            const n = Math.floor(Number(text))
+            if (Number.isFinite(n) && n >= 1) {
+              onChange({ kind: value.kind, rows: n })
+            }
+          }}
+          onBlur={() => {
+            const n = Math.floor(Number(rowsText))
+            const valid = Number.isFinite(n) && n >= 1 ? n : 1
+            setRowsText(String(valid))
+            if (valid !== value.rows) {
+              onChange({ kind: value.kind, rows: valid })
+            }
+          }}
         />
       )}
     </div>

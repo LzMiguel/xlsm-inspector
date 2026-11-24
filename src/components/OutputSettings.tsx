@@ -1,4 +1,7 @@
-import { updateSettings } from '../store/settingsActions'
+import {
+  updateSettings,
+  updateSettingsDebounced,
+} from '../store/settingsActions'
 import { DEFAULT_SETTINGS, useSettingsStore } from '../store/settingsStore'
 import type { FileNames } from '../types/models'
 import { Button } from './ui/Button'
@@ -16,7 +19,7 @@ export function OutputSettings() {
   const names = useSettingsStore((s) => s.settings.file_names)
 
   const setName = (k: keyof FileNames) => (v: string) =>
-    updateSettings({ file_names: { ...names, [k]: v } })
+    updateSettingsDebounced({ file_names: { ...names, [k]: v } })
 
   return (
     <section className="flex flex-col gap-3">
@@ -42,13 +45,13 @@ export function OutputSettings() {
           key={key}
           label={label}
         >
-          <div className="flex items-center gap-1">
+          <span className="flex items-center gap-1">
             <Input
               value={names[key]}
               onChange={(e) => setName(key)(e.currentTarget.value)}
             />
             <span className="font-mono text-sm text-muted">{ext}</span>
-          </div>
+          </span>
         </Field>
       ))}
     </section>

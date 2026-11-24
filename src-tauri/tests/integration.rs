@@ -384,7 +384,7 @@ fn exporta_do_cache_sem_reler_o_arquivo() {
     )
     .unwrap();
     assert_eq!(written.len(), 2);
-    let md = fs::read_to_string(dir.join("simples_celulas.md")).unwrap();
+    let md = fs::read_to_string(dir.join("nao_existe_celulas.md")).unwrap();
     assert!(md.contains("## Aba: SoNoCache") && md.contains("| **A1** | 7 |"));
     fs::remove_dir_all(&dir).ok();
 }

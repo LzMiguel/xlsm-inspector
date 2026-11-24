@@ -1,10 +1,9 @@
 //! Cache em disco do resultado da extração (até 5 planilhas, só local).
 //! Um JSON por planilha em `<base>/cache/`. A entrada vale enquanto tamanho + data de
 //! modificação do arquivo forem os mesmos. Nunca escreve na planilha (RNF07).
-//! ponytail: tamanho + mtime pode errar em pastas sincronizadas (OneDrive); "Recarregar" é a válvula.
+//! Limite conhecido: tamanho + mtime pode errar em pastas sincronizadas (OneDrive); "Recarregar" ignora o cache.
 
 use std::fs;
-use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -12,17 +11,244 @@ use serde::{Deserialize, Serialize};
 
 use super::write_atomic;
 use crate::error::AppError;
-use crate::excel::cells::extract_with_scope;
+use crate::excel::cells::extract_with_scope_from_book;
 use crate::excel::power_query;
 use crate::excel::vba::{self, VbaOptions};
-use crate::excel::workbook::{inspect, io_err};
+use crate::excel::workbook::{self, inspect, io_err};
 use crate::model::{ExtractScope, ExtractionResult, Progress, SheetInfo, WorkbookSummary};
 
-pub const CACHE_VERSION: u32 = 3; // 3: ExtractionResult.power_query (2: VbaComponent.procedures)
+pub const CACHE_VERSION: u32 = 4; // 4: CellValue lossless + hash FNV-1a estável (3: power_query, 2: procedures)
 pub const MAX_ENTRIES: usize = 5;
 /// Planilhas maiores que isso não entram no cache (o JSON ficaria enorme).
 pub const MAX_FILE_BYTES: u64 = 50 * 1024 * 1024;
 const DIR: &str = "cache";
+
+/// Serialização interna com tags explícitas em `CellValue` para preservar `DateTime` e `Error`
+/// no cache em disco (o JSON exportado continua untagged pelo `model.rs`).
+mod wire_result {
+    use indexmap::IndexMap;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    use crate::model::{
+        CellContent, CellValue, ExtractionResult, PowerQuery, SampleInfo, SheetCells, TableInfo,
+        VbaComponent, Warning,
+    };
+
+    #[derive(Serialize)]
+    enum ValRef<'a> {
+        Empty,
+        Bool(bool),
+        Int(i64),
+        Float(f64),
+        String(&'a str),
+        DateTime(&'a str),
+        Error(&'a str),
+    }
+
+    impl<'a> From<&'a CellValue> for ValRef<'a> {
+        fn from(v: &'a CellValue) -> Self {
+            match v {
+                CellValue::Empty => Self::Empty,
+                CellValue::Bool(b) => Self::Bool(*b),
+                CellValue::Int(i) => Self::Int(*i),
+                CellValue::Float(f) if f.is_finite() => Self::Float(*f),
+                CellValue::Float(_) => Self::Empty,
+                CellValue::String(s) => Self::String(s),
+                CellValue::DateTime(s) => Self::DateTime(s),
+                CellValue::Error(s) => Self::Error(s),
+            }
+        }
+    }
+
+    #[derive(Serialize)]
+    enum ContentRef<'a> {
+        Plain(ValRef<'a>),
+        Formula { formula: &'a str, valor: ValRef<'a> },
+    }
+
+    impl<'a> From<&'a CellContent> for ContentRef<'a> {
+        fn from(c: &'a CellContent) -> Self {
+            match c {
+                CellContent::Plain(v) => Self::Plain(v.into()),
+                CellContent::Formula { formula, valor } => Self::Formula {
+                    formula,
+                    valor: valor.into(),
+                },
+            }
+        }
+    }
+
+    #[derive(Serialize)]
+    struct TableRef<'a> {
+        name: &'a str,
+        range: &'a str,
+        columns: &'a [String],
+        rows: Vec<Vec<ContentRef<'a>>>,
+        cells: &'a [String],
+    }
+
+    #[derive(Serialize)]
+    struct SheetRef<'a> {
+        name: &'a str,
+        cells: IndexMap<&'a str, ContentRef<'a>>,
+        tables: Vec<TableRef<'a>>,
+        sampled: Option<SampleInfo>,
+    }
+
+    #[derive(Serialize)]
+    struct ResultRef<'a> {
+        sheets: Vec<SheetRef<'a>>,
+        vba: &'a [VbaComponent],
+        warnings: &'a [Warning],
+        power_query: &'a PowerQuery,
+    }
+
+    #[derive(Deserialize)]
+    enum ValOwned {
+        Empty,
+        Bool(bool),
+        Int(i64),
+        Float(f64),
+        String(String),
+        DateTime(String),
+        Error(String),
+    }
+
+    impl From<ValOwned> for CellValue {
+        fn from(v: ValOwned) -> Self {
+            match v {
+                ValOwned::Empty => Self::Empty,
+                ValOwned::Bool(b) => Self::Bool(b),
+                ValOwned::Int(i) => Self::Int(i),
+                ValOwned::Float(f) => Self::Float(f),
+                ValOwned::String(s) => Self::String(s),
+                ValOwned::DateTime(s) => Self::DateTime(s),
+                ValOwned::Error(s) => Self::Error(s),
+            }
+        }
+    }
+
+    #[derive(Deserialize)]
+    enum ContentOwned {
+        Plain(ValOwned),
+        Formula { formula: String, valor: ValOwned },
+    }
+
+    impl From<ContentOwned> for CellContent {
+        fn from(c: ContentOwned) -> Self {
+            match c {
+                ContentOwned::Plain(v) => Self::Plain(v.into()),
+                ContentOwned::Formula { formula, valor } => Self::Formula {
+                    formula,
+                    valor: valor.into(),
+                },
+            }
+        }
+    }
+
+    #[derive(Deserialize)]
+    struct TableOwned {
+        name: String,
+        range: String,
+        columns: Vec<String>,
+        rows: Vec<Vec<ContentOwned>>,
+        cells: Vec<String>,
+    }
+
+    #[derive(Deserialize)]
+    struct SheetOwned {
+        name: String,
+        cells: IndexMap<String, ContentOwned>,
+        tables: Vec<TableOwned>,
+        sampled: Option<SampleInfo>,
+    }
+
+    #[derive(Deserialize)]
+    struct ResultOwned {
+        sheets: Vec<SheetOwned>,
+        vba: Vec<VbaComponent>,
+        warnings: Vec<Warning>,
+        #[serde(default)]
+        power_query: PowerQuery,
+    }
+
+    pub fn serialize<S: Serializer>(r: &ExtractionResult, s: S) -> Result<S::Ok, S::Error> {
+        let wire = ResultRef {
+            sheets: r
+                .sheets
+                .iter()
+                .map(|sh| SheetRef {
+                    name: &sh.name,
+                    cells: sh.cells.iter().map(|(k, v)| (k.as_str(), v.into())).collect(),
+                    tables: sh
+                        .tables
+                        .iter()
+                        .map(|t| TableRef {
+                            name: &t.name,
+                            range: &t.range,
+                            columns: &t.columns,
+                            rows: t
+                                .rows
+                                .iter()
+                                .map(|row| row.iter().map(ContentRef::from).collect())
+                                .collect(),
+                            cells: &t.cells,
+                        })
+                        .collect(),
+                    sampled: sh.sampled,
+                })
+                .collect(),
+            vba: &r.vba,
+            warnings: &r.warnings,
+            power_query: &r.power_query,
+        };
+        wire.serialize(s)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<ExtractionResult, D::Error> {
+        let w = ResultOwned::deserialize(d)?;
+        Ok(ExtractionResult {
+            sheets: w
+                .sheets
+                .into_iter()
+                .map(|sh| SheetCells {
+                    name: sh.name,
+                    cells: sh.cells.into_iter().map(|(k, v)| (k, v.into())).collect(),
+                    tables: sh
+                        .tables
+                        .into_iter()
+                        .map(|t| TableInfo {
+                            name: t.name,
+                            range: t.range,
+                            columns: t.columns,
+                            rows: t
+                                .rows
+                                .into_iter()
+                                .map(|row| row.into_iter().map(CellContent::from).collect())
+                                .collect(),
+                            cells: t.cells,
+                        })
+                        .collect(),
+                    sampled: sh.sampled,
+                })
+                .collect(),
+            vba: w.vba,
+            warnings: w.warnings,
+            power_query: w.power_query,
+        })
+    }
+}
+
+fn fnv1a_64(bytes: &[u8]) -> u64 {
+    const OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+    const PRIME: u64 = 0x0100_0000_01b3;
+    let mut h = OFFSET;
+    for &b in bytes {
+        h ^= u64::from(b);
+        h = h.wrapping_mul(PRIME);
+    }
+    h
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Fingerprint {
@@ -72,6 +298,7 @@ impl Options {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Extraction {
     pub options: Options,
+    #[serde(with = "wire_result")]
     pub result: ExtractionResult,
 }
 
@@ -82,6 +309,22 @@ pub struct Entry {
     pub fingerprint: Fingerprint,
     pub summary: WorkbookSummary,
     pub extraction: Option<Extraction>,
+}
+
+#[derive(Serialize)]
+struct ExtractionRef<'a> {
+    options: &'a Options,
+    #[serde(serialize_with = "wire_result::serialize")]
+    result: &'a ExtractionResult,
+}
+
+#[derive(Serialize)]
+struct EntryRef<'a> {
+    cache_version: u32,
+    path: &'a str,
+    fingerprint: Fingerprint,
+    summary: &'a WorkbookSummary,
+    extraction: Option<ExtractionRef<'a>>,
 }
 
 impl Entry {
@@ -99,9 +342,8 @@ fn dir(base: &Path) -> PathBuf {
 }
 
 fn file_for(base: &Path, path: &str) -> PathBuf {
-    let mut h = DefaultHasher::new();
-    path.to_lowercase().hash(&mut h); // o Windows não diferencia maiúsculas
-    dir(base).join(format!("{:016x}.json", h.finish()))
+    let lower = path.to_lowercase(); // o Windows não diferencia maiúsculas
+    dir(base).join(format!("{:016x}.json", fnv1a_64(lower.as_bytes())))
 }
 
 /// Entrada gravada para este caminho (versão e caminho conferem), válida ou não.
@@ -120,13 +362,18 @@ fn touch(file: &Path) {
     }
 }
 
-/// Entrada válida: o arquivo continua com o mesmo tamanho e a mesma data de modificação.
-pub fn lookup(base: &Path, path: &Path) -> Option<Entry> {
+fn lookup_with_fp(base: &Path, path: &Path, fp: Fingerprint) -> Option<Entry> {
     let (file, e) = read_entry(base, &path.to_string_lossy())?;
-    (fingerprint(path).ok()? == e.fingerprint).then(|| {
+    (fp == e.fingerprint).then(|| {
         touch(&file);
         e
     })
+}
+
+/// Entrada válida: o arquivo continua com o mesmo tamanho e a mesma data de modificação.
+pub fn lookup(base: &Path, path: &Path) -> Option<Entry> {
+    let fp = fingerprint(path).ok()?;
+    lookup_with_fp(base, path, fp)
 }
 
 fn prune(base: &Path) {
@@ -144,9 +391,9 @@ fn prune(base: &Path) {
     }
 }
 
-fn write_entry(base: &Path, e: &Entry) -> Result<(), AppError> {
+fn write_entry_ref(base: &Path, e: &EntryRef<'_>) -> Result<(), AppError> {
     let json = serde_json::to_string(e).map_err(|e| AppError::WriteFailed(e.to_string()))?;
-    let name = file_for(base, &e.path);
+    let name = file_for(base, e.path);
     let name = name
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
@@ -167,13 +414,14 @@ pub fn store_summary(
     if fp.size > MAX_FILE_BYTES {
         return Ok(());
     }
-    write_entry(
+    let path_str = path.to_string_lossy();
+    write_entry_ref(
         base,
-        &Entry {
+        &EntryRef {
             cache_version: CACHE_VERSION,
-            path: path.to_string_lossy().into_owned(),
+            path: &path_str,
             fingerprint: fp,
-            summary: summary.clone(),
+            summary,
             extraction: None,
         },
     )
@@ -187,17 +435,30 @@ pub fn store_extraction(
     opts: impl FnOnce(&[SheetInfo]) -> Options,
     result: &ExtractionResult,
 ) -> Result<(), AppError> {
-    let Some((_, mut e)) = read_entry(base, &path.to_string_lossy()) else {
+    // Re-verifica no disco para fechar janela TOCTOU caso o arquivo tenha mudado durante a leitura
+    if fingerprint(path).ok() != Some(fp) {
+        return Ok(());
+    }
+    let Some((_, e)) = read_entry(base, &path.to_string_lossy()) else {
         return Ok(());
     };
     if e.fingerprint != fp {
         return Ok(());
     }
-    e.extraction = Some(Extraction {
-        options: opts(&e.summary.sheets),
-        result: result.clone(),
-    });
-    write_entry(base, &e)
+    let options = opts(&e.summary.sheets);
+    write_entry_ref(
+        base,
+        &EntryRef {
+            cache_version: e.cache_version,
+            path: &e.path,
+            fingerprint: e.fingerprint,
+            summary: &e.summary,
+            extraction: Some(ExtractionRef {
+                options: &options,
+                result,
+            }),
+        },
+    )
 }
 
 pub fn clear(base: &Path) -> Result<(), AppError> {
@@ -278,7 +539,7 @@ pub fn open(
     let fp = fingerprint(path)?;
     if use_cache
         && !reload
-        && let Some(e) = lookup(base, path)
+        && let Some(e) = lookup_with_fp(base, path, fp)
     {
         let cached = e
             .extraction
@@ -314,14 +575,16 @@ pub fn extract(
     on_progress: &mut dyn FnMut(Progress),
 ) -> Result<ExtractionResult, AppError> {
     let fp = fingerprint(path)?;
-    let (cells, warnings) = extract_with_scope(path, sheets, scope, on_progress)?;
+    let mut book = workbook::open(path)?;
+    let (cells, warnings) = extract_with_scope_from_book(&mut book, sheets, scope, on_progress)?;
     on_progress(Progress::new("vba", 0, 1, "VBA"));
-    let vba = match vba::extract_file(path, &vba_opts) {
+    let vba = match vba::extract(&mut book, &vba_opts) {
         Ok(v) => v,
         Err(AppError::NoVbaProject) => Vec::new(),
         Err(e) => return Err(e),
     };
-    // shortcut: Power Query ilegível vira vazio para não derrubar a extração das células; avisar na UI se virar problema
+    on_progress(Progress::new("vba", 1, 1, "VBA"));
+    // Power Query ilegível vira vazio para não derrubar a extração das células
     let power_query = power_query::extract_file(path).unwrap_or_default();
     let result = ExtractionResult {
         sheets: cells,
@@ -603,5 +866,55 @@ mod tests {
         };
         store_summary(&t.0, &p, fp, &summary(&p)).unwrap();
         assert!(!dir(&t.0).exists());
+    }
+
+    #[test]
+    fn preserva_datetime_e_error_no_cache() {
+        use crate::model::{CellContent, CellValue, SheetCells};
+        use indexmap::IndexMap;
+
+        let t = Tmp::new("lossless");
+        let p = t.file("a.xlsx", "dados");
+        let fp = fingerprint(&p).unwrap();
+        store_summary(&t.0, &p, fp, &summary(&p)).unwrap();
+
+        let mut cells = IndexMap::new();
+        cells.insert(
+            "A1".into(),
+            CellContent::Plain(CellValue::DateTime("2024-01-15".into())),
+        );
+        cells.insert(
+            "A2".into(),
+            CellContent::Formula {
+                formula: "=1/0".into(),
+                valor: CellValue::Error("#DIV/0!".into()),
+            },
+        );
+        let res = ExtractionResult {
+            sheets: vec![SheetCells {
+                name: "A".into(),
+                cells,
+                tables: vec![],
+                sampled: None,
+            }],
+            vba: vec![],
+            warnings: vec![],
+            power_query: Default::default(),
+        };
+        store_extraction(&t.0, &p, fp, opts(VbaOptions::default()), &res).unwrap();
+
+        let loaded = cached_result(&t.0, &p, None, ExtractScope::Full, VbaOptions::default())
+            .expect("deveria recuperar do cache");
+        assert_eq!(
+            loaded.sheets[0].cells["A1"],
+            CellContent::Plain(CellValue::DateTime("2024-01-15".into()))
+        );
+        assert_eq!(
+            loaded.sheets[0].cells["A2"],
+            CellContent::Formula {
+                formula: "=1/0".into(),
+                valor: CellValue::Error("#DIV/0!".into()),
+            }
+        );
     }
 }

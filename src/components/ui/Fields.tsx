@@ -1,5 +1,5 @@
 import type {
-  InputHTMLAttributes,
+  ComponentPropsWithRef,
   ReactNode,
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
@@ -13,7 +13,7 @@ const BASE =
 export function Input({
   className,
   ...rest
-}: InputHTMLAttributes<HTMLInputElement>) {
+}: ComponentPropsWithRef<'input'>) {
   return (
     <input
       className={cn(BASE, className)}

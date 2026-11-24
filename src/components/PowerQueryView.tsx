@@ -1,5 +1,5 @@
 import { Check, Copy, Database } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { loadPowerQuery } from '../store/workbookActions'
 import { useWorkbookStore } from '../store/workbookStore'
@@ -7,15 +7,22 @@ import type { AppError, PowerQueryItem } from '../types/models'
 import { ErrorAlert } from './ErrorAlert'
 import { Button } from './ui/Button'
 import { EmptyState } from './ui/EmptyState'
-import { highlightM, type CodeToken } from './vbaHighlighter'
+import type { CodeToken } from './vbaHighlighter'
 
 function Code({ code }: { code: string }) {
-  const [tokens, setTokens] = useState<CodeToken[][] | null>(null)
+  const [highlighted, setHighlighted] = useState<{
+    code: string
+    lines: CodeToken[][]
+  } | null>(null)
+  const tokens = highlighted?.code === code ? highlighted.lines : null
 
   useEffect(() => {
     let cancelled = false
-    highlightM(code)
-      .then((t) => !cancelled && setTokens(t))
+    void import('./vbaHighlighter')
+      .then(({ highlightM }) => highlightM(code))
+      .then((lines) => {
+        if (!cancelled) setHighlighted({ code, lines })
+      })
       .catch(() => {})
     return () => {
       cancelled = true
@@ -44,12 +51,20 @@ function Code({ code }: { code: string }) {
 function Query({ q }: { q: PowerQueryItem }) {
   const [open, setOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== undefined) clearTimeout(timerRef.current)
+    }
+  }, [])
 
   async function copy() {
     try {
       await navigator.clipboard.writeText(q.code)
       setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      if (timerRef.current !== undefined) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => setCopied(false), 1500)
     } catch {
       // ignore
     }
@@ -85,10 +100,18 @@ function Query({ q }: { q: PowerQueryItem }) {
 export function PowerQueryView() {
   const pq = useWorkbookStore((s) => s.powerQuery)
   const [error, setError] = useState<AppError | null>(null)
+  const [retrying, setRetrying] = useState(false)
 
   useEffect(() => {
-    if (!useWorkbookStore.getState().powerQuery)
-      void loadPowerQuery().then(setError)
+    let cancelled = false
+    if (!useWorkbookStore.getState().powerQuery) {
+      void loadPowerQuery().then((err) => {
+        if (!cancelled) setError(err)
+      })
+    }
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   if (!pq && error)
@@ -97,9 +120,14 @@ export function PowerQueryView() {
         <ErrorAlert error={error} />
         <Button
           size="sm"
+          loading={retrying}
           onClick={() => {
             setError(null)
-            void loadPowerQuery().then(setError)
+            setRetrying(true)
+            void loadPowerQuery().then((err) => {
+              setRetrying(false)
+              setError(err)
+            })
           }}
         >
           Tentar de novo

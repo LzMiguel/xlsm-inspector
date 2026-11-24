@@ -36,7 +36,11 @@ export function Toast({
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
-      onBlur={() => setPaused(false)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setPaused(false)
+        }
+      }}
       className="fixed right-4 bottom-4 z-50 flex items-center gap-3 rounded-lg border border-border bg-surface p-3 shadow-md"
     >
       <CheckCircle2

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Code2, Copy } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 
@@ -7,29 +7,46 @@ import type { VbaComponent } from '../types/models'
 import { Badge } from './ui/Badge'
 import { Button } from './ui/Button'
 import { EmptyState } from './ui/EmptyState'
-import { highlightVba, type CodeToken } from './vbaHighlighter'
+import type { CodeToken } from './vbaHighlighter'
 import { KIND_LABEL } from './vbaKinds'
 
 const LINE_HEIGHT = 20
+const EMPTY_VBA: VbaComponent[] = []
 
 function CodeViewer({ component }: { component: VbaComponent }) {
-  const [tokens, setTokens] = useState<CodeToken[][] | null>(null)
+  const [highlighted, setHighlighted] = useState<{
+    code: string
+    lines: CodeToken[][]
+  } | null>(null)
   const [copied, setCopied] = useState(false)
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  )
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const plain = component.code.split('\n')
+  const plain = useMemo(() => component.code.split('\n'), [component.code])
+  const tokens =
+    highlighted?.code === component.code ? highlighted.lines : null
   const count = tokens?.length ?? plain.length
 
   useEffect(() => {
     let cancelled = false
-    setTokens(null)
-    highlightVba(component.code)
-      .then((t) => !cancelled && setTokens(t))
+    void import('./vbaHighlighter')
+      .then(({ highlightVba }) => highlightVba(component.code))
+      .then((lines) => {
+        if (!cancelled) setHighlighted({ code: component.code, lines })
+      })
       .catch(() => {})
     return () => {
       cancelled = true
     }
   }, [component.code])
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== undefined) clearTimeout(copyTimerRef.current)
+    }
+  }, [])
 
   const virtualizer = useVirtualizer({
     count,
@@ -39,16 +56,21 @@ function CodeViewer({ component }: { component: VbaComponent }) {
   })
 
   const vbaLine = useWorkbookStore((s) => s.vbaLine)
+  const vbaJumpSeq = useWorkbookStore((s) => s.vbaJumpSeq)
   useEffect(() => {
-    if (vbaLine) virtualizer.scrollToIndex(vbaLine - 1, { align: 'start' })
+    if (vbaLine && count > 0) {
+      const target = Math.min(Math.max(vbaLine - 1, 0), count - 1)
+      virtualizer.scrollToIndex(target, { align: 'start' })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vbaLine, component.name])
+  }, [vbaLine, vbaJumpSeq, component.name, count])
 
   async function copy() {
     try {
       await navigator.clipboard.writeText(component.code)
       setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
+      if (copyTimerRef.current !== undefined) clearTimeout(copyTimerRef.current)
+      copyTimerRef.current = setTimeout(() => setCopied(false), 1500)
     } catch {
       // ignore
     }
@@ -122,7 +144,7 @@ function CodeViewer({ component }: { component: VbaComponent }) {
 }
 
 export function VbaViewer() {
-  const vba = useWorkbookStore((s) => s.result?.vba ?? [])
+  const vba = useWorkbookStore((s) => s.result?.vba) ?? EMPTY_VBA
   const selected = useWorkbookStore((s) => s.selectedComponent)
   const component = vba.find((c) => c.name === selected) ?? vba[0]
 
