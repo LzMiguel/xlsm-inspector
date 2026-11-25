@@ -18,3 +18,4 @@ TO-DOs de melhorias mapeados de forma manual
 - [ ] Adicionar compactação dos cards iniciais na rolagem do conteudo, para que o usuário possa ver mais conteúdo sem precisar rolar tanto a tela.
 - [ ] Adicionar opção de line breaks nas previews de código, para que o usuário possa ver o código de forma mais organizada e legível.
 - [ ] Adicionar "memoria" de estado para a interface, para que o usuário não precise ficar reconfigurando a interface toda vez que abrir o programa.
+- [ ] Adicionar opção de colapsar itens de diagnosticos
