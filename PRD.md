@@ -76,7 +76,8 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 ### RF04 — Extração de VBA
 
 - Detectar se o arquivo contém projeto VBA.
-- Listar todos os componentes e extrair o código-fonte de cada um.
+- Listar os componentes e extrair o código-fonte de cada um.
+- Componentes sem código (só linhas em branco, `Option ...` e `Attribute ...`) são omitidos da visualização e das exportações; os que têm apenas comentários são mantidos.
 - Remover linhas em branco (comportamento do script atual; tornar configurável).
 - Opção para ocultar linhas `Attribute VB_...` e `Option Explicit`.
 - Classificar o componente (Módulo, Classe, Planilha, Pasta de trabalho, UserForm) quando possível.

@@ -20,7 +20,7 @@ use crate::model::{
     WorkbookSummary,
 };
 
-pub const CACHE_VERSION: u32 = 5; // 5: resumo com dimensões, VBA e consultas; 4: CellValue lossless + hash FNV-1a estável (3: power_query, 2: procedures)
+pub const CACHE_VERSION: u32 = 6; // 6: VBA sem código omitido; 5: resumo com dimensões, VBA e consultas; 4: CellValue lossless + hash FNV-1a estável (3: power_query, 2: procedures)
 pub const MAX_ENTRIES: usize = 5;
 /// Planilhas maiores que isso não entram no cache (o JSON ficaria enorme).
 pub const MAX_FILE_BYTES: u64 = 50 * 1024 * 1024;

@@ -6,7 +6,7 @@ Mapeamento fechado. Item marcado com **(proposta)** ainda pode ser ajustado.
 
 ## 0. Carregamento e resumo
 
-Implementado, **falta validar** (testes e uso).
+Implementado e validado.
 
 - [x] Ao abrir o arquivo, ler só o necessário para a visão geral, sem percorrer célula por célula:
       abas, dimensões (linhas × colunas), tabelas, módulos VBA e consultas.
@@ -32,9 +32,11 @@ Implementado, **falta validar** (testes e uso).
 
 ## 1. VBA sem código
 
-- [ ] Ocultar componentes sem código, na visualização **e** nas exportações.
+Implementado, **falta validar** (testes e uso).
+
+- [x] Ocultar componentes sem código, na visualização **e** nas exportações.
       Sem código = só linhas em branco, `Option ...` e `Attribute ...`.
-- [ ] Manter componentes que têm apenas comentários (podem ser úteis).
+- [x] Manter componentes que têm apenas comentários (podem ser úteis).
 
 ## 2. Sidebar: visão geral do arquivo
 

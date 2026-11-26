@@ -61,7 +61,7 @@ export function WorkbookOverview() {
       {s.has_vba && (
         <Section title={`VBA (${s.vba.length})`}>
           {s.vba.length === 0 && (
-            <Row name="Não foi possível listar os módulos." />
+            <Row name="Nenhum módulo com código (ou a lista não pôde ser lida)." />
           )}
           {s.vba.map((m) => (
             <Row

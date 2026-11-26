@@ -252,7 +252,7 @@ pub fn export_outputs(
                 let found = vba::extract(b, vba_opts);
                 on_progress(Progress::new("vba", 1, 1, "VBA"));
                 fresh_vba = match found {
-                    Ok(c) => Some(c),
+                    Ok(c) => (!c.is_empty()).then_some(c),
                     Err(AppError::NoVbaProject) => None,
                     Err(e) => return Err(e),
                 };

@@ -38,6 +38,9 @@ pub fn extract(book: &mut Book, opts: &VbaOptions) -> Result<Vec<VbaComponent>, 
         let raw = project
             .get_module(name)
             .map_err(|e| AppError::CorruptedFile(format!("módulo VBA \"{name}\": {e}")))?;
+        if !has_code(&raw) {
+            continue;
+        }
         let code = clean_code(&raw, opts);
         out.push(VbaComponent {
             name: name.to_string(),
@@ -48,6 +51,13 @@ pub fn extract(book: &mut Book, opts: &VbaOptions) -> Result<Vec<VbaComponent>, 
         });
     }
     Ok(out)
+}
+
+/// Falso quando só há linhas em branco, `Option` e `Attribute`. Comentários contam como código.
+fn has_code(raw: &str) -> bool {
+    raw.lines()
+        .map(str::trim)
+        .any(|l| !(l.is_empty() || l.starts_with("Option ") || l.starts_with("Attribute ")))
 }
 
 pub fn clean_code(code: &str, opts: &VbaOptions) -> String {
@@ -132,6 +142,16 @@ mod tests {
             hide_attributes: false,
         };
         assert!(clean_code(CODE, &keep).contains("\n\n"));
+    }
+
+    #[test]
+    fn modulo_sem_codigo() {
+        assert!(!has_code(""));
+        assert!(!has_code(
+            "Attribute VB_Name = \"M\"\r\n\r\nOption Explicit\r\n  Option Base 1\r\n"
+        ));
+        assert!(has_code("Option Explicit\r\n' só comentário"));
+        assert!(has_code(CODE));
     }
 
     #[test]
