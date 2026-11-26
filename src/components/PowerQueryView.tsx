@@ -5,6 +5,7 @@ import { loadPowerQuery } from '../store/workbookActions'
 import { useWorkbookStore } from '../store/workbookStore'
 import type { AppError, PowerQueryItem } from '../types/models'
 import { ErrorAlert } from './ErrorAlert'
+import { visible } from './marks'
 import { Button } from './ui/Button'
 import { EmptyState } from './ui/EmptyState'
 import type { CodeToken } from './vbaHighlighter'
@@ -105,6 +106,7 @@ function Query({ q }: { q: PowerQueryItem }) {
 
 export function PowerQueryView() {
   const pq = useWorkbookStore((s) => s.powerQuery)
+  const hidden = useWorkbookStore((s) => s.hidden)
   const [error, setError] = useState<AppError | null>(null)
   const [retrying, setRetrying] = useState(false)
 
@@ -146,7 +148,10 @@ export function PowerQueryView() {
       <p className="p-6 text-center text-sm text-muted">Lendo Power Query…</p>
     )
 
-  if (pq.queries.length === 0 && pq.connections.length === 0)
+  const queries = visible(pq.queries, hidden.queries)
+  const connections = visible(pq.connections, hidden.connections)
+
+  if (queries.length === 0 && connections.length === 0)
     return (
       <EmptyState
         icon={Database}
@@ -157,12 +162,12 @@ export function PowerQueryView() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
-      {pq.queries.length > 0 && (
+      {queries.length > 0 && (
         <section className="flex flex-col gap-3">
           <h3 className="text-sm font-semibold">
-            Consultas ({pq.queries.length})
+            Consultas ({queries.length})
           </h3>
-          {pq.queries.map((q) => (
+          {queries.map((q) => (
             <Query
               key={q.name}
               q={q}
@@ -170,12 +175,12 @@ export function PowerQueryView() {
           ))}
         </section>
       )}
-      {pq.connections.length > 0 && (
+      {connections.length > 0 && (
         <section className="flex flex-col gap-3">
           <h3 className="text-sm font-semibold">
-            Conexões ({pq.connections.length})
+            Conexões ({connections.length})
           </h3>
-          {pq.connections.map((c, i) => (
+          {connections.map((c, i) => (
             <div
               key={`${c.name}-${i}`}
               className="rounded-md border border-border bg-surface-muted p-3"

@@ -5,8 +5,8 @@ use indexmap::IndexMap;
 
 use super::template::{OutputTemplate, fill};
 use crate::model::{
-    CellContent, CellValue, ConnectionInfo, PowerQuery, PowerQueryItem, SheetCells, VbaComponent,
-    VbaComponentKind,
+    CellContent, CellIssue, CellValue, ConnectionInfo, Diagnostics, PowerQuery, PowerQueryItem,
+    SheetCells, SheetObject, VbaComponent, VbaComponentKind,
 };
 
 fn value_text(v: &CellValue) -> String {
@@ -206,6 +206,58 @@ pub fn power_query_to_markdown(pq: &PowerQuery, file_name: &str) -> String {
     out
 }
 
+/// Seção "Diagnóstico"; cada lista vai em bloco de código para fórmulas não virarem Markdown.
+pub fn diagnostics_block(d: &Diagnostics) -> String {
+    let issues = |list: &[CellIssue]| -> Vec<String> {
+        list.iter()
+            .map(|i| format!("{}!{}: {}", i.sheet, i.cell, i.detail))
+            .collect()
+    };
+    let objects = |list: &[SheetObject]| -> Vec<String> {
+        list.iter()
+            .map(|o| match &o.range {
+                Some(r) => format!("{}!{r}: {}", o.sheet, o.name),
+                None => format!("{}: {}", o.sheet, o.name),
+            })
+            .collect()
+    };
+    let hidden = d.hidden_sheets.iter().map(|h| {
+        let how = if h.very_hidden { " (muito oculta)" } else { "" };
+        format!("{}{how}", h.name)
+    });
+    let names = d
+        .names
+        .iter()
+        .map(|n| format!("{} = {}", n.name, n.refers_to));
+
+    let sections = [
+        ("Erros de fórmula", d.error_count, issues(&d.errors)),
+        (
+            "Vínculos externos",
+            d.external_count,
+            issues(&d.external_refs),
+        ),
+        ("Planilhas ocultas", d.hidden_sheets.len(), hidden.collect()),
+        ("Nomes definidos", d.names.len(), names.collect()),
+        ("Tabelas", d.tables.len(), objects(&d.tables)),
+        ("Tabelas dinâmicas", d.pivots.len(), objects(&d.pivots)),
+    ];
+    let mut out = String::from("## Diagnóstico\n");
+    for (title, total, lines) in sections {
+        let _ = write!(out, "\n### {title} ({total})\n");
+        if lines.is_empty() {
+            continue;
+        }
+        if lines.len() < total {
+            let _ = write!(out, "\nMostrando {} de {total}.\n", lines.len());
+        }
+        let body = lines.join("\n");
+        let fence = fence_for(&body);
+        let _ = write!(out, "\n{fence}\n{body}\n{fence}\n");
+    }
+    out
+}
+
 /// Cerca de crases maior que qualquer sequência de crases dentro do texto.
 fn fence_for(text: &str) -> String {
     let longest = text.split(|c| c != '`').map(str::len).max().unwrap_or(0);
@@ -251,6 +303,25 @@ pub fn preview(t: &OutputTemplate, date: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn diagnostico_markdown() {
+        let d = Diagnostics {
+            errors: vec![CellIssue {
+                sheet: "Plan1".into(),
+                cell: "B2".into(),
+                detail: "#DIV/0!".into(),
+            }],
+            error_count: 3,
+            ..Default::default()
+        };
+        let md = diagnostics_block(&d);
+        assert!(md.starts_with("## Diagnóstico\n"));
+        assert!(md.contains("### Erros de fórmula (3)"));
+        assert!(md.contains("Mostrando 1 de 3."));
+        assert!(md.contains("```\nPlan1!B2: #DIV/0!\n```"));
+        assert!(md.contains("### Tabelas dinâmicas (0)\n"));
+    }
 
     #[test]
     fn power_query_markdown() {

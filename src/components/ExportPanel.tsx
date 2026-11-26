@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Download } from 'lucide-react'
 
 import {
@@ -21,6 +21,7 @@ import type {
   OnExists,
   TemplatePreset,
 } from '../types/models'
+import { itemsFilter } from './marks'
 import { ErrorAlert } from './ErrorAlert'
 import { ScopeSelector } from './ScopeSelector'
 import { Alert } from './ui/Alert'
@@ -65,6 +66,12 @@ export function ExportPanel() {
   const hasVba = useWorkbookStore((s) => s.summary?.has_vba ?? false)
   const selectedSheets = useWorkbookStore((s) => s.selectedSheets)
   const settings = useSettingsStore((s) => s.settings)
+  const summary = useWorkbookStore((s) => s.summary)
+  const hidden = useWorkbookStore((s) => s.hidden)
+  const items = useMemo(
+    () => (summary ? itemsFilter(summary, hidden) : undefined),
+    [summary, hidden],
+  )
   const result = useWorkbookStore((s) => s.result)
   const busyElsewhere = useWorkbookStore(
     (s) => s.status === 'loading' || s.status === 'extracting',
@@ -76,6 +83,7 @@ export function ExportPanel() {
     vba_md: true,
     power_query: true,
     bundle: false,
+    diagnostics: false,
   })
   const [open, setOpen] = useState(false)
   const [splitOn, setSplitOn] = useState(false)
@@ -99,6 +107,7 @@ export function ExportPanel() {
   const suffix = scope.kind === 'full' ? '' : '_amostra'
   const { json, cells_md, vba_md, power_query, bundle } = settings.file_names
   const names: FileNames = {
+    ...settings.file_names,
     json: json + suffix,
     cells_md: cells_md + suffix,
     vba_md,
@@ -106,7 +115,7 @@ export function ExportPanel() {
     bundle: bundle + suffix,
     ...nameEdits,
   }
-  const vbaOn = targets.vba_md && hasVba
+  const vbaOn = targets.vba_md && hasVba && items?.modules?.length !== 0
   const needsCells = targets.json || targets.cells_md || targets.bundle
   const splitValue = Number.parseInt(splitText, 10)
   const splitTokens = splitOn && splitValue >= 1 ? splitValue : undefined
@@ -125,6 +134,7 @@ export function ExportPanel() {
     vbaOptions,
     template,
     splitTokens,
+    items,
   })
   const estimateReady = estimate?.key === estimateKey
   const currentEstimate = estimateReady ? estimate.value : null
@@ -163,6 +173,7 @@ export function ExportPanel() {
         vbaOptions,
         template,
         splitTokens,
+        items,
       })
         .then((e) => {
           if (!cancelled) setEstimate({ key: estimateKey, value: e })
@@ -184,6 +195,7 @@ export function ExportPanel() {
     vbaOptions,
     template,
     splitTokens,
+    items,
   ])
   const canExport =
     !busy &&
@@ -223,6 +235,7 @@ export function ExportPanel() {
         onExists,
         scope,
         splitTokens: targets.bundle ? splitTokens : undefined,
+        items,
       })
       setDone(files)
       setOpen(false)

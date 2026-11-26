@@ -4,6 +4,7 @@ import { RefreshCw, Table2 } from 'lucide-react'
 import { openWorkbook, runExtraction } from '../store/workbookActions'
 import { useWorkbookStore } from '../store/workbookStore'
 import type { Progress } from '../types/models'
+import { visible } from './marks'
 import { Alert } from './ui/Alert'
 import { Button } from './ui/Button'
 import { ScopeSelector } from './ScopeSelector'
@@ -22,7 +23,10 @@ export function ExtractPanel() {
   const result = useWorkbookStore((s) => s.result)
   const warnings = useWorkbookStore((s) => s.warnings)
   const selected = useWorkbookStore((s) => s.selectedSheets)
-  const noSheets = selected.length === 0
+  const modules = useWorkbookStore((s) => s.summary?.vba)
+  const hiddenVba = useWorkbookStore((s) => s.hidden.vba)
+  const nothing =
+    selected.length === 0 && visible(modules ?? [], hiddenVba).length === 0
   const filePath = useWorkbookStore((s) => s.filePath)
   const fromCache = useWorkbookStore((s) => s.fromCache)
   const scope = useWorkbookStore((s) => s.scope)
@@ -46,7 +50,7 @@ export function ExtractPanel() {
           variant={result ? 'secondary' : 'primary'}
           icon={Table2}
           loading={extracting}
-          disabled={status === 'loading' || noSheets}
+          disabled={status === 'loading' || nothing}
           onClick={runExtraction}
         >
           {result ? 'Ler de novo' : 'Ler arquivo'}
@@ -63,8 +67,10 @@ export function ExtractPanel() {
             · {result.vba.length} componente(s) VBA
           </p>
         )}
-        {noSheets && (
-          <p className="text-sm text-warning">Marque ao menos uma planilha.</p>
+        {nothing && (
+          <p className="text-sm text-warning">
+            Marque ao menos uma planilha ou módulo.
+          </p>
         )}
       </div>
 

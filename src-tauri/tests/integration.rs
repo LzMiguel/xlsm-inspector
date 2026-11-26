@@ -9,7 +9,7 @@ use xlsm_inspector_lib::excel::workbook::inspect;
 use xlsm_inspector_lib::model::{
     CellContent, CellValue, ExtractScope, SheetCells, VbaComponentKind, Warning, WarningKind,
 };
-use xlsm_inspector_lib::output::export::{ExportTargets, OutputConfig, export_outputs};
+use xlsm_inspector_lib::output::export::{ExportTargets, ItemFilter, OutputConfig, export_outputs};
 use xlsm_inspector_lib::output::json::cells_to_json;
 use xlsm_inspector_lib::output::markdown::cells_to_markdown;
 use xlsm_inspector_lib::output::naming::{FileNames, OnExists};
@@ -636,6 +636,7 @@ fn arquivo_unico_para_ia() {
         vba_md: false,
         power_query: false,
         bundle: true,
+        diagnostics: false,
     };
     let run = |dir: &Path, file: &str, split_tokens: Option<usize>| {
         fs::create_dir_all(dir).unwrap();
@@ -740,6 +741,7 @@ fn power_query_fixture_real() {
         vba_md: false,
         power_query: true,
         bundle: true,
+        diagnostics: false,
     };
     export_outputs(
         &path,
@@ -756,4 +758,59 @@ fn power_query_fixture_real() {
     let bundle = fs::read_to_string(dir.join("power_query_contexto_ia.md")).unwrap();
     assert!(bundle.contains("Consultas Power Query (2)"));
     fs::remove_dir_all(&dir).ok();
+}
+
+/// Itens filtrados e diagnóstico saem juntos em um único `.zip`.
+#[test]
+fn zip_com_filtro_e_diagnostico() {
+    use std::io::Read;
+
+    let out = std::env::temp_dir().join(format!("xlsm_inspector_zip_{}", std::process::id()));
+    fs::create_dir_all(&out).unwrap();
+    let targets = ExportTargets {
+        json: false,
+        cells_md: false,
+        vba_md: true,
+        power_query: false,
+        bundle: false,
+        diagnostics: true,
+    };
+    let cfg = OutputConfig {
+        zip: true,
+        items: ItemFilter {
+            modules: Some(vec!["modUtilitarios".into()]),
+            ..Default::default()
+        },
+        ..OutputConfig::default()
+    };
+    let written = export_outputs(
+        &fx("com_vba.xlsm"),
+        &out,
+        targets,
+        None,
+        &VbaOptions::default(),
+        &cfg,
+        &mut |_| {},
+    )
+    .unwrap();
+    assert_eq!(written.len(), 1);
+    assert!(written[0].ends_with("com_vba_exportacao.zip"));
+    assert_eq!(fs::read_dir(&out).unwrap().count(), 1);
+
+    let mut zip = zip::ZipArchive::new(fs::File::open(&written[0]).unwrap()).unwrap();
+    assert_eq!(zip.len(), 2);
+    let mut read = |name: &str| {
+        let mut text = String::new();
+        zip.by_name(name)
+            .unwrap()
+            .read_to_string(&mut text)
+            .unwrap();
+        text
+    };
+    let vba = read("com_vba_codigo_vba.md");
+    assert!(vba.contains("## COMPONENTE: modUtilitarios"));
+    assert!(!vba.contains("## COMPONENTE: clsFuncionario"));
+    assert!(read("com_vba_diagnostico.md").contains("## Diagnóstico"));
+
+    fs::remove_dir_all(&out).ok();
 }

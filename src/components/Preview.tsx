@@ -6,11 +6,13 @@ import {
   Stethoscope,
   Table2,
 } from 'lucide-react'
+import { useEffect } from 'react'
 
 import { useWorkbookStore, type PreviewTab } from '../store/workbookStore'
 import type { SheetCells } from '../types/models'
 import { CellTable } from './CellTable'
 import { DiagnosticsView } from './DiagnosticsView'
+import { hiddenTabs } from './marks'
 import { PowerQueryView } from './PowerQueryView'
 import { SearchView } from './SearchView'
 import { EmptyState } from './ui/EmptyState'
@@ -30,11 +32,22 @@ const TABS: TabItem<PreviewTab>[] = [
 ]
 
 export function Preview() {
-  const tab = useWorkbookStore((s) => s.tab)
+  const stored = useWorkbookStore((s) => s.tab)
+  const summary = useWorkbookStore((s) => s.summary)
+  const selected = useWorkbookStore((s) => s.selectedSheets)
+  const hidden = useWorkbookStore((s) => s.hidden)
   const setTab = useWorkbookStore((s) => s.setTab)
   const filePath = useWorkbookStore((s) => s.filePath)
   const result = useWorkbookStore((s) => s.result)
-  const sheets = result?.sheets ?? EMPTY_SHEETS
+  const sheets = (result?.sheets ?? EMPTY_SHEETS).filter((s) =>
+    selected.includes(s.name),
+  )
+  const off = hiddenTabs(summary, selected, hidden)
+  const gone = off.includes(stored)
+  const tab = gone ? 'summary' : stored
+  useEffect(() => {
+    if (gone) setTab('summary')
+  }, [gone, setTab])
   const needsRead =
     !result && (tab === 'cells' || tab === 'vba' || tab === 'search')
 
@@ -44,7 +57,7 @@ export function Preview() {
       className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-border bg-surface"
     >
       <Tabs
-        tabs={TABS}
+        tabs={TABS.filter((t) => !off.includes(t.id))}
         value={tab}
         onChange={setTab}
         className="px-4"

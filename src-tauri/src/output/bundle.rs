@@ -92,11 +92,23 @@ pub fn bundle_parts(
     date: &str,
     max_tokens: Option<usize>,
 ) -> Vec<String> {
-    let units = bundle_units(file_name, sheets, vba, pq, t, date);
+    parts_of(
+        &bundle_units(file_name, sheets, vba, pq, t, date),
+        max_tokens,
+    )
+}
+
+pub fn parts_of(units: &[String], max_tokens: Option<usize>) -> Vec<String> {
     match max_tokens {
-        Some(n) => tokens::split_units(&units, n),
+        Some(n) => tokens::split_units(units, n),
         None => vec![units.concat()],
     }
+}
+
+/// Insere uma seção extra no fim do arquivo único, antes do rodapé.
+pub fn add_section(units: &mut Vec<String>, section: &str, t: &OutputTemplate) {
+    let at = units.len() - usize::from(!t.footer.is_empty());
+    units.insert(at, format!("\n---\n\n{section}"));
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -114,11 +126,17 @@ pub fn estimate_bundle(
     date: &str,
     max_tokens: Option<usize>,
 ) -> BundleEstimate {
-    let units = bundle_units(file_name, sheets, vba, pq, t, date);
+    estimate_units(
+        &bundle_units(file_name, sheets, vba, pq, t, date),
+        max_tokens,
+    )
+}
+
+pub fn estimate_units(units: &[String], max_tokens: Option<usize>) -> BundleEstimate {
     BundleEstimate {
         tokens: units.iter().map(|u| tokens::estimate(u)).sum(),
         parts: match max_tokens {
-            Some(n) => tokens::count_parts(&units, n),
+            Some(n) => tokens::count_parts(units, n),
             None => 1,
         },
     }

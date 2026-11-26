@@ -11,8 +11,8 @@ use crate::excel::{diagnostics, power_query, vba, vba::VbaOptions};
 use crate::model::{
     Diagnostics, ExtractScope, ExtractionResult, PowerQuery, Progress, VbaComponent,
 };
-use crate::output::bundle::{BundleEstimate, estimate_bundle as estimate_bundle_of};
-use crate::output::export::{self, ExportTargets, OutputConfig};
+use crate::output::bundle::{BundleEstimate, add_section, bundle_units, estimate_units};
+use crate::output::export::{self, ExportTargets, ItemFilter, OutputConfig};
 use crate::output::naming::{FileNames, OnExists};
 use crate::output::template::{self, OutputTemplate, TemplatePreset};
 use crate::output::{markdown, vba_files};
@@ -189,6 +189,8 @@ pub async fn export_outputs(
     on_exists: Option<OnExists>,
     scope: Option<ExtractScope>,
     split_tokens: Option<usize>,
+    items: Option<ItemFilter>,
+    zip: Option<bool>,
 ) -> Result<Vec<String>, AppError> {
     let (conf, data) = (config_dir(&app)?, data_dir(&app)?);
     blocking(move || {
@@ -213,6 +215,8 @@ pub async fn export_outputs(
             scope,
             split_tokens,
             cached,
+            items: items.unwrap_or_default(),
+            zip: zip.unwrap_or_default(),
         };
         export::export_outputs(
             Path::new(&path),
@@ -228,6 +232,7 @@ pub async fn export_outputs(
 }
 
 /// Tokens (estimados) e nº de partes do arquivo único. Usa o cache; sem ele, extrai (e guarda).
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn estimate_bundle(
     app: AppHandle,
@@ -237,6 +242,8 @@ pub async fn estimate_bundle(
     vba_options: Option<VbaOptions>,
     template: Option<OutputTemplate>,
     split_tokens: Option<usize>,
+    items: Option<ItemFilter>,
+    diagnostics: Option<bool>,
 ) -> Result<BundleEstimate, AppError> {
     let (conf, data) = (config_dir(&app)?, data_dir(&app)?);
     blocking(move || {
@@ -273,15 +280,21 @@ pub async fn estimate_bundle(
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_default();
-        Ok(estimate_bundle_of(
+        let items = items.unwrap_or_default();
+        let template = template.unwrap_or_default();
+        let mut units = bundle_units(
             &file_name,
             &result.sheets,
-            &result.vba,
-            &result.power_query,
-            &template.unwrap_or_default(),
+            &items.vba(&result.vba),
+            &items.power_query(&result.power_query),
+            &template,
             &template::today(),
-            split_tokens,
-        ))
+        );
+        if diagnostics.unwrap_or_default() {
+            let d = diagnostics::diagnose(Path::new(&path))?;
+            add_section(&mut units, &markdown::diagnostics_block(&d), &template);
+        }
+        Ok(estimate_units(&units, split_tokens))
     })
     .await
 }

@@ -13,6 +13,8 @@ const NAME_FIELDS: { key: keyof FileNames; label: string; ext: string }[] = [
   { key: 'vba_md', label: 'Código VBA', ext: '.md' },
   { key: 'power_query', label: 'Power Query', ext: '.md' },
   { key: 'bundle', label: 'Arquivo único para IA', ext: '.md' },
+  { key: 'diagnostics', label: 'Diagnóstico', ext: '.md' },
+  { key: 'zip', label: 'Pacote com vários arquivos', ext: '.zip' },
 ]
 
 export function OutputSettings() {

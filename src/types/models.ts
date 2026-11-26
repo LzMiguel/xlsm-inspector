@@ -211,6 +211,8 @@ export interface FileNames {
   vba_md: string
   power_query: string
   bundle: string
+  diagnostics: string
+  zip: string
 }
 
 export interface OutputTemplate {
@@ -238,6 +240,14 @@ export interface ExportTargets {
   vba_md: boolean
   power_query: boolean
   bundle: boolean
+  diagnostics: boolean
+}
+
+/** Itens por nome; omitido = todos. */
+export interface ItemFilter {
+  modules?: string[]
+  queries?: string[]
+  connections?: string[]
 }
 
 export interface BundleEstimate {

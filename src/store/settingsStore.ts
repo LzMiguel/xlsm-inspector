@@ -12,6 +12,8 @@ export const DEFAULT_SETTINGS: Settings = {
     vba_md: '{arquivo}_codigo_vba',
     power_query: '{arquivo}_power_query',
     bundle: '{arquivo}_contexto_compilado',
+    diagnostics: '{arquivo}_diagnostico',
+    zip: '{arquivo}_exportacao',
   },
   template: {
     title: '# Mapeamento de Estrutura: {arquivo}',

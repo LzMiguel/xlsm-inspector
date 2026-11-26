@@ -17,7 +17,7 @@ Implementado e validado.
 - [x] Marcar depois algo não lido pede nova leitura. (gera alerta de item adicionado)
 - [x] Indicador de tamanho na sidebar para planilhas: células aproximadas pela dimensão
       (linhas × colunas), abreviadas (ex.: "1,2 mi"), com alerta acima de 500 mil.
-- [ ] Linhas de código do VBA na sidebar (junto com a seção VBA do item 2; já aparecem no Resumo).
+- [x] Linhas de código do VBA na sidebar (junto com a seção VBA do item 2; já aparecem no Resumo).
 
 ### Dimensões: verificado no `calamine` 0.38.0
 
@@ -32,7 +32,7 @@ Implementado e validado.
 
 ## 1. VBA sem código
 
-Implementado, **falta validar** (testes e uso).
+Implementado e validado.
 
 - [x] Ocultar componentes sem código, na visualização **e** nas exportações.
       Sem código = só linhas em branco, `Option ...` e `Attribute ...`.
@@ -40,18 +40,24 @@ Implementado, **falta validar** (testes e uso).
 
 ## 2. Sidebar: visão geral do arquivo
 
-- [ ] A sidebar mostra tudo o que o arquivo tem, em seções, com caixas de marcação:
+Implementado, **falta validar** (testes e uso). VBA e Power Query continuam sempre lidos (são leves);
+as marcas deles valem para visualização e exportação.
+
+- [x] A sidebar mostra tudo o que o arquivo tem, em seções, com caixas de marcação:
   - Planilhas (abas do Excel; as células de cada uma seguem o escopo de linhas: todas, primeiras ou amostra);
   - VBA (componentes);
   - Power Query (consultas e conexões).
-- [ ] As guias da visualização central continuam (Células, VBA, Diagnóstico, Power Query, Busca).
-- [ ] Desmarcar um item (ou a seção inteira) o esconde da visualização central e se um item for desmarcado a aba some tambem.
-- [ ] Tudo começa marcado.
-- [ ] Substitui o menu atual que troca entre lista de planilhas e lista de componentes VBA.
-- [ ] A Busca respeita as marcações.
-- [ ] No VBA, a marcação é por módulo inteiro (não por `Sub`/`Function`).
+- [x] As guias da visualização central continuam (Células, VBA, Diagnóstico, Power Query, Busca).
+- [x] Desmarcar um item (ou a seção inteira) o esconde da visualização central e se um item for desmarcado a aba some tambem.
+- [x] Tudo começa marcado.
+- [x] Substitui o menu atual que troca entre lista de planilhas e lista de componentes VBA.
+- [x] A Busca respeita as marcações.
+- [x] No VBA, a marcação é por módulo inteiro (não por `Sub`/`Function`).
 
 ## 3. Diálogo de exportação
+
+Parte Rust implementada e validada: filtro por nome (`items`), diagnóstico (`targets.diagnostics`)
+e `zip`. A tela ainda não usa essas opções; os itens abaixo continuam abertos.
 
 - [ ] Seleção do que exportar em um menu próprio, mais claro (seções iguais às da sidebar).
 - [ ] Ao abrir, o diálogo copia as marcações da sidebar.

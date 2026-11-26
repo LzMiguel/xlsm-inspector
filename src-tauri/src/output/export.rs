@@ -1,15 +1,18 @@
 use std::collections::HashSet;
 use std::fs;
+use std::io::{Cursor, Write};
 use std::path::Path;
 
 use serde::Deserialize;
+use zip::{ZipWriter, write::SimpleFileOptions};
 
+use super::bundle::{add_section, bundle_units, parts_of};
 use super::naming::{FileNames, OnExists, free_name_avoiding, resolve};
 use super::template::{OutputTemplate, today};
-use super::{bundle::bundle_parts, json::cells_to_json, markdown};
+use super::{json::cells_to_json, markdown};
 use crate::error::AppError;
 use crate::excel::{
-    cells::extract_with_scope_from_book, power_query, vba, vba::VbaOptions, workbook,
+    cells::extract_with_scope_from_book, diagnostics, power_query, vba, vba::VbaOptions, workbook,
 };
 use crate::model::{
     ExtractScope, ExtractionResult, PowerQuery, Progress, SheetCells, VbaComponent,
@@ -25,6 +28,8 @@ pub struct ExportTargets {
     pub power_query: bool,
     /// Markdown único para IA (resumo + células + VBA). Desligado por padrão.
     pub bundle: bool,
+    /// Entra no arquivo único; sem ele, vira um arquivo próprio. Desligado por padrão.
+    pub diagnostics: bool,
 }
 
 impl Default for ExportTargets {
@@ -35,7 +40,37 @@ impl Default for ExportTargets {
             vba_md: true,
             power_query: true,
             bundle: false,
+            diagnostics: false,
         }
+    }
+}
+
+/// Módulos VBA, consultas e conexões a exportar, por nome. `None` = todos.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default)]
+pub struct ItemFilter {
+    pub modules: Option<Vec<String>>,
+    pub queries: Option<Vec<String>>,
+    pub connections: Option<Vec<String>>,
+}
+
+fn keep(list: &Option<Vec<String>>, name: &str) -> bool {
+    list.as_ref().is_none_or(|l| l.iter().any(|n| n == name))
+}
+
+impl ItemFilter {
+    pub fn vba(&self, all: &[VbaComponent]) -> Vec<VbaComponent> {
+        all.iter()
+            .filter(|c| keep(&self.modules, &c.name))
+            .cloned()
+            .collect()
+    }
+
+    pub fn power_query(&self, all: &PowerQuery) -> PowerQuery {
+        let mut pq = all.clone();
+        pq.queries.retain(|q| keep(&self.queries, &q.name));
+        pq.connections.retain(|c| keep(&self.connections, &c.name));
+        pq
     }
 }
 
@@ -50,13 +85,35 @@ pub struct OutputConfig {
     pub split_tokens: Option<usize>,
     /// Resultado já extraído com as mesmas abas, escopo e opções de VBA (vem do cache).
     pub cached: Option<ExtractionResult>,
+    pub items: ItemFilter,
+    /// Grava todos os arquivos dentro de um único `.zip`.
+    pub zip: bool,
 }
 
-fn write(dir: &Path, name: &str, content: &str, written: &mut Vec<String>) -> Result<(), AppError> {
+fn write(
+    dir: &Path,
+    name: &str,
+    content: impl AsRef<[u8]>,
+    written: &mut Vec<String>,
+) -> Result<(), AppError> {
     let p = dir.join(name);
     fs::write(&p, content).map_err(|e| AppError::WriteFailed(format!("{}: {e}", p.display())))?;
     written.push(p.to_string_lossy().into_owned());
     Ok(())
+}
+
+/// Monta o `.zip` em memória: o arquivo só é gravado se tudo der certo.
+fn zip_bytes(files: &[(String, String)]) -> Result<Vec<u8>, AppError> {
+    let fail = |e: String| AppError::WriteFailed(format!("zip: {e}"));
+    let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
+    for (name, content) in files {
+        zip.start_file(name.as_str(), SimpleFileOptions::default())
+            .map_err(|e| fail(e.to_string()))?;
+        zip.write_all(content.as_bytes())
+            .map_err(|e| fail(e.to_string()))?;
+    }
+    let done = zip.finish().map_err(|e| fail(e.to_string()))?;
+    Ok(done.into_inner())
 }
 
 /// Nomes dos alvos escolhidos, validados e sem duplicata entre si.
@@ -66,7 +123,7 @@ fn plan(
     targets: ExportTargets,
     cfg: &OutputConfig,
     date: &str,
-) -> Result<[Option<String>; 5], AppError> {
+) -> Result<[Option<String>; 7], AppError> {
     let stem = path
         .file_stem()
         .map(|s| s.to_string_lossy().into_owned())
@@ -80,6 +137,12 @@ fn plan(
         name(targets.vba_md, &cfg.names.vba_md, "md")?,
         name(targets.power_query, &cfg.names.power_query, "md")?,
         name(targets.bundle, &cfg.names.bundle, "md")?,
+        name(
+            targets.diagnostics && !targets.bundle,
+            &cfg.names.diagnostics,
+            "md",
+        )?,
+        name(cfg.zip, &cfg.names.zip, "zip")?,
     ];
 
     // o Windows não diferencia maiúsculas: "A.md" e "a.md" são o mesmo arquivo
@@ -186,10 +249,20 @@ pub fn export_outputs(
     let mut planned = plan(path, targets, cfg, &date)?;
     let mut taken = HashSet::new();
 
+    // dentro do zip não há colisão com o disco, só entre as próprias entradas
+    let policy = if cfg.zip {
+        OnExists::Overwrite
+    } else {
+        cfg.on_exists
+    };
+    if let Some(name) = planned[6].take() {
+        planned[6] = settle(out_dir, vec![name], cfg.on_exists, &mut HashSet::new())?.pop();
+    }
+
     // Alvos garantidos são conferidos antes de extrair (vba/power_query podem ser omitidos;
     // bundle dividido só conhece o número de partes depois de montar o texto).
-    let mut pre_idx = Vec::with_capacity(3);
-    for i in [0usize, 1] {
+    let mut pre_idx = Vec::with_capacity(4);
+    for i in [0usize, 1, 5] {
         if planned[i].is_some() {
             pre_idx.push(i);
         }
@@ -200,13 +273,20 @@ pub fn export_outputs(
     let pre_names: Vec<String> = pre_idx.iter().filter_map(|&i| planned[i].clone()).collect();
     for (i, n) in pre_idx
         .into_iter()
-        .zip(settle(out_dir, pre_names, cfg.on_exists, &mut taken)?)
+        .zip(settle(out_dir, pre_names, policy, &mut taken)?)
     {
         planned[i] = Some(n);
     }
 
-    let [json_name, md_name, mut vba_name, mut pq_name, bundle_name] = planned;
-    let mut written = Vec::new();
+    let [
+        json_name,
+        md_name,
+        mut vba_name,
+        mut pq_name,
+        bundle_name,
+        diag_name,
+        zip_name,
+    ] = planned;
 
     let file_name = path
         .file_name()
@@ -270,16 +350,26 @@ pub fn export_outputs(
             (cells, comps, pq)
         };
 
+    let kept_vba = cfg.items.vba(components.unwrap_or_default());
+    let components = (!kept_vba.is_empty()).then_some(kept_vba.as_slice());
+    let pq = &cfg.items.power_query(pq);
+    // shortcut: o diagnóstico é do arquivo inteiro e relê as células; reaproveitar o cache se pesar
+    let diag = if targets.diagnostics {
+        Some(markdown::diagnostics_block(&diagnostics::diagnose(path)?))
+    } else {
+        None
+    };
+
     // VBA e Power Query só passam por `settle` se realmente forem gravados (evita FileExists falso)
     vba_name = match (vba_name, components) {
-        (Some(name), Some(_)) => settle(out_dir, vec![name], cfg.on_exists, &mut taken)?
+        (Some(name), Some(_)) => settle(out_dir, vec![name], policy, &mut taken)?
             .into_iter()
             .next(),
         _ => None,
     };
     let has_pq = !pq.queries.is_empty() || !pq.connections.is_empty();
     pq_name = match (pq_name, has_pq) {
-        (Some(name), true) => settle(out_dir, vec![name], cfg.on_exists, &mut taken)?
+        (Some(name), true) => settle(out_dir, vec![name], policy, &mut taken)?
             .into_iter()
             .next(),
         _ => None,
@@ -288,22 +378,20 @@ pub fn export_outputs(
     // as partes do arquivo único e seus nomes são decididos antes de gravar qualquer coisa
     let bundle_files: Vec<(String, String)> = match &bundle_name {
         Some(base) => {
-            let parts = bundle_parts(
+            let mut units = bundle_units(
                 &file_name,
                 cells,
                 components.unwrap_or_default(),
                 pq,
                 &cfg.template,
                 &date,
-                cfg.split_tokens,
             );
+            if let Some(section) = &diag {
+                add_section(&mut units, section, &cfg.template);
+            }
+            let parts = parts_of(&units, cfg.split_tokens);
             let names = if cfg.split_tokens.is_some() {
-                settle(
-                    out_dir,
-                    part_names(base, parts.len()),
-                    cfg.on_exists,
-                    &mut taken,
-                )?
+                settle(out_dir, part_names(base, parts.len()), policy, &mut taken)?
             } else {
                 vec![base.clone()]
             };
@@ -312,27 +400,36 @@ pub fn export_outputs(
         None => Vec::new(),
     };
 
-    if let Some(name) = &json_name {
-        write(out_dir, name, &cells_to_json(cells)?, &mut written)?;
+    let mut files: Vec<(String, String)> = Vec::new();
+    if let Some(name) = json_name {
+        files.push((name, cells_to_json(cells)?));
     }
-    if let Some(name) = &md_name {
+    if let Some(name) = md_name {
         let md = markdown::cells_to_markdown(&file_name, cells, &cfg.template, &date);
-        write(out_dir, name, &md, &mut written)?;
+        files.push((name, md));
     }
-    if let (Some(name), Some(components)) = (&vba_name, components) {
+    if let (Some(name), Some(components)) = (vba_name, components) {
         let md = markdown::vba_to_markdown(components, &file_name, &cfg.template, &date);
-        write(out_dir, name, &md, &mut written)?;
+        files.push((name, md));
     }
-    if let Some(name) = &pq_name {
-        write(
-            out_dir,
-            name,
-            &markdown::power_query_to_markdown(pq, &file_name),
-            &mut written,
-        )?;
+    if let Some(name) = pq_name {
+        files.push((name, markdown::power_query_to_markdown(pq, &file_name)));
     }
-    for (name, part) in &bundle_files {
-        write(out_dir, name, part, &mut written)?;
+    files.extend(bundle_files);
+    if let (Some(name), Some(section)) = (diag_name, &diag) {
+        files.push((name, format!("# {file_name}\n\n{section}")));
+    }
+
+    let mut written = Vec::new();
+    match zip_name {
+        Some(name) if !files.is_empty() => {
+            write(out_dir, &name, zip_bytes(&files)?, &mut written)?;
+        }
+        _ => {
+            for (name, content) in &files {
+                write(out_dir, name, content, &mut written)?;
+            }
+        }
     }
 
     Ok(written)

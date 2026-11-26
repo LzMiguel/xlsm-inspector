@@ -65,6 +65,8 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 - Ao abrir, o app não lê as células: a guia **Resumo** mostra, por aba, a dimensão declarada (linhas × colunas) e as tabelas, além dos módulos VBA, consultas e conexões.
 - A lista de abas indica o tamanho aproximado (linhas × colunas) e destaca acima de 500 mil células. A dimensão declarada pode exceder o conteúdo.
 - Marcar, depois de ler, uma aba que não foi lida gera um aviso para ler de novo.
+- A barra lateral tem seções com caixas de marcação: Planilhas, VBA (por módulo) e Power Query (consultas e conexões). Tudo começa marcado e as marcas não são lembradas entre arquivos.
+- Item desmarcado some da visualização, da Busca e da exportação; com a seção inteira desmarcada, a guia correspondente some. Resumo e Diagnóstico mostram sempre o arquivo inteiro. VBA e Power Query continuam sendo lidos.
 
 ### RF03 — Extração de células
 
@@ -85,7 +87,7 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 ### RF05 — Pré-visualização
 
 - Aba **Células:** tabela com coordenada, fórmula e valor, filtrável por aba e por texto. Cada tabela do Excel (ListObject) vira uma linha com o intervalo na coluna Célula e o nome clicável em Valor (`A1:Z300 | tblProdutos`); ao clicar, abre a tabela com colunas nomeadas e botão Voltar. Os arquivos exportados não mudam.
-- Aba **VBA:** lista de componentes à esquerda e código com destaque de sintaxe à direita.
+- Aba **VBA:** lista de componentes na barra lateral e código com destaque de sintaxe à direita.
 - Guias por tipo de arquivo: **Diagnóstico** (RF14) e **Power Query** (RF13) nas planilhas; **Documento** (Word, RF16), **Slides** (PowerPoint, RF17) e **PDF** (RF18). Listas grandes são virtualizadas.
 
 ### RF06 — Exportação
@@ -96,6 +98,7 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
   - Planilhas: `{arquivo}_celulas.json`, `{arquivo}_celulas.md`, `{arquivo}_codigo_vba.md`, `{arquivo}_power_query.md`.
   - Word: `documento.md`. PowerPoint: `apresentacao.md`. PDF: `pdf.md`. Documentos com macro também geram `{arquivo}_codigo_vba.md`.
   - Qualquer tipo: arquivo único para IA (`{arquivo}_contexto_ia.md`, ou `{arquivo}_contexto_ia_parte_N.md`).
+- O motor de exportação também aceita escolher módulos VBA, consultas e conexões por nome, incluir o diagnóstico do arquivo inteiro (`{arquivo}_diagnostico.md`, ou seção do arquivo único; desligado por padrão) e juntar tudo em `{arquivo}_exportacao.zip`. O diálogo ainda não oferece essas opções (`TO-DOs.md`, item 3).
 - Botão para abrir a pasta de saída após exportar.
 
 ### RF07 — Avisos
@@ -112,7 +115,7 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 
 ### RF09 — Nome dos arquivos
 
-- Padrão de nome por arquivo gerado (`json`, `md` das células, `md` do VBA, arquivo único para IA e, conforme as fases, Power Query, documento, apresentação e PDF), com `{arquivo}` (arquivo de entrada, sem extensão) e `{data}` (AAAA-MM-DD). Extensão fixa. Configurável em Configurações → Saída e ajustável a cada exportação no diálogo Exportar.
+- Padrão de nome por arquivo gerado (`json`, `md` das células, `md` do VBA, arquivo único para IA, diagnóstico, pacote `.zip` e, conforme as fases, Power Query, documento, apresentação e PDF), com `{arquivo}` (arquivo de entrada, sem extensão) e `{data}` (AAAA-MM-DD). Extensão fixa. Configurável em Configurações → Saída e ajustável a cada exportação no diálogo Exportar.
 - Validação (Windows): vazio, `< > : " / \ | ? *`, controle, terminar em ponto, nomes reservados (`CON`, `NUL`, `COM1`…), mais de 100 caracteres, dois arquivos com o mesmo nome. Falha antes de extrair.
 - Se o arquivo já existir na pasta, o app pergunta: sobrescrever, adicionar sufixo (`_2`, `_3`…) ou cancelar.
 

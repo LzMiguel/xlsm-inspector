@@ -11,6 +11,7 @@ import type {
   ExtractionResult,
   ExtractScope,
   FileNames,
+  ItemFilter,
   OnExists,
   OpenResult,
   OutputTemplate,
@@ -111,6 +112,8 @@ export interface ExportParams {
   onExists?: OnExists
   scope?: ExtractScope
   splitTokens?: number
+  items?: ItemFilter
+  zip?: boolean
 }
 
 export const exportOutputs = (p: ExportParams) =>
@@ -118,8 +121,14 @@ export const exportOutputs = (p: ExportParams) =>
 
 export type EstimateParams = Pick<
   ExportParams,
-  'path' | 'sheets' | 'scope' | 'vbaOptions' | 'template' | 'splitTokens'
->
+  | 'path'
+  | 'sheets'
+  | 'scope'
+  | 'vbaOptions'
+  | 'template'
+  | 'splitTokens'
+  | 'items'
+> & { diagnostics?: boolean }
 
 export const estimateBundle = (p: EstimateParams) =>
   call<BundleEstimate>('estimate_bundle', { ...p })

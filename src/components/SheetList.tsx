@@ -66,7 +66,7 @@ export function SheetList() {
       </div>
 
       <p className="text-xs text-muted">
-        Marque as planilhas que serão exportadas.
+        Marque o que será lido, exibido e exportado.
       </p>
       {sheets.length > 8 && (
         <Input

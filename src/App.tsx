@@ -7,6 +7,7 @@ import { ErrorAlert } from './components/ErrorAlert'
 import { ExportPanel } from './components/ExportPanel'
 import { ExtractPanel } from './components/ExtractPanel'
 import { FileCard } from './components/FileCard'
+import { PowerQueryList } from './components/PowerQueryList'
 import { Preview } from './components/Preview'
 import { RecentFiles } from './components/RecentFiles'
 import { SettingsDialog } from './components/SettingsDialog'
@@ -21,7 +22,6 @@ import { useWorkbookStore } from './store/workbookStore'
 
 function App() {
   const summary = useWorkbookStore((s) => s.summary)
-  const result = useWorkbookStore((s) => s.result)
   const tab = useWorkbookStore((s) => s.tab)
   const status = useWorkbookStore((s) => s.status)
   const error = useWorkbookStore((s) => s.error)
@@ -70,16 +70,18 @@ function App() {
 
       <div className="flex min-h-0 flex-1">
         <aside
-          aria-label="Planilhas e componentes"
+          aria-label="Conteúdo do arquivo"
           className="flex w-60 shrink-0 flex-col border-r border-border bg-surface"
         >
-          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
             {!summary ? (
               <p className="text-sm text-subtle">Nenhum arquivo aberto.</p>
-            ) : tab === 'vba' && result ? (
-              <ComponentList />
             ) : (
-              <SheetList />
+              <>
+                <SheetList />
+                <ComponentList />
+                <PowerQueryList />
+              </>
             )}
           </div>
           {summary && <ExportPanel />}

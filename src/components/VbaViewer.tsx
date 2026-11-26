@@ -4,6 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 
 import { useWorkbookStore } from '../store/workbookStore'
 import type { VbaComponent } from '../types/models'
+import { visible } from './marks'
 import { Badge } from './ui/Badge'
 import { Button } from './ui/Button'
 import { EmptyState } from './ui/EmptyState'
@@ -143,7 +144,9 @@ function CodeViewer({ component }: { component: VbaComponent }) {
 }
 
 export function VbaViewer() {
-  const vba = useWorkbookStore((s) => s.result?.vba) ?? EMPTY_VBA
+  const all = useWorkbookStore((s) => s.result?.vba) ?? EMPTY_VBA
+  const hidden = useWorkbookStore((s) => s.hidden.vba)
+  const vba = visible(all, hidden)
   const selected = useWorkbookStore((s) => s.selectedComponent)
   const component = vba.find((c) => c.name === selected) ?? vba[0]
 

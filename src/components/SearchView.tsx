@@ -4,6 +4,7 @@ import { Search } from 'lucide-react'
 import { useHotkey } from '../hooks/useHotkey'
 import { useWorkbookStore } from '../store/workbookStore'
 import type { SheetCells, VbaComponent } from '../types/models'
+import { visible } from './marks'
 import { searchAll } from './searchAll'
 import { Badge } from './ui/Badge'
 import { EmptyState } from './ui/EmptyState'
@@ -14,6 +15,8 @@ const EMPTY_VBA: VbaComponent[] = []
 
 export function SearchView() {
   const result = useWorkbookStore((s) => s.result)
+  const selected = useWorkbookStore((s) => s.selectedSheets)
+  const hidden = useWorkbookStore((s) => s.hidden.vba)
   const goToCell = useWorkbookStore((s) => s.goToCell)
   const goToVba = useWorkbookStore((s) => s.goToVba)
   const [query, setQuery] = useState('')
@@ -25,11 +28,13 @@ export function SearchView() {
   const { hits, total } = useMemo(
     () =>
       searchAll(
-        result?.sheets ?? EMPTY_SHEETS,
-        result?.vba ?? EMPTY_VBA,
+        (result?.sheets ?? EMPTY_SHEETS).filter((s) =>
+          selected.includes(s.name),
+        ),
+        visible(result?.vba ?? EMPTY_VBA, hidden),
         deferred,
       ),
-    [result, deferred],
+    [result, selected, hidden, deferred],
   )
 
   if (!result) {

@@ -73,6 +73,15 @@ describe('workbookStore', () => {
     expect(s().selectedComponent).toBe('M3')
   })
 
+  it('desmarca itens e volta a marcar tudo em um novo arquivo', () => {
+    s().toggleHidden('vba', 'M1')
+    s().toggleHidden('queries', 'Q')
+    s().toggleHidden('queries', 'Q')
+    expect(s().hidden).toEqual({ vba: ['M1'], queries: [], connections: [] })
+    s().startLoading('outro.xlsx')
+    expect(s().hidden.vba).toEqual([])
+  })
+
   it('novo arquivo descarta o resultado', () => {
     s().setSummary(summary)
     s().setResult(result(['M1']))

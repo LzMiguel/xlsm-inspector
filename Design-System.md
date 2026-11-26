@@ -125,7 +125,7 @@ Escala base de **4px**.
 
 - Janela mínima: **960 × 640**.
 - Barra superior fixa: 48px (nome do arquivo, ações principais).
-- Barra lateral (abas ou componentes VBA, com a exportação no rodapé): 240px, fixa.
+- Barra lateral (seções Planilhas, VBA e Power Query, com a exportação no rodapé): 240px, fixa.
 - Área de conteúdo: preenche o restante, com scroll próprio. A pré-visualização ocupa a altura que sobra (mínimo 384px); em janelas baixas a página rola.
 
 ---
@@ -172,7 +172,7 @@ Escala base de **4px**.
 - Lista com checkbox por aba e o tamanho aproximado em células (`1,2 mi`; "—" se não informado), com a dimensão no `title`. Acima de 500 mil: texto `--warning` com ícone `TriangleAlert`.
 - Guia **Resumo** (`WorkbookOverview`, ícone `LayoutList`): guia inicial; seções em lista (Planilhas, VBA, Consultas, Conexões). Depois do "Ler arquivo", passa para Células.
 - `ExtractPanel`: `Alert` `warning` "Marcado, mas ainda não lido" lista as abas marcadas que não estão no resultado.
-- Ações "Marcar todas" / "Desmarcar todas". Título "Planilhas". Texto de ajuda: "Marque as planilhas que serão lidas e exportadas." Com mais de 8 planilhas, aparece um campo "Filtrar planilhas…" (só filtra a lista; "Marcar todas" vale para todas).
+- Ações "Marcar todas" / "Desmarcar todas". Título "Planilhas". Texto de ajuda: "Marque o que será lido, exibido e exportado." Com mais de 8 planilhas, aparece um campo "Filtrar planilhas…" (só filtra a lista; "Marcar todas" vale para todas).
 
 ### Dialog / SettingsDialog
 
@@ -211,7 +211,7 @@ Escala base de **4px**.
 ### Pré-visualização antes da leitura
 
 - A pré-visualização aparece assim que o arquivo abre. As guias Células, VBA e Busca mostram `EmptyState` "Nada lido ainda" até o "Ler arquivo"; Diagnóstico e Power Query funcionam sem ler.
-- As opções do VBA ("Remover linhas em branco", "Ocultar linhas Attribute VB\_") ficam no topo da `ComponentList` (barra lateral da guia VBA); também estão em Configurações → Geral.
+- As opções do VBA ("Remover linhas em branco", "Ocultar linhas Attribute VB\_") aparecem na seção VBA da barra lateral enquanto a guia VBA está aberta; também estão em Configurações → Geral.
 - O diálogo Exportar termina com uma linha `text-xs` `--text-muted` com os nomes finais dos arquivos marcados.
 
 ### ScopeSelector
@@ -245,8 +245,15 @@ Escala base de **4px**.
 
 ### ComponentList (VBA)
 
+- Seção da barra lateral, presente quando há módulos. Cabeçalho com `Checkbox` "VBA (marcados/total)" (indeterminado quando parcial).
 - Itens agrupados por tipo: Módulos, Classes, Planilhas, UserForms.
-- Badge com o número de linhas.
+- Cada item: `Checkbox` + botão com o nome (abre a guia VBA; desabilitado se desmarcado) e badge com o número de linhas.
+
+### PowerQueryList
+
+- Seção da barra lateral com o mesmo cabeçalho marcável; subgrupos "Consultas" e "Conexões", um `Checkbox` por item.
+- Guias sem nada marcado (Células, VBA, Power Query) somem; se era a guia ativa, volta ao Resumo.
+- No Diagnóstico, o link de célula de uma aba desmarcada fica desabilitado.
 
 ### ProgressBar
 
@@ -298,5 +305,5 @@ Escala base de **4px**.
 
 ### Índice de procedimentos e Busca (RF20)
 
-- `ComponentList`: o componente selecionado expande seus procedimentos (texto `text-xs text-muted`); clicar leva à linha no `VbaViewer`. Botão secundário "Exportar como arquivos" no fim da lista.
+- `ComponentList`: o componente selecionado expande seus procedimentos (texto `text-xs text-muted`); clicar leva à linha no `VbaViewer`. Botão secundário "Exportar como arquivos" (só os marcados) no fim da lista, na guia VBA.
 - Aba **Busca** (`SearchView`): campo de busca + lista de resultados (selo Célula/VBA, local em `font-mono text-accent`, trecho). Clicar abre a célula ou a linha de VBA.

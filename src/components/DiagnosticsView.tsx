@@ -64,6 +64,7 @@ function Issues({
   total: number
 }) {
   const goToCell = useWorkbookStore((s) => s.goToCell)
+  const selected = useWorkbookStore((s) => s.selectedSheets)
   return (
     <Section
       title={title}
@@ -73,9 +74,14 @@ function Issues({
         <Item key={`${i.sheet}!${i.cell}`}>
           <button
             type="button"
-            title="Ver na guia Células"
+            title={
+              selected.includes(i.sheet)
+                ? 'Ver na guia Células'
+                : 'Planilha desmarcada na barra lateral'
+            }
+            disabled={!selected.includes(i.sheet)}
             onClick={() => goToCell({ sheet: i.sheet, cell: i.cell })}
-            className="font-mono text-accent underline focus-visible:outline-2 focus-visible:outline-accent"
+            className="font-mono text-accent underline focus-visible:outline-2 focus-visible:outline-accent disabled:text-muted disabled:no-underline"
           >
             {i.sheet}!{i.cell}
           </button>

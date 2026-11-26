@@ -19,6 +19,9 @@ pub struct FileNames {
     pub power_query: String,
     /// Arquivo único para IA; dividido, vira `nome_parte_1.md`, `nome_parte_2.md`...
     pub bundle: String,
+    pub diagnostics: String,
+    /// Pacote `.zip` com todos os arquivos da exportação.
+    pub zip: String,
 }
 
 impl Default for FileNames {
@@ -29,6 +32,8 @@ impl Default for FileNames {
             vba_md: "{arquivo}_codigo_vba".into(),
             power_query: "{arquivo}_power_query".into(),
             bundle: "{arquivo}_contexto_ia".into(),
+            diagnostics: "{arquivo}_diagnostico".into(),
+            zip: "{arquivo}_exportacao".into(),
         }
     }
 }

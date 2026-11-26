@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 
+import { NOTHING_HIDDEN, type Hidden, type HiddenKind } from '../components/marks'
 import type {
   AppError,
   ExtractionResult,
@@ -33,6 +34,8 @@ interface WorkbookState {
   filePath: string | null
   summary: WorkbookSummary | null
   selectedSheets: string[]
+  /** Módulos, consultas e conexões desmarcados. */
+  hidden: Hidden
   result: ExtractionResult | null
   progress: Progress | null
   warnings: Warning[]
@@ -58,6 +61,8 @@ interface WorkbookState {
   setSummary: (summary: WorkbookSummary) => void
   toggleSheet: (name: string) => void
   setAllSheets: (selected: boolean) => void
+  toggleHidden: (kind: HiddenKind, name: string) => void
+  setHidden: (kind: HiddenKind, names: string[]) => void
   startExtracting: () => void
   setProgress: (p: Progress | null) => void
   setResult: (r: ExtractionResult) => void
@@ -77,6 +82,7 @@ const initial = {
   filePath: null,
   summary: null,
   selectedSheets: [],
+  hidden: NOTHING_HIDDEN,
   result: null,
   progress: null,
   warnings: [],
@@ -146,6 +152,17 @@ export const useWorkbookStore = create<WorkbookState>((set, get) => ({
         ? (get().summary?.sheets.map((s) => s.name) ?? [])
         : [],
     }),
+
+  toggleHidden: (kind, name) => {
+    const cur = get().hidden[kind]
+    get().setHidden(
+      kind,
+      cur.includes(name) ? cur.filter((n) => n !== name) : [...cur, name],
+    )
+  },
+
+  setHidden: (kind, names) =>
+    set((s) => ({ hidden: { ...s.hidden, [kind]: names } })),
 
   startExtracting: () =>
     set({
