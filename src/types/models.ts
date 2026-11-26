@@ -3,8 +3,15 @@
 
 export interface SheetInfo {
   name: string
-  cell_count: number
-  formula_count: number
+  rows: number
+  cols: number
+  tables: string[]
+}
+
+export interface VbaModuleInfo {
+  name: string
+  kind: VbaComponentKind
+  line_count: number
 }
 
 export interface WorkbookSummary {
@@ -13,6 +20,10 @@ export interface WorkbookSummary {
   size_bytes: number
   sheets: SheetInfo[]
   has_vba: boolean
+  vba: VbaModuleInfo[]
+  queries: string[]
+  connections: string[]
+  pq_unreadable: boolean
 }
 
 export type CellValue = null | boolean | number | string

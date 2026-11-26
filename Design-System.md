@@ -169,7 +169,9 @@ Escala base de **4px**.
 
 ### SheetList
 
-- Lista com checkbox por aba, contador de células e ícone de fórmula se houver.
+- Lista com checkbox por aba e o tamanho aproximado em células (`1,2 mi`; "—" se não informado), com a dimensão no `title`. Acima de 500 mil: texto `--warning` com ícone `TriangleAlert`.
+- Guia **Resumo** (`WorkbookOverview`, ícone `LayoutList`): guia inicial; seções em lista (Planilhas, VBA, Consultas, Conexões). Depois do "Ler arquivo", passa para Células.
+- `ExtractPanel`: `Alert` `warning` "Marcado, mas ainda não lido" lista as abas marcadas que não estão no resultado.
 - Ações "Marcar todas" / "Desmarcar todas". Título "Planilhas". Texto de ajuda: "Marque as planilhas que serão lidas e exportadas." Com mais de 8 planilhas, aparece um campo "Filtrar planilhas…" (só filtra a lista; "Marcar todas" vale para todas).
 
 ### Dialog / SettingsDialog

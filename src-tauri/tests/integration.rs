@@ -56,10 +56,11 @@ fn simples() {
     let summary = inspect(&fx("simples.xlsx")).unwrap();
     let names: Vec<_> = summary.sheets.iter().map(|s| s.name.as_str()).collect();
     assert_eq!(names, ["Clientes", "Produtos"]);
-    assert_eq!(summary.sheets[0].cell_count, 20);
-    assert_eq!(summary.sheets[1].cell_count, 16);
-    assert!(!summary.has_vba);
-    assert!(summary.sheets.iter().all(|s| s.formula_count == 0));
+    // dimensão declarada: as duas abas são blocos cheios
+    let area: Vec<_> = summary.sheets.iter().map(|s| s.rows * s.cols).collect();
+    assert_eq!(area, [20, 16]);
+    assert!(!summary.has_vba && summary.vba.is_empty());
+    assert!(summary.queries.is_empty() && !summary.pq_unreadable);
 
     let (sheets, warnings) = cells("simples.xlsx");
     assert!(warnings.is_empty());
@@ -142,6 +143,12 @@ fn especiais() {
 fn com_vba() {
     let summary = inspect(&fx("com_vba.xlsm")).unwrap();
     assert!(summary.has_vba);
+    assert!(
+        summary
+            .vba
+            .iter()
+            .any(|m| m.name == "modUtilitarios" && m.line_count > 0)
+    );
 
     let comps = extract_file(&fx("com_vba.xlsm"), &VbaOptions::default()).unwrap();
     let kind = |name: &str| {
@@ -603,6 +610,13 @@ fn diagnostico() {
         (d.tables[0].name.as_str(), d.tables[0].range.as_deref()),
         ("tblItens", Some("A1:B3"))
     );
+}
+
+#[test]
+fn resumo_lista_as_tabelas_da_aba() {
+    let summary = inspect(&fx("diagnostico.xlsx")).unwrap();
+    let tables: Vec<_> = summary.sheets.iter().flat_map(|s| &s.tables).collect();
+    assert_eq!(tables, ["tblItens"]);
 }
 
 #[test]

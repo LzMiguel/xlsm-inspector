@@ -17,6 +17,7 @@ import type {
 
 export type Status = 'idle' | 'loading' | 'extracting' | 'ready' | 'error'
 export type PreviewTab =
+  | 'summary'
   | 'cells'
   | 'vba'
   | 'diagnostics'
@@ -81,7 +82,7 @@ const initial = {
   warnings: [],
   status: 'idle' as Status,
   error: null,
-  tab: 'cells' as PreviewTab,
+  tab: 'summary' as PreviewTab,
   selectedComponent: null,
   diagnostics: null,
   powerQuery: null,
@@ -164,6 +165,7 @@ export const useWorkbookStore = create<WorkbookState>((set, get) => ({
       powerQuery: result.power_query,
       progress: null,
       status: 'ready',
+      tab: get().tab === 'summary' ? 'cells' : get().tab,
       selectedComponent: pickComponent(result.vba, get().selectedComponent),
     }),
 

@@ -8,13 +8,30 @@ pub struct WorkbookSummary {
     pub size_bytes: u64,
     pub sheets: Vec<SheetInfo>,
     pub has_vba: bool,
+    /// Vazio com `has_vba` verdadeiro = projeto ilegível (o erro aparece na leitura).
+    pub vba: Vec<VbaModuleInfo>,
+    /// Nomes das consultas do Power Query.
+    pub queries: Vec<String>,
+    pub connections: Vec<String>,
+    /// Power Query/conexões ilegíveis: as listas acima vêm vazias.
+    pub pq_unreadable: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SheetInfo {
     pub name: String,
-    pub cell_count: usize,
-    pub formula_count: usize,
+    /// Dimensão declarada no XML da aba (pode exceder o conteúdo). Sem declaração = 1 x 1.
+    pub rows: u32,
+    pub cols: u32,
+    /// Nomes das tabelas do Excel na aba.
+    pub tables: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VbaModuleInfo {
+    pub name: String,
+    pub kind: VbaComponentKind,
+    pub line_count: usize,
 }
 
 /// Serializado "untagged": `null`, bool, número ou texto.

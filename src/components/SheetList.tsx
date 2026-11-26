@@ -1,13 +1,33 @@
 import { useState } from 'react'
-import { FunctionSquare } from 'lucide-react'
+import { TriangleAlert } from 'lucide-react'
 
 import { useWorkbookStore } from '../store/workbookStore'
 import type { SheetInfo } from '../types/models'
 import { Button } from './ui/Button'
 import { Checkbox } from './ui/Checkbox'
 import { Input } from './ui/Fields'
+import { sheetSize } from './sheetSize'
 
 const EMPTY_SHEETS: SheetInfo[] = []
+
+function SizeBadge({ sheet }: { sheet: SheetInfo }) {
+  const { label, title, large } = sheetSize(sheet)
+  return (
+    <span
+      title={title}
+      className={`flex shrink-0 items-center gap-1 font-mono text-xs tabular-nums ${large ? 'text-warning' : 'text-muted'}`}
+    >
+      {large && (
+        <TriangleAlert
+          size={14}
+          strokeWidth={1.75}
+          aria-label="Planilha grande"
+        />
+      )}
+      {label}
+    </span>
+  )
+}
 
 export function SheetList() {
   const sheets = useWorkbookStore((s) => s.summary?.sheets) ?? EMPTY_SHEETS
@@ -78,17 +98,7 @@ export function SheetList() {
                   >
                     {s.name}
                   </span>
-                  {s.formula_count > 0 && (
-                    <FunctionSquare
-                      size={14}
-                      strokeWidth={1.75}
-                      className="shrink-0 text-accent"
-                      aria-label={`${s.formula_count} fórmulas`}
-                    />
-                  )}
-                  <span className="shrink-0 font-mono text-xs text-muted tabular-nums">
-                    {s.cell_count.toLocaleString('pt-BR')}
-                  </span>
+                  <SizeBadge sheet={s} />
                 </span>
               }
             />

@@ -62,6 +62,9 @@ O projeto nasceu como a substituição de dois scripts Python (`openpyxl` + `ole
 
 - Listar todas as planilhas com checkbox (todas marcadas por padrão).
 - Permitir processar uma planilha específica ou um subconjunto.
+- Ao abrir, o app não lê as células: a guia **Resumo** mostra, por aba, a dimensão declarada (linhas × colunas) e as tabelas, além dos módulos VBA, consultas e conexões.
+- A lista de abas indica o tamanho aproximado (linhas × colunas) e destaca acima de 500 mil células. A dimensão declarada pode exceder o conteúdo.
+- Marcar, depois de ler, uma aba que não foi lida gera um aviso para ler de novo.
 
 ### RF03 — Extração de células
 

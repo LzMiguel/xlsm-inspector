@@ -1,12 +1,13 @@
-use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, BufReader};
 use std::path::Path;
 
 use calamine::{Reader, SheetType, Xlsx, XlsxError};
 
+use super::power_query;
+use super::vba::{self, VbaOptions};
 use crate::error::AppError;
-use crate::model::{SheetInfo, WorkbookSummary};
+use crate::model::{SheetInfo, VbaModuleInfo, WorkbookSummary};
 
 pub type Book = Xlsx<BufReader<File>>;
 
@@ -59,46 +60,45 @@ pub fn sheet_names(book: &Book) -> Vec<String> {
         .collect()
 }
 
+/// Visão geral barata: não lê as células, só a dimensão declarada de cada aba.
 pub fn inspect(path: &Path) -> Result<WorkbookSummary, AppError> {
     let (mut book, size_bytes) = open_with_size(path)?;
+    book.load_tables().map_err(xlsx_err)?;
 
     let mut sheets = Vec::new();
     for name in sheet_names(&book) {
-        let values = book.worksheet_range(&name).map_err(xlsx_err)?;
-        let formulas = book.worksheet_formula(&name).map_err(xlsx_err)?;
-
-        let mut formula_coords: HashSet<(u32, u32)> = HashSet::new();
-        if let Some((r0, c0)) = formulas.start() {
-            for (r, c, _) in formulas.used_cells() {
-                let rr = r0.saturating_add(u32::try_from(r).unwrap_or(u32::MAX));
-                let cc = c0.saturating_add(u32::try_from(c).unwrap_or(u32::MAX));
-                formula_coords.insert((rr, cc));
-            }
-        }
-        let formula_count = formula_coords.len();
-        let mut cell_count = formula_count;
-        if let Some((r0, c0)) = values.start() {
-            if formula_coords.is_empty() {
-                cell_count += values.used_cells().count();
-            } else {
-                for (r, c, _) in values.used_cells() {
-                    let rr = r0.saturating_add(u32::try_from(r).unwrap_or(u32::MAX));
-                    let cc = c0.saturating_add(u32::try_from(c).unwrap_or(u32::MAX));
-                    if !formula_coords.contains(&(rr, cc)) {
-                        cell_count += 1;
-                    }
-                }
-            }
-        }
-
+        let dim = book
+            .worksheet_cells_reader(&name)
+            .map_err(xlsx_err)?
+            .dimensions();
+        let tables = book
+            .table_names_in_sheet(&name)
+            .into_iter()
+            .cloned()
+            .collect();
         sheets.push(SheetInfo {
             name,
-            cell_count,
-            formula_count,
+            rows: dim.end.0.saturating_sub(dim.start.0).saturating_add(1),
+            cols: dim.end.1.saturating_sub(dim.start.1).saturating_add(1),
+            tables,
         });
     }
 
+    // VBA ou Power Query ilegíveis não impedem abrir.
     let has_vba = matches!(book.vba_project(), Ok(Some(_)));
+    let vba = vba::extract(&mut book, &VbaOptions::default())
+        .unwrap_or_default()
+        .into_iter()
+        .map(|c| VbaModuleInfo {
+            name: c.name,
+            kind: c.kind,
+            line_count: c.line_count,
+        })
+        .collect();
+    let pq = power_query::extract_file(path);
+    let pq_unreadable = pq.is_err();
+    let pq = pq.unwrap_or_default();
+
     Ok(WorkbookSummary {
         path: path.to_string_lossy().into_owned(),
         file_name: path
@@ -108,6 +108,10 @@ pub fn inspect(path: &Path) -> Result<WorkbookSummary, AppError> {
         size_bytes,
         sheets,
         has_vba,
+        vba,
+        queries: pq.queries.into_iter().map(|q| q.name).collect(),
+        connections: pq.connections.into_iter().map(|c| c.name).collect(),
+        pq_unreadable,
     })
 }
 

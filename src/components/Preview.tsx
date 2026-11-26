@@ -1,4 +1,11 @@
-import { Code2, Database, Search, Stethoscope, Table2 } from 'lucide-react'
+import {
+  Code2,
+  Database,
+  LayoutList,
+  Search,
+  Stethoscope,
+  Table2,
+} from 'lucide-react'
 
 import { useWorkbookStore, type PreviewTab } from '../store/workbookStore'
 import type { SheetCells } from '../types/models'
@@ -9,10 +16,12 @@ import { SearchView } from './SearchView'
 import { EmptyState } from './ui/EmptyState'
 import { Tabs, type TabItem } from './ui/Tabs'
 import { VbaViewer } from './VbaViewer'
+import { WorkbookOverview } from './WorkbookOverview'
 
 const EMPTY_SHEETS: SheetCells[] = []
 
 const TABS: TabItem<PreviewTab>[] = [
+  { id: 'summary', label: 'Resumo', icon: LayoutList },
   { id: 'cells', label: 'Células', icon: Table2 },
   { id: 'vba', label: 'VBA', icon: Code2 },
   { id: 'diagnostics', label: 'Diagnóstico', icon: Stethoscope },
@@ -40,6 +49,7 @@ export function Preview() {
         onChange={setTab}
         className="px-4"
       />
+      {tab === 'summary' && <WorkbookOverview />}
       {needsRead && (
         <EmptyState
           icon={Table2}

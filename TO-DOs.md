@@ -6,16 +6,18 @@ Mapeamento fechado. Item marcado com **(proposta)** ainda pode ser ajustado.
 
 ## 0. Carregamento e resumo
 
-- [ ] Ao abrir o arquivo, ler só o necessário para a visão geral, sem percorrer célula por célula:
+Implementado, **falta validar** (testes e uso).
+
+- [x] Ao abrir o arquivo, ler só o necessário para a visão geral, sem percorrer célula por célula:
       abas, dimensões (linhas × colunas), tabelas, módulos VBA e consultas.
-- [ ] Mostrar essas informações em um resumo na visualização central (não na sidebar).
-- [ ] A sidebar fica só com os nomes e as caixas de marcação.
-- [ ] A contagem de células e de fórmulas por aba sai da visão geral.
-- [ ] "Ler arquivo" lê apenas o que está marcado.
-- [ ] Marcar depois algo não lido pede nova leitura. (gera alerta de item adicionado)
-- [ ] Indicador de tamanho na sidebar, para o usuário desmarcar o que é pesado antes de ler.
-      Planilhas: células aproximadas pela dimensão (linhas × colunas), abreviadas (ex.: "1,2 mi"),
-      com destaque de alerta acima de 500 mil. VBA: linhas de código. Consultas: sem indicador.
+- [x] Mostrar essas informações em um resumo na visualização central (não na sidebar).
+- [x] A sidebar fica só com os nomes e as caixas de marcação.
+- [x] A contagem de células e de fórmulas por aba sai da visão geral.
+- [x] "Ler arquivo" lê apenas o que está marcado (planilhas; VBA e consultas ganham marcação no item 2).
+- [x] Marcar depois algo não lido pede nova leitura. (gera alerta de item adicionado)
+- [x] Indicador de tamanho na sidebar para planilhas: células aproximadas pela dimensão
+      (linhas × colunas), abreviadas (ex.: "1,2 mi"), com alerta acima de 500 mil.
+- [ ] Linhas de código do VBA na sidebar (junto com a seção VBA do item 2; já aparecem no Resumo).
 
 ### Dimensões: verificado no `calamine` 0.38.0
 

@@ -13,9 +13,13 @@ const summary: WorkbookSummary = {
   size_bytes: 10,
   has_vba: true,
   sheets: [
-    { name: 'A', cell_count: 2, formula_count: 0 },
-    { name: 'B', cell_count: 1, formula_count: 1 },
+    { name: 'A', rows: 2, cols: 1, tables: [] },
+    { name: 'B', rows: 1, cols: 1, tables: [] },
   ],
+  vba: [],
+  queries: [],
+  connections: [],
+  pq_unreadable: false,
 }
 
 const comp = (name: string): VbaComponent => ({
@@ -101,6 +105,15 @@ describe('workbookStore', () => {
     expect(s().focus).toEqual({ sheet: 'A', cell: 'B2' })
     s().setTab('vba')
     expect(s().focus).toBeNull()
+  })
+
+  it('abre no resumo e vai para Células depois de ler', () => {
+    expect(s().tab).toBe('summary')
+    s().setResult(result([]))
+    expect(s().tab).toBe('cells')
+    s().setTab('diagnostics')
+    s().setResult(result([]))
+    expect(s().tab).toBe('diagnostics')
   })
 
   it('novo arquivo descarta o diagnóstico', () => {

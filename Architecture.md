@@ -54,7 +54,8 @@ xlsm-inspector/
 │   │   ├── ui/                  # Alert, Badge, Button, Checkbox, Dialog, EmptyState, Fields, ProgressBar, Tabs, Toast...
 │   │   ├── DropZone.tsx, RecentFiles.tsx, FileCard.tsx   # tela inicial e arquivo aberto
 │   │   ├── SheetList.tsx, ScopeSelector.tsx, ExtractPanel.tsx
-│   │   ├── Preview.tsx          # abas: Células, VBA, Diagnóstico, Power Query, Busca
+│   │   ├── Preview.tsx          # abas: Resumo, Células, VBA, Diagnóstico, Power Query, Busca
+│   │   ├── WorkbookOverview.tsx, sheetSize.ts
 │   │   ├── CellTable.tsx, TableView.tsx
 │   │   ├── VbaViewer.tsx, ComponentList.tsx (índice de procedimentos)
 │   │   ├── DiagnosticsView.tsx, PowerQueryView.tsx, SearchView.tsx (+ searchAll.ts)
@@ -128,13 +129,20 @@ pub struct WorkbookSummary {
     pub size_bytes: u64,
     pub sheets: Vec<SheetInfo>,
     pub has_vba: bool,
+    pub vba: Vec<VbaModuleInfo>,       // nome, tipo e linhas
+    pub queries: Vec<String>,
+    pub connections: Vec<String>,
+    pub pq_unreadable: bool,
 }
 
 pub struct SheetInfo {
     pub name: String,
-    pub cell_count: usize,
-    pub formula_count: usize,
+    pub rows: u32,                     // dimensão declarada no XML (1 x 1 se ausente)
+    pub cols: u32,
+    pub tables: Vec<String>,
 }
+
+pub struct VbaModuleInfo { pub name: String, pub kind: VbaComponentKind, pub line_count: usize }
 
 pub enum CellValue {           // serializado "untagged"
     Empty, Bool(bool), Int(i64), Float(f64),
@@ -231,8 +239,9 @@ O frontend mapeia `code` para a mensagem e o componente `Alert` corretos.
 
 ```text
 DropZone/diálogo ─► invoke("open_workbook", path)  ─► cache válido? devolve a última extração
-                  ─► Rust abre com calamine, lê nomes das abas e checa VBA
-                  ─► WorkbookSummary ─► store ─► FileCard + SheetList
+                  ─► Rust abre com calamine, sem ler as células: nomes e dimensão declarada
+                     das abas (worksheet_cells_reader), tabelas, módulos VBA e consultas
+                  ─► WorkbookSummary ─► store ─► FileCard + SheetList + guia Resumo
 ```
 
 ### Ler arquivo

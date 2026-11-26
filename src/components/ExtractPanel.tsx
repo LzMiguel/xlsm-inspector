@@ -21,7 +21,8 @@ export function ExtractPanel() {
   const progress = useWorkbookStore((s) => s.progress)
   const result = useWorkbookStore((s) => s.result)
   const warnings = useWorkbookStore((s) => s.warnings)
-  const noSheets = useWorkbookStore((s) => s.selectedSheets.length === 0)
+  const selected = useWorkbookStore((s) => s.selectedSheets)
+  const noSheets = selected.length === 0
   const filePath = useWorkbookStore((s) => s.filePath)
   const fromCache = useWorkbookStore((s) => s.fromCache)
   const scope = useWorkbookStore((s) => s.scope)
@@ -33,6 +34,10 @@ export function ExtractPanel() {
       result?.sheets.reduce((n, s) => n + Object.keys(s.cells).length, 0) ?? 0,
     [result],
   )
+
+  const unread = result
+    ? selected.filter((n) => !result.sheets.some((s) => s.name === n))
+    : []
 
   return (
     <section className="flex shrink-0 flex-col gap-4 rounded-md border border-border bg-surface p-4">
@@ -62,6 +67,15 @@ export function ExtractPanel() {
           <p className="text-sm text-warning">Marque ao menos uma planilha.</p>
         )}
       </div>
+
+      {unread.length > 0 && !extracting && (
+        <Alert
+          variant="warning"
+          title="Marcado, mas ainda não lido"
+        >
+          {unread.join(', ')}. Clique em “Ler de novo” para incluir.
+        </Alert>
+      )}
 
       {fromCache && !extracting && (
         <Alert
